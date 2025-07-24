@@ -21,7 +21,7 @@ definitions:
       balance:
         type: string
     type: object
-host: localhost:3001
+host: web3.bogowi.com
 info:
   contact: {}
   description: API for BOGOWI blockchain operations including tokens, NFTs, and DAO

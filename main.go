@@ -20,7 +20,7 @@ import (
 // @title BOGOWI Blockchain API
 // @version 1.0
 // @description API for BOGOWI blockchain operations including tokens, NFTs, and DAO functionality
-// @host localhost:3001
+// @host web3.bogowi.com
 // @BasePath /api
 func main() {
 	// Load configuration
