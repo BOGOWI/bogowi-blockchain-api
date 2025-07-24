@@ -40,9 +40,31 @@ build-all: ## Build for all platforms
 test: ## Run tests
 	$(GOTEST) -v -race ./...
 
-test-coverage: ## Run tests with coverage
+test-coverage: ## Run tests with coverage (standard)
 	$(GOTEST) -v -race -coverprofile=coverage.out ./...
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
+	@echo "📊 Coverage report generated: coverage.html"
+
+coverage-enhanced: ## Generate enhanced HTML coverage report with gocov
+	@echo "🚀 Generating enhanced coverage report with gocov..."
+	@export PATH=$$PATH:$$(go env GOPATH)/bin && \
+	gocov test ./... | gocov-html > coverage-enhanced.html
+	@echo "✅ Enhanced coverage report: coverage-enhanced.html"
+	@command -v open >/dev/null 2>&1 && open coverage-enhanced.html || echo "📄 Report ready to view"
+
+coverage-all: ## Generate all coverage reports
+	@echo "📊 Generating all coverage reports..."
+	$(MAKE) test-coverage
+	$(MAKE) coverage-enhanced
+	@echo "🎉 All coverage reports generated!"
+	@echo "  📄 coverage.html (standard)"
+	@echo "  📄 coverage-enhanced.html (enhanced)"
+
+coverage-install: ## Install coverage tools
+	@echo "📦 Installing coverage tools..."
+	go install github.com/axw/gocov/gocov@latest
+	go install github.com/matm/gocov-html/cmd/gocov-html@latest
+	@echo "✅ Coverage tools installed!"
 
 ## Development commands
 clean: ## Clean build artifacts

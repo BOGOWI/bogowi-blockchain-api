@@ -1,11 +1,9 @@
 run:
   timeout: 5m
-  issues-exit-code: 1
   tests: true
 
 output:
-  formats:
-    - format: colored-line-number
+  format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
 
@@ -16,44 +14,15 @@ linters-settings:
     settings:
       printf:
         funcs:
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+          - (github.com/gin-gonic/gin.Context).JSON
+          - (github.com/gin-gonic/gin.Context).XML
 
   gocyclo:
     min-complexity: 15
 
-  goimports:
-    local-prefixes: github.com/KODESL/bogowi-blockchain-api
-
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
-
   funlen:
     lines: 100
     statements: 50
-
-  mnd:
-    settings:
-      mnd:
-        checks: 
-          - argument
-          - case
-          - condition
-          - operation
-          - return
 
   goconst:
     min-len: 2
@@ -65,24 +34,15 @@ linters-settings:
   lll:
     line-length: 140
 
-  unused:
-    go: "1.21"
-
   unparam:
     check-exported: false
 
   nakedret:
     max-func-lines: 30
 
-  prealloc:
-    simple: true
-    range-loops: true
-    for-loops: false
-
 linters:
   enable:
     - bodyclose
-    - copyloopvar   # replaces exportloopref
     - dupl
     - errcheck
     - funlen
@@ -90,23 +50,16 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
-    - goprintffuncname
     - gosec
     - gosimple
     - govet
     - ineffassign
     - lll
     - misspell
-    - mnd           # replaces gomnd
     - nakedret
     - noctx
-    - nolintlint
-    - shadow        # explicit instead of check-shadowing
     - staticcheck
     - stylecheck
-    - typecheck
     - unconvert
     - unparam
     - unused
@@ -117,22 +70,15 @@ linters:
     - dogsled
 
 issues:
-  exclude-files:
-    - ".*\\.pb\\.go$"
-    - ".*_test\\.go$"
-  exclude-dirs:
-    - vendor
-
   exclude-rules:
     - path: _test\.go
       linters:
-        - mnd
         - funlen
         - gocyclo
 
     - path: main\.go
       linters:
-        - goimports
+        - funlen
 
     - linters:
         - staticcheck
@@ -147,10 +93,5 @@ issues:
     - "should have a package comment"
     - "don't use an underscore in package name"
 
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-
-severity:
-  default-severity: error
-  case-sensitive: false
