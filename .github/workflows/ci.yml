@@ -178,9 +178,13 @@ jobs:
       run: |
         # Start container in background
         docker run -d --name test-api -p 3001:3001 \
-          -e ENVIRONMENT=test \
+          -e NODE_ENV=test \
           -e API_PORT=3001 \
-          -e PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000000 \
+          -e PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+          -e RPC_URL=https://columbus.camino.network/ext/bc/C/rpc \
+          -e BOGO_TOKEN_V2_ADDRESS=0x1234567890123456789012345678901234567890 \
+          -e CONSERVATION_NFT_ADDRESS=0x2234567890123456789012345678901234567890 \
+          -e COMMERCIAL_NFT_ADDRESS=0x3234567890123456789012345678901234567890 \
           bogowi-api:test
         
         # Wait for API to start
