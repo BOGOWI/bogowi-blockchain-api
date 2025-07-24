@@ -46,6 +46,11 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
+    enabled-checks:
+      - nestingReduce
+      - unnamedResult
+      - ruleguard
+      - truncateCmp
 
   funlen:
     lines: 100
@@ -84,13 +89,6 @@ linters-settings:
     simple: true
     range-loops: true
     for-loops: false
-
-  gocritic:
-    enabled-checks:
-      - nestingReduce
-      - unnamedResult
-      - ruleguard
-      - truncateCmp
 
 linters:
   enable:
