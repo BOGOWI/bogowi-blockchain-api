@@ -12,7 +12,7 @@ on:
         type: string
 
 env:
-  GO_VERSION: "1.21"
+  GO_VERSION: "1.23"
 
 jobs:
   test:
@@ -129,7 +129,7 @@ jobs:
         ls -la "$BINARY_NAME"*
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: bogowi-api-${{ matrix.name }}
         path: |
@@ -196,7 +196,7 @@ jobs:
         fetch-depth: 0
     
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     
     - name: Get version
       id: version
