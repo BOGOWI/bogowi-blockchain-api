@@ -1,0 +1,276 @@
+openapi: 3.0.0
+info:
+  title: BOGOWI Blockchain API
+  description: High-performance Go API for BOGOWI blockchain operations including tokens, NFTs, rewards, and DAO functionality
+  version: 1.0.0
+  contact:
+    name: BOGOWI Team
+    url: https://bogowi.com
+servers:
+  - url: http://localhost:3001/api
+    description: Development server
+  - url: https://api.bogowi.com/api
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Returns API status and configured smart contract addresses
+      tags: [System]
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  contracts:
+                    type: object
+                    properties:
+                      bogo_token_v2:
+                        type: string
+                        example: "0x9353A4c0A06a4956DEd9EcE66B0FFd740861844E"
+
+  /gas-price:
+    get:
+      summary: Get Gas Price
+      description: Returns the current network gas price in Gwei
+      tags: [System]
+      responses:
+        '200':
+          description: Current gas price
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gasPrice:
+                    type: string
+                    example: "200.00 gwei"
+
+  /token/balance/{address}:
+    get:
+      summary: Get Token Balance
+      description: Returns the BOGO token balance for a specific address
+      tags: [Tokens]
+      parameters:
+        - name: address
+          in: path
+          required: true
+          description: Ethereum wallet address
+          schema:
+            type: string
+            example: "0x742b18C3E6C2E0dD5f75FbBd7D71d8CaE59c7054"
+      responses:
+        '200':
+          description: Token balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+                  balance:
+                    type: string
+                    example: "1000.5"
+        '400':
+          description: Invalid address format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /token/flavored-balances/{address}:
+    get:
+      summary: Get Flavored Token Balances
+      description: Returns balances for Ocean, Earth, and Wildlife BOGO tokens
+      tags: [Tokens]
+      parameters:
+        - name: address
+          in: path
+          required: true
+          description: Ethereum wallet address
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Flavored token balances
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+                  balances:
+                    type: object
+                    properties:
+                      ocean:
+                        type: string
+                      earth:
+                        type: string
+                      wildlife:
+                        type: string
+
+  /nft/balance/{address}/{tokenId}:
+    get:
+      summary: Get NFT Balance
+      description: Check if an address owns a specific NFT token ID
+      tags: [NFTs]
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NFT balance check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+                  tokenId:
+                    type: string
+                  balance:
+                    type: string
+
+  /nft/mint-ticket:
+    post:
+      summary: Mint Event Ticket NFT
+      description: Mints a new event ticket NFT
+      tags: [NFTs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, tokenId, eventDate, expiryDate, venue, uri, price]
+              properties:
+                to:
+                  type: string
+                  description: Recipient address
+                tokenId:
+                  type: string
+                  description: Token ID to mint
+                eventDate:
+                  type: integer
+                  description: Event date (Unix timestamp)
+                expiryDate:
+                  type: integer
+                  description: Expiry date (Unix timestamp)
+                venue:
+                  type: string
+                  description: Event venue
+                uri:
+                  type: string
+                  description: Metadata URI
+                price:
+                  type: string
+                  description: Ticket price
+      responses:
+        '200':
+          description: NFT minted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  to:
+                    type: string
+                  tokenId:
+                    type: string
+                  transaction:
+                    type: string
+
+  /rewards/info/{address}:
+    get:
+      summary: Get Reward Information
+      description: Returns reward points and achievement progress for a user
+      tags: [Rewards]
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User reward information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+                  totalRewards:
+                    type: string
+                  claimedRewards:
+                    type: string
+                  unclaimedRewards:
+                    type: string
+                  isWhitelisted:
+                    type: boolean
+                  achievements:
+                    type: array
+                    items:
+                      type: string
+
+  /dao/info:
+    get:
+      summary: Get DAO Information
+      description: Returns DAO/Multisig treasury information
+      tags: [DAO]
+      responses:
+        '200':
+          description: DAO information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  threshold:
+                    type: integer
+                  signerCount:
+                    type: integer
+                  transactionCount:
+                    type: integer
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+tags:
+  - name: System
+    description: System health and utility endpoints
+  - name: Tokens
+    description: BOGO token operations
+  - name: NFTs
+    description: NFT minting and balance operations
+  - name: Rewards
+    description: User rewards and achievements
+  - name: DAO
+    description: DAO and multisig treasury operations

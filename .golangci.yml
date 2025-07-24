@@ -95,9 +95,6 @@ linters-settings:
 linters:
   enable:
     - bodyclose
-    - deadcode
-    - depguard
-    - dogsled
     - dupl
     - errcheck
     - exportloopref
@@ -114,27 +111,29 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - lll
     - misspell
     - nakedret
     - noctx
     - nolintlint
-    - rowserrcheck
-    - scopelint
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
 
   disable:
-    - maligned
-    - prealloc
+    - deadcode      # deprecated
+    - depguard
+    - dogsled
+    - interfacer    # deprecated
+    - maligned      # deprecated 
+    - rowserrcheck  # deprecated
+    - scopelint     # deprecated
+    - structcheck   # deprecated
+    - varcheck      # deprecated
 
 issues:
   exclude-rules:

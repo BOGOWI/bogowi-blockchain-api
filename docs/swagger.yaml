@@ -1,0 +1,82 @@
+basePath: /api
+definitions:
+  api.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  sdk.FlavoredBalances:
+    properties:
+      address:
+        type: string
+      balances:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  sdk.TokenBalance:
+    properties:
+      address:
+        type: string
+      balance:
+        type: string
+    type: object
+host: localhost:3001
+info:
+  contact: {}
+  description: API for BOGOWI blockchain operations including tokens, NFTs, and DAO
+    functionality
+  title: BOGOWI Blockchain API
+  version: "1.0"
+paths:
+  /token/balance/{address}:
+    get:
+      description: Returns the balance of BOGO tokens for a given address
+      parameters:
+      - description: Wallet address
+        in: path
+        name: address
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sdk.TokenBalance'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get BOGO token balance
+      tags:
+      - Tokens
+  /token/flavored-balances/{address}:
+    get:
+      description: Returns the balance of Ocean, Earth, and Wildlife BOGO tokens
+      parameters:
+      - description: Wallet address
+        in: path
+        name: address
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sdk.FlavoredBalances'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get flavored BOGO token balances
+      tags:
+      - Tokens
+swagger: "2.0"
