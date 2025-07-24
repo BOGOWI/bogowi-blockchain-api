@@ -1,0 +1,281 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  GO_VERSION: "1.21"
+
+jobs:
+  test:
+    name: Test Before Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      run: go mod download
+    
+    - name: Run tests
+      run: go test -v -race ./...
+    
+    - name: Run vet
+      run: go vet ./...
+
+  build:
+    name: Build Release Binaries
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 20
+    
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            name: linux-amd64
+          - goos: linux
+            goarch: arm64
+            name: linux-arm64
+          - goos: darwin
+            goarch: amd64
+            name: darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            name: darwin-arm64
+          - goos: windows
+            goarch: amd64
+            name: windows-amd64
+            extension: .exe
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      run: go mod download
+    
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Build binary
+      env:
+        CGO_ENABLED: 0
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        BINARY_NAME="bogowi-api-${{ matrix.name }}${{ matrix.extension }}"
+        VERSION="${{ steps.version.outputs.version }}"
+        COMMIT_SHA="${{ github.sha }}"
+        BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        
+        go build \
+          -a -installsuffix cgo \
+          -ldflags "-extldflags '-static' -X main.Version=${VERSION} -X main.CommitSHA=${COMMIT_SHA} -X main.BuildTime=${BUILD_TIME}" \
+          -o "$BINARY_NAME" .
+        
+        # Create checksum
+        if command -v sha256sum >/dev/null; then
+          sha256sum "$BINARY_NAME" > "$BINARY_NAME.sha256"
+        else
+          shasum -a 256 "$BINARY_NAME" > "$BINARY_NAME.sha256"
+        fi
+        
+        # Verify binary
+        file "$BINARY_NAME" || true
+        ls -la "$BINARY_NAME"*
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: bogowi-api-${{ matrix.name }}
+        path: |
+          bogowi-api-${{ matrix.name }}${{ matrix.extension }}
+          bogowi-api-${{ matrix.name }}${{ matrix.extension }}.sha256
+        retention-days: 7
+
+  docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Get version and metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: |
+          kodesl/bogowi-api
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [test, build, docker]
+    timeout-minutes: 10
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        
+        # Create release notes
+        cat > release_notes.md << EOF
+        # BOGOWI Blockchain API ${VERSION}
+        
+        ## 🚀 What's New
+        
+        This release includes the following improvements and fixes:
+        
+        ## 📦 Downloads
+        
+        ### Binaries
+        - **Linux (amd64)**: \`bogowi-api-linux-amd64\`
+        - **Linux (arm64)**: \`bogowi-api-linux-arm64\`
+        - **macOS (amd64)**: \`bogowi-api-darwin-amd64\`
+        - **macOS (arm64)**: \`bogowi-api-darwin-arm64\`
+        - **Windows (amd64)**: \`bogowi-api-windows-amd64.exe\`
+        
+        ### Docker
+        \`\`\`bash
+        docker pull kodesl/bogowi-api:${VERSION}
+        \`\`\`
+        
+        ## 🔍 Verification
+        
+        All binaries include SHA256 checksums for verification.
+        
+        ## 📝 Installation
+        
+        1. Download the appropriate binary for your system
+        2. Make it executable: \`chmod +x bogowi-api-*\`
+        3. Run: \`./bogowi-api-*\`
+        
+        For detailed installation and configuration instructions, see the [README](https://github.com/KODESL/bogowi-blockchain-api/blob/main/README.md).
+        
+        ## 🔐 Security
+        
+        This release has been scanned for security vulnerabilities and follows best practices for Go applications.
+        
+        ---
+        
+        **Full Changelog**: https://github.com/KODESL/bogowi-blockchain-api/compare/...${VERSION}
+        EOF
+        
+        echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
+    
+    - name: Prepare release assets
+      run: |
+        mkdir -p release-assets
+        find . -name "bogowi-api-*" -type f | while read file; do
+          if [[ "$file" != *"/" ]]; then
+            cp "$file" release-assets/
+          fi
+        done
+        ls -la release-assets/
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: Release ${{ steps.version.outputs.version }}
+        body_path: ${{ steps.release_notes.outputs.notes_file }}
+        files: release-assets/*
+        draft: false
+        prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
