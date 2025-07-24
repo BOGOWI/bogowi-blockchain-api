@@ -1,0 +1,71 @@
+# Coverage Makefile for BOGOWI Blockchain API
+# Run: make -f Makefile.coverage <target>
+
+.PHONY: coverage coverage-html coverage-treemap coverage-gocov test-coverage help
+
+# Default target
+help:
+	@echo "📊 Available coverage targets:"
+	@echo "  test-coverage    - Run tests with coverage (basic)"
+	@echo "  coverage-html    - Generate built-in HTML coverage report"
+	@echo "  coverage-gocov   - Generate gocov HTML report (enhanced)"
+	@echo "  coverage-treemap - Generate visual treemap coverage (SVG)"
+	@echo "  coverage-all     - Generate all coverage reports"
+	@echo "  open-reports     - Open all generated reports"
+
+# Basic coverage with race detection
+test-coverage:
+	@echo "🧪 Running tests with coverage..."
+	go test -v -race -coverprofile=coverage.out ./...
+	@echo "📈 Overall coverage:"
+	go tool cover -func=coverage.out | grep total
+
+# Built-in HTML coverage report
+coverage-html: test-coverage
+	@echo "🌐 Generating HTML coverage report..."
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "✅ Generated coverage.html"
+
+# Enhanced gocov HTML report
+coverage-gocov:
+	@echo "🌐 Generating enhanced HTML coverage report with gocov..."
+	@export PATH=$(PATH):$(shell go env GOPATH)/bin && \
+	gocov test ./... | gocov-html > coverage-gocov.html
+	@echo "✅ Generated coverage-gocov.html"
+
+# Visual treemap coverage
+coverage-treemap: test-coverage
+	@echo "🌳 Generating treemap coverage visualization..."
+	@export PATH=$(PATH):$(shell go env GOPATH)/bin && \
+	go-cover-treemap -coverprofile coverage.out > coverage-treemap.svg
+	@echo "✅ Generated coverage-treemap.svg"
+
+# Generate all coverage reports
+coverage-all: coverage-html coverage-gocov coverage-treemap
+	@echo "🎉 All coverage reports generated!"
+	@echo "  📄 coverage.html        - Standard HTML report"
+	@echo "  📄 coverage-gocov.html  - Enhanced HTML report" 
+	@echo "  📄 coverage-treemap.svg - Visual treemap"
+
+# Open all reports in browser/viewer
+open-reports:
+	@echo "🚀 Opening coverage reports..."
+	@command -v open >/dev/null 2>&1 && open coverage.html || echo "⚠️  coverage.html ready"
+	@command -v open >/dev/null 2>&1 && open coverage-gocov.html || echo "⚠️  coverage-gocov.html ready"
+	@command -v open >/dev/null 2>&1 && open coverage-treemap.svg || echo "⚠️  coverage-treemap.svg ready"
+
+# Clean coverage files
+clean:
+	@echo "🧹 Cleaning coverage files..."
+	rm -f coverage.out coverage.html coverage-gocov.html coverage-treemap.svg
+	@echo "✅ Coverage files cleaned"
+
+# Install coverage tools
+install-tools:
+	@echo "📦 Installing Go coverage tools..."
+	go install github.com/axw/gocov/gocov@latest
+	go install github.com/matm/gocov-html/cmd/gocov-html@latest
+	go install github.com/nikolaydubina/go-cover-treemap@latest
+	go install github.com/haya14busa/goverage@latest
+	go install github.com/msoap/go-carpet@latest
+	@echo "✅ All coverage tools installed"

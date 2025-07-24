@@ -2,20 +2,17 @@ run:
   timeout: 5m
   issues-exit-code: 1
   tests: true
-  skip-dirs:
-    - vendor
-  skip-files:
-    - ".*\\.pb\\.go$"
-    - ".*_test\\.go$"
 
 output:
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
 
 linters-settings:
   govet:
-    check-shadowing: true
+    enable:
+      - shadow
     settings:
       printf:
         funcs:
@@ -23,9 +20,6 @@ linters-settings:
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
-
-  golint:
-    min-confidence: 0
 
   gocyclo:
     min-complexity: 15
@@ -46,17 +40,12 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
-    enabled-checks:
-      - nestingReduce
-      - unnamedResult
-      - ruleguard
-      - truncateCmp
 
   funlen:
     lines: 100
     statements: 50
 
-  gomnd:
+  mnd:
     settings:
       mnd:
         checks: 
@@ -93,9 +82,9 @@ linters-settings:
 linters:
   enable:
     - bodyclose
+    - copyloopvar   # replaces exportloopref
     - dupl
     - errcheck
-    - exportloopref
     - funlen
     - gochecknoinits
     - goconst
@@ -103,7 +92,6 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - gomnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -111,9 +99,11 @@ linters:
     - ineffassign
     - lll
     - misspell
+    - mnd           # replaces gomnd
     - nakedret
     - noctx
     - nolintlint
+    - shadow        # explicit instead of check-shadowing
     - staticcheck
     - stylecheck
     - typecheck
@@ -123,21 +113,20 @@ linters:
     - whitespace
 
   disable:
-    - deadcode      # deprecated
     - depguard
     - dogsled
-    - interfacer    # deprecated
-    - maligned      # deprecated 
-    - rowserrcheck  # deprecated
-    - scopelint     # deprecated
-    - structcheck   # deprecated
-    - varcheck      # deprecated
 
 issues:
+  exclude-files:
+    - ".*\\.pb\\.go$"
+    - ".*_test\\.go$"
+  exclude-dirs:
+    - vendor
+
   exclude-rules:
     - path: _test\.go
       linters:
-        - gomnd
+        - mnd
         - funlen
         - gocyclo
 

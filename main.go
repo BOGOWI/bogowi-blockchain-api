@@ -75,6 +75,7 @@ func main() {
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Printf("⚠️ Server forced to shutdown: %v", err)
+		cancel() // Explicitly call cancel before exit
 		os.Exit(1)
 	}
 
