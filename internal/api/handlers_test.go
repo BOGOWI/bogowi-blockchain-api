@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +32,7 @@ func TestHealthHandler(t *testing.T) {
 	router := gin.New()
 	router.GET("/health", handler.GetHealth)
 
-	req, _ := http.NewRequest("GET", "/health", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/health", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -51,7 +52,7 @@ func TestNFTBalanceHandler(t *testing.T) {
 	router := gin.New()
 	router.GET("/nft/balance/:address/:tokenId", handler.GetNFTBalance)
 
-	req, _ := http.NewRequest("GET", "/nft/balance/0x742d35Cc6634C0532925a3b8D84d9C74D938f1f1/1", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", "/nft/balance/0x742d35Cc6634C0532925a3b8D84d9C74D938f1f1/1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

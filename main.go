@@ -71,13 +71,13 @@ func main() {
 
 	// The context is used to inform the server it has 5 seconds to finish
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Printf("⚠️ Server forced to shutdown: %v", err)
-		cancel() // Explicitly call cancel before exit
+		cancel()
 		os.Exit(1)
 	}
+	cancel()
 
 	log.Println("✅ Server exited")
 }
