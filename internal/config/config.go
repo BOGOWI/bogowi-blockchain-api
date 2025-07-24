@@ -132,7 +132,9 @@ func loadSecretsFromSSM(cfg *Config) error {
 
 	// Set parameters as environment variables
 	for _, param := range result.Parameters {
-		os.Setenv(*param.Name, *param.Value)
+		if err := os.Setenv(*param.Name, *param.Value); err != nil {
+			log.Printf("Warning: Failed to set environment variable %s: %v", *param.Name, err)
+		}
 	}
 
 	// Log missing parameters

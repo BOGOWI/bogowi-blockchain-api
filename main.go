@@ -45,8 +45,11 @@ func main() {
 
 	// Create HTTP server
 	srv := &http.Server{
-		Addr:    ":" + cfg.APIPort,
-		Handler: router,
+		Addr:              ":" + cfg.APIPort,
+		Handler:           router,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	// Start server in a goroutine
@@ -71,7 +74,8 @@ func main() {
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("⚠️ Server forced to shutdown:", err)
+		log.Printf("⚠️ Server forced to shutdown: %v", err)
+		os.Exit(1)
 	}
 
 	log.Println("✅ Server exited")

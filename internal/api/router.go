@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -39,7 +40,10 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 	router.Use(cors.New(corsConfig))
 
 	// Trust proxy for forwarded headers (required for nginx)
-	router.SetTrustedProxies([]string{"127.0.0.1"})
+	trustedProxies := []string{"127.0.0.1"}
+	if err := router.SetTrustedProxies(trustedProxies); err != nil {
+		log.Panicf("failed to set trusted proxies: %s", err)
+	}
 
 	// Rate limiting middleware
 	limiter := rate.NewLimiter(rate.Every(time.Minute/100), 100) // 100 requests per minute
@@ -78,41 +82,32 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 
 	// API routes
 	api := router.Group("/api")
-	{
-		// System endpoints
-		api.GET("/health", handler.GetHealth)
-		api.GET("/gas-price", handler.GetGasPrice)
 
-		// Token endpoints
-		token := api.Group("/token")
-		{
-			token.GET("/balance/:address", handler.GetTokenBalance)
-			token.GET("/flavored-balances/:address", handler.GetFlavoredTokenBalances)
-		}
+	// System endpoints
+	api.GET("/health", handler.GetHealth)
+	api.GET("/gas-price", handler.GetGasPrice)
 
-		// NFT endpoints
-		nft := api.Group("/nft")
-		{
-			nft.GET("/balance/:address/:tokenId", handler.GetNFTBalance)
-			nft.POST("/mint-ticket", handler.MintEventTicket)
-			nft.POST("/mint-collectible", handler.MintConservationNFT)
-		}
+	// Token endpoints
+	token := api.Group("/token")
+	token.GET("/balance/:address", handler.GetTokenBalance)
+	token.GET("/flavored-balances/:address", handler.GetFlavoredTokenBalances)
 
-		// Rewards endpoints
-		rewards := api.Group("/rewards")
-		{
-			rewards.GET("/info/:address", handler.GetRewardInfo)
-			rewards.GET("/achievement/:address/:achievementId", handler.GetAchievementProgress)
-			rewards.POST("/claim", handler.ClaimReward)
-		}
+	// NFT endpoints
+	nft := api.Group("/nft")
+	nft.GET("/balance/:address/:tokenId", handler.GetNFTBalance)
+	nft.POST("/mint-ticket", handler.MintEventTicket)
+	nft.POST("/mint-collectible", handler.MintConservationNFT)
 
-		// DAO endpoints
-		dao := api.Group("/dao")
-		{
-			dao.GET("/info", handler.GetDAOInfo)
-			dao.GET("/pending-transactions", handler.GetPendingTransactions)
-		}
-	}
+	// Rewards endpoints
+	rewards := api.Group("/rewards")
+	rewards.GET("/info/:address", handler.GetRewardInfo)
+	rewards.GET("/achievement/:address/:achievementId", handler.GetAchievementProgress)
+	rewards.POST("/claim", handler.ClaimReward)
+
+	// DAO endpoints
+	dao := api.Group("/dao")
+	dao.GET("/info", handler.GetDAOInfo)
+	dao.GET("/pending-transactions", handler.GetPendingTransactions)
 
 	return router
 }
@@ -121,9 +116,7 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 func rateLimitMiddleware(limiter *rate.Limiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !limiter.Allow() {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "Rate limit exceeded",
-			})
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded"})
 			c.Abort()
 			return
 		}

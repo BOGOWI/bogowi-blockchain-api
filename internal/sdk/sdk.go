@@ -202,7 +202,11 @@ func (s *BOGOWISDK) GetTokenBalance(address string) (*TokenBalance, error) {
 	}
 
 	// Convert wei to ether (18 decimals)
-	balanceEther := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)))
+	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	balanceEther := new(big.Float).Quo(
+		new(big.Float).SetInt(balance),
+		new(big.Float).SetInt(decimals),
+	)
 
 	return &TokenBalance{
 		Address: address,
@@ -266,7 +270,11 @@ func (s *BOGOWISDK) getTokenBalanceFromContract(contract *Contract, address comm
 	}
 
 	// Convert wei to ether (18 decimals)
-	balanceEther := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)))
+	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	balanceEther := new(big.Float).Quo(
+		new(big.Float).SetInt(balance),
+		new(big.Float).SetInt(decimals),
+	)
 	return balanceEther.String(), nil
 }
 
