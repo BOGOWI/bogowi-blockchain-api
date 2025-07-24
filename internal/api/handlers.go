@@ -12,7 +12,7 @@ import (
 // GetNFTBalance returns NFT balance for an address and token ID
 func (h *Handler) GetNFTBalance(c *gin.Context) {
 	address := c.Param("address")
-	tokenId := c.Param("tokenId")
+	tokenID := c.Param("tokenId")
 
 	// Validate Ethereum address
 	if !common.IsHexAddress(address) {
@@ -23,7 +23,7 @@ func (h *Handler) GetNFTBalance(c *gin.Context) {
 	// For now, return a stub response
 	c.JSON(http.StatusOK, gin.H{
 		"address": address,
-		"tokenId": tokenId,
+		"tokenId": tokenID,
 		"balance": "0", // Would implement actual NFT balance check
 	})
 }
@@ -106,19 +106,19 @@ func (h *Handler) GetRewardInfo(c *gin.Context) {
 
 	// For now, return a stub response
 	c.JSON(http.StatusOK, gin.H{
-		"address":            address,
-		"totalRewards":       "0",
-		"claimedRewards":     "0",
-		"unclaimedRewards":   "0",
-		"isWhitelisted":      false,
-		"achievements":       []string{},
+		"address":          address,
+		"totalRewards":     "0",
+		"claimedRewards":   "0",
+		"unclaimedRewards": "0",
+		"isWhitelisted":    false,
+		"achievements":     []string{},
 	})
 }
 
 // GetAchievementProgress returns achievement progress for an address
 func (h *Handler) GetAchievementProgress(c *gin.Context) {
 	address := c.Param("address")
-	achievementId := c.Param("achievementId")
+	achievementID := c.Param("achievementId")
 
 	// Validate Ethereum address
 	if !common.IsHexAddress(address) {
@@ -129,11 +129,11 @@ func (h *Handler) GetAchievementProgress(c *gin.Context) {
 	// For now, return a stub response
 	c.JSON(http.StatusOK, gin.H{
 		"address":       address,
-		"achievementId": achievementId,
-		"progress":      gin.H{
-			"completed":    false,
-			"percentage":   0,
-			"description":  "Achievement progress tracking",
+		"achievementId": achievementID,
+		"progress": gin.H{
+			"completed":   false,
+			"percentage":  0,
+			"description": "Achievement progress tracking",
 		},
 	})
 }

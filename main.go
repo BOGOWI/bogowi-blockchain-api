@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	_ "bogowi-blockchain-go/docs" // Import generated docs
 	"bogowi-blockchain-go/internal/api"
 	"bogowi-blockchain-go/internal/config"
 	"bogowi-blockchain-go/internal/sdk"
-	_ "bogowi-blockchain-go/docs" // Import generated docs
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,7 +20,7 @@ import (
 // @title BOGOWI Blockchain API
 // @version 1.0
 // @description API for BOGOWI blockchain operations including tokens, NFTs, and DAO functionality
-// @host localhost:3001
+// @host web3.bogowi.com
 // @BasePath /api
 func main() {
 	// Load configuration
@@ -45,8 +45,11 @@ func main() {
 
 	// Create HTTP server
 	srv := &http.Server{
-		Addr:    ":" + cfg.APIPort,
-		Handler: router,
+		Addr:              ":" + cfg.APIPort,
+		Handler:           router,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	// Start server in a goroutine
@@ -54,7 +57,7 @@ func main() {
 		log.Printf("🚀 BOGOWI API Server starting on port %s", cfg.APIPort)
 		log.Printf("📚 Swagger documentation available at http://localhost:%s/docs", cfg.APIPort)
 		log.Printf("🌍 Environment: %s", cfg.Environment)
-		
+
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}
@@ -68,11 +71,13 @@ func main() {
 
 	// The context is used to inform the server it has 5 seconds to finish
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	
+
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("⚠️ Server forced to shutdown:", err)
+		log.Printf("⚠️ Server forced to shutdown: %v", err)
+		cancel()
+		os.Exit(1)
 	}
+	cancel()
 
 	log.Println("✅ Server exited")
 }

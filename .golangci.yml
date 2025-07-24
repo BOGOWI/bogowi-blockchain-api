@@ -1,0 +1,97 @@
+run:
+  timeout: 5m
+  tests: true
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  govet:
+    enable:
+      - shadow
+    settings:
+      printf:
+        funcs:
+          - (github.com/gin-gonic/gin.Context).JSON
+          - (github.com/gin-gonic/gin.Context).XML
+
+  gocyclo:
+    min-complexity: 15
+
+  funlen:
+    lines: 100
+    statements: 50
+
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+
+  misspell:
+    locale: US
+
+  lll:
+    line-length: 140
+
+  unparam:
+    check-exported: false
+
+  nakedret:
+    max-func-lines: 30
+
+linters:
+  enable:
+    - bodyclose
+    - dupl
+    - errcheck
+    - funlen
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - noctx
+    - staticcheck
+    - stylecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+  disable:
+    - depguard
+    - dogsled
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - funlen
+        - gocyclo
+
+    - path: main\.go
+      linters:
+        - funlen
+
+    - linters:
+        - staticcheck
+      text: "SA9003:"
+
+    - linters:
+        - lll
+      source: "^//go:generate "
+
+  exclude:
+    - 'declaration of "(err|ctx)" shadows declaration at'
+    - "should have a package comment"
+    - "don't use an underscore in package name"
+
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -18,11 +18,11 @@ import (
 
 // BOGOWISDK represents the main SDK for interacting with BOGOWI blockchain contracts
 type BOGOWISDK struct {
-	client     *ethclient.Client
-	auth       *bind.TransactOpts
-	chainID    *big.Int
-	contracts  *ContractInstances
-	config     *config.Config
+	client    *ethclient.Client
+	auth      *bind.TransactOpts
+	chainID   *big.Int
+	contracts *ContractInstances
+	config    *config.Config
 }
 
 // ContractInstances holds all initialized contract instances
@@ -32,16 +32,16 @@ type ContractInstances struct {
 	CommercialNFT     *Contract
 	RewardDistributor *Contract
 	MultisigTreasury  *Contract
-	OceanBOGO        *Contract
-	EarthBOGO        *Contract
-	WildlifeBOGO     *Contract
+	OceanBOGO         *Contract
+	EarthBOGO         *Contract
+	WildlifeBOGO      *Contract
 }
 
 // Contract represents a generic contract with ABI and address
 type Contract struct {
-	Address    common.Address
-	ABI        abi.ABI
-	Instance   *bind.BoundContract
+	Address  common.Address
+	ABI      abi.ABI
+	Instance *bind.BoundContract
 }
 
 // TokenBalance represents a token balance response
@@ -167,7 +167,7 @@ func (s *BOGOWISDK) initializeContract(address, abiJSON string) (*Contract, erro
 	}
 
 	contractAddress := common.HexToAddress(address)
-	
+
 	contractABI, err := abi.JSON(strings.NewReader(abiJSON))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse ABI: %w", err)
@@ -202,7 +202,11 @@ func (s *BOGOWISDK) GetTokenBalance(address string) (*TokenBalance, error) {
 	}
 
 	// Convert wei to ether (18 decimals)
-	balanceEther := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)))
+	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	balanceEther := new(big.Float).Quo(
+		new(big.Float).SetInt(balance),
+		new(big.Float).SetInt(decimals),
+	)
 
 	return &TokenBalance{
 		Address: address,
@@ -266,7 +270,11 @@ func (s *BOGOWISDK) getTokenBalanceFromContract(contract *Contract, address comm
 	}
 
 	// Convert wei to ether (18 decimals)
-	balanceEther := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)))
+	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	balanceEther := new(big.Float).Quo(
+		new(big.Float).SetInt(balance),
+		new(big.Float).SetInt(decimals),
+	)
 	return balanceEther.String(), nil
 }
 

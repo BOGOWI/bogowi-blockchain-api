@@ -78,7 +78,11 @@ credentials
 *.sqlite
 
 # Test coverage
+coverage.out
 coverage.html
+coverage-enhanced.html
+coverage-*.html
+coverage-*.svg
 coverage.txt
 
 # Docker
