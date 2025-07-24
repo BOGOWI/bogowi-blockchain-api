@@ -28,13 +28,13 @@ func TestLoadConfig(t *testing.T) {
 func TestConfigDefaults(t *testing.T) {
 	// Test loading config with defaults
 	os.Setenv("PRIVATE_KEY", "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
-	
+
 	cfg, err := Load()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.NotEmpty(t, cfg.Environment)
 	assert.Equal(t, "development", cfg.Environment) // default value
-	assert.Equal(t, "3001", cfg.APIPort)           // default value
+	assert.Equal(t, "3001", cfg.APIPort)            // default value
 
 	// Cleanup
 	os.Unsetenv("PRIVATE_KEY")
