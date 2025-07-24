@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	_ "bogowi-blockchain-go/docs" // Import generated docs
 	"bogowi-blockchain-go/internal/api"
 	"bogowi-blockchain-go/internal/config"
 	"bogowi-blockchain-go/internal/sdk"
-	_ "bogowi-blockchain-go/docs" // Import generated docs
 
 	"github.com/gin-gonic/gin"
 )
@@ -54,7 +54,7 @@ func main() {
 		log.Printf("🚀 BOGOWI API Server starting on port %s", cfg.APIPort)
 		log.Printf("📚 Swagger documentation available at http://localhost:%s/docs", cfg.APIPort)
 		log.Printf("🌍 Environment: %s", cfg.Environment)
-		
+
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}
@@ -69,7 +69,7 @@ func main() {
 	// The context is used to inform the server it has 5 seconds to finish
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal("⚠️ Server forced to shutdown:", err)
 	}

@@ -106,12 +106,12 @@ func (h *Handler) GetRewardInfo(c *gin.Context) {
 
 	// For now, return a stub response
 	c.JSON(http.StatusOK, gin.H{
-		"address":            address,
-		"totalRewards":       "0",
-		"claimedRewards":     "0",
-		"unclaimedRewards":   "0",
-		"isWhitelisted":      false,
-		"achievements":       []string{},
+		"address":          address,
+		"totalRewards":     "0",
+		"claimedRewards":   "0",
+		"unclaimedRewards": "0",
+		"isWhitelisted":    false,
+		"achievements":     []string{},
 	})
 }
 
@@ -130,10 +130,10 @@ func (h *Handler) GetAchievementProgress(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"address":       address,
 		"achievementId": achievementId,
-		"progress":      gin.H{
-			"completed":    false,
-			"percentage":   0,
-			"description":  "Achievement progress tracking",
+		"progress": gin.H{
+			"completed":   false,
+			"percentage":  0,
+			"description": "Achievement progress tracking",
 		},
 	})
 }

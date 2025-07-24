@@ -15,15 +15,15 @@ import (
 type Config struct {
 	Environment string `json:"environment"`
 	APIPort     string `json:"api_port"`
-	
+
 	// Blockchain
-	RPCUrl    string `json:"rpc_url"`
-	ChainID   int64  `json:"chain_id"`
+	RPCUrl     string `json:"rpc_url"`
+	ChainID    int64  `json:"chain_id"`
 	PrivateKey string `json:"private_key"`
-	
+
 	// Contract Addresses
 	Contracts ContractAddresses `json:"contracts"`
-	
+
 	// Auth
 	SwaggerUsername string `json:"swagger_username"`
 	SwaggerPassword string `json:"swagger_password"`
@@ -31,11 +31,11 @@ type Config struct {
 
 // ContractAddresses holds all smart contract addresses
 type ContractAddresses struct {
-	BOGOTokenV2        string `json:"bogo_token_v2"`
-	ConservationNFT    string `json:"conservation_nft"`
-	CommercialNFT      string `json:"commercial_nft"`
-	RewardDistributor  string `json:"reward_distributor"`
-	MultisigTreasury   string `json:"multisig_treasury"`
+	BOGOTokenV2       string `json:"bogo_token_v2"`
+	ConservationNFT   string `json:"conservation_nft"`
+	CommercialNFT     string `json:"commercial_nft"`
+	RewardDistributor string `json:"reward_distributor"`
+	MultisigTreasury  string `json:"multisig_treasury"`
 	OceanBOGO         string `json:"ocean_bogo"`
 	EarthBOGO         string `json:"earth_bogo"`
 	WildlifeBOGO      string `json:"wildlife_bogo"`
@@ -79,16 +79,16 @@ func loadFromEnv(cfg *Config) {
 	cfg.PrivateKey = getEnv("API_PRIVATE_KEY", getEnv("PRIVATE_KEY", ""))
 	cfg.SwaggerUsername = getEnv("SWAGGER_USERNAME", "")
 	cfg.SwaggerPassword = getEnv("SWAGGER_PASSWORD", "")
-	
+
 	cfg.Contracts = ContractAddresses{
 		BOGOTokenV2:       getEnv("BOGO_TOKEN_V2_ADDRESS", ""),
 		ConservationNFT:   getEnv("CONSERVATION_NFT_ADDRESS", ""),
 		CommercialNFT:     getEnv("COMMERCIAL_NFT_ADDRESS", ""),
 		RewardDistributor: getEnv("REWARD_DISTRIBUTOR_V2_ADDRESS", ""),
 		MultisigTreasury:  getEnv("MULTISIG_ADDRESS", ""),
-		OceanBOGO:        getEnv("OCEAN_BOGO_ADDRESS", ""),
-		EarthBOGO:        getEnv("EARTH_BOGO_ADDRESS", ""),
-		WildlifeBOGO:     getEnv("WILDLIFE_BOGO_ADDRESS", ""),
+		OceanBOGO:         getEnv("OCEAN_BOGO_ADDRESS", ""),
+		EarthBOGO:         getEnv("EARTH_BOGO_ADDRESS", ""),
+		WildlifeBOGO:      getEnv("WILDLIFE_BOGO_ADDRESS", ""),
 	}
 }
 
@@ -106,7 +106,7 @@ func loadSecretsFromSSM(cfg *Config) error {
 	// Parameter names to load
 	paramNames := []string{
 		"PRIVATE_KEY",
-		"API_PRIVATE_KEY", 
+		"API_PRIVATE_KEY",
 		"BOGO_TOKEN_V2_ADDRESS",
 		"CONSERVATION_NFT_ADDRESS",
 		"COMMERCIAL_NFT_ADDRESS",

@@ -9,7 +9,7 @@ import (
 // GetHealth returns the API status and configured smart contract addresses
 func (h *Handler) GetHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"status":     "ok",
+		"status":    "ok",
 		"contracts": h.Config.Contracts,
 	})
 }
