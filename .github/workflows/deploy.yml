@@ -189,7 +189,7 @@ jobs:
         
         # Stop existing service
         echo "Stopping existing Go API service..."
-        sudo systemctl stop bogowi-go-api || true
+        sudo systemctl stop bogowi || true
         
         # Backup current binary if exists
         if [ -f "bogowi-api-linux" ]; then
@@ -206,7 +206,7 @@ jobs:
         
         # Start the service
         echo "Starting Go API service..."
-        sudo systemctl start bogowi-go-api
+        sudo systemctl start bogowi
         
         # Wait for service to be ready
         echo "Waiting for API to be ready..."
@@ -220,17 +220,17 @@ jobs:
         done
         
         # Check service status
-        sudo systemctl status bogowi-go-api --no-pager || true
+        sudo systemctl status bogowi --no-pager || true
         
         # Final health check
         if curl -f http://localhost:3001/api/health; then
           echo "=== Deployment successful! ==="
           echo "Service status:"
-          sudo systemctl is-active bogowi-go-api
+          sudo systemctl is-active bogowi
         else
           echo "=== Deployment failed - API not responding ==="
           echo "Service logs:"
-          sudo journalctl -u bogowi-go-api --no-pager --since "5 minutes ago"
+          sudo journalctl -u bogowi --no-pager --since "5 minutes ago"
           exit 1
         fi
         SCRIPT
