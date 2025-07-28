@@ -25,8 +25,10 @@ type Config struct {
 	Contracts ContractAddresses `json:"contracts"`
 
 	// Auth
-	SwaggerUsername string `json:"swagger_username"`
-	SwaggerPassword string `json:"swagger_password"`
+	SwaggerUsername   string `json:"swagger_username"`
+	SwaggerPassword   string `json:"swagger_password"`
+	FirebaseProjectID string `json:"firebase_project_id"`
+	BackendSecret     string `json:"backend_secret"`
 }
 
 // ContractAddresses holds all smart contract addresses
@@ -36,9 +38,6 @@ type ContractAddresses struct {
 	CommercialNFT     string `json:"commercial_nft"`
 	RewardDistributor string `json:"reward_distributor"`
 	MultisigTreasury  string `json:"multisig_treasury"`
-	OceanBOGO         string `json:"ocean_bogo"`
-	EarthBOGO         string `json:"earth_bogo"`
-	WildlifeBOGO      string `json:"wildlife_bogo"`
 }
 
 // Load loads configuration from environment variables and AWS SSM
@@ -79,6 +78,8 @@ func loadFromEnv(cfg *Config) {
 	cfg.PrivateKey = getEnv("API_PRIVATE_KEY", getEnv("PRIVATE_KEY", ""))
 	cfg.SwaggerUsername = getEnv("SWAGGER_USERNAME", "")
 	cfg.SwaggerPassword = getEnv("SWAGGER_PASSWORD", "")
+	cfg.FirebaseProjectID = getEnv("FIREBASE_PROJECT_ID", "")
+	cfg.BackendSecret = getEnv("BACKEND_SECRET", "backend-secret-key")
 
 	cfg.Contracts = ContractAddresses{
 		BOGOTokenV2:       getEnv("BOGO_TOKEN_V2_ADDRESS", ""),
@@ -86,9 +87,6 @@ func loadFromEnv(cfg *Config) {
 		CommercialNFT:     getEnv("COMMERCIAL_NFT_ADDRESS", ""),
 		RewardDistributor: getEnv("REWARD_DISTRIBUTOR_V2_ADDRESS", ""),
 		MultisigTreasury:  getEnv("MULTISIG_ADDRESS", ""),
-		OceanBOGO:         getEnv("OCEAN_BOGO_ADDRESS", ""),
-		EarthBOGO:         getEnv("EARTH_BOGO_ADDRESS", ""),
-		WildlifeBOGO:      getEnv("WILDLIFE_BOGO_ADDRESS", ""),
 	}
 }
 
@@ -117,6 +115,8 @@ func loadSecretsFromSSM(cfg *Config) error {
 		"WILDLIFE_BOGO_ADDRESS",
 		"SWAGGER_USERNAME",
 		"SWAGGER_PASSWORD",
+		"FIREBASE_PROJECT_ID",
+		"BACKEND_SECRET",
 	}
 
 	// Get parameters

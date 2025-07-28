@@ -20,30 +20,32 @@ func (h *Handler) GetNFTBalance(c *gin.Context) {
 		return
 	}
 
-	// For now, return a stub response
+	// Get NFT balance from SDK
+	balance, err := h.SDK.GetNFTBalance(address, tokenID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"address": address,
 		"tokenId": tokenID,
-		"balance": "0", // Would implement actual NFT balance check
+		"balance": balance,
 	})
 }
 
 // MintEventTicketRequest represents the request to mint an event ticket
 type MintEventTicketRequest struct {
 	To         string `json:"to" binding:"required"`
-	TokenID    string `json:"tokenId" binding:"required"`
-	EventDate  int64  `json:"eventDate" binding:"required"`
-	ExpiryDate int64  `json:"expiryDate" binding:"required"`
-	Venue      string `json:"venue" binding:"required"`
-	URI        string `json:"uri" binding:"required"`
-	Price      string `json:"price" binding:"required"`
+	EventName  string `json:"eventName" binding:"required"`
+	EventDate  string `json:"eventDate" binding:"required"`
 }
 
 // MintEventTicket mints a new event ticket NFT
 func (h *Handler) MintEventTicket(c *gin.Context) {
 	var req MintEventTicketRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Missing required fields"})
 		return
 	}
 
@@ -53,27 +55,30 @@ func (h *Handler) MintEventTicket(c *gin.Context) {
 		return
 	}
 
-	// For now, return a stub response
+	// Mint event ticket via SDK
+	txHash, err := h.SDK.MintEventTicket(req.To, req.EventName, req.EventDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":     "Event ticket minted successfully",
-		"to":          req.To,
-		"tokenId":     req.TokenID,
-		"transaction": "0x...", // Would return actual transaction hash
+		"transactionHash": txHash,
 	})
 }
 
 // MintConservationNFTRequest represents the request to mint a conservation NFT
 type MintConservationNFTRequest struct {
-	To      string `json:"to" binding:"required"`
-	TokenID string `json:"tokenId" binding:"required"`
-	URI     string `json:"uri" binding:"required"`
+	To          string `json:"to" binding:"required"`
+	TokenURI    string `json:"tokenURI" binding:"required"`
+	Description string `json:"description"`
 }
 
 // MintConservationNFT mints a new conservation NFT
 func (h *Handler) MintConservationNFT(c *gin.Context) {
 	var req MintConservationNFTRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Missing required fields"})
 		return
 	}
 
@@ -83,12 +88,15 @@ func (h *Handler) MintConservationNFT(c *gin.Context) {
 		return
 	}
 
-	// For now, return a stub response
+	// Mint conservation NFT via SDK
+	txHash, err := h.SDK.MintConservationNFT(req.To, req.TokenURI, req.Description)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":     "Conservation NFT minted successfully",
-		"to":          req.To,
-		"tokenId":     req.TokenID,
-		"transaction": "0x...", // Would return actual transaction hash
+		"transactionHash": txHash,
 	})
 }
 
@@ -104,15 +112,14 @@ func (h *Handler) GetRewardInfo(c *gin.Context) {
 		return
 	}
 
-	// For now, return a stub response
-	c.JSON(http.StatusOK, gin.H{
-		"address":          address,
-		"totalRewards":     "0",
-		"claimedRewards":   "0",
-		"unclaimedRewards": "0",
-		"isWhitelisted":    false,
-		"achievements":     []string{},
-	})
+	// Get reward info from SDK
+	info, err := h.SDK.GetRewardInfo(address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, info)
 }
 
 // GetAchievementProgress returns achievement progress for an address
@@ -126,43 +133,46 @@ func (h *Handler) GetAchievementProgress(c *gin.Context) {
 		return
 	}
 
-	// For now, return a stub response
-	c.JSON(http.StatusOK, gin.H{
-		"address":       address,
-		"achievementId": achievementID,
-		"progress": gin.H{
-			"completed":   false,
-			"percentage":  0,
-			"description": "Achievement progress tracking",
-		},
-	})
+	// Get achievement progress from SDK
+	progress, err := h.SDK.GetAchievementProgress(address, achievementID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, progress)
 }
 
 // ClaimRewardRequest represents a reward claim request
 type ClaimRewardRequest struct {
-	ActionID    string `json:"actionId" binding:"required"`
-	UserAddress string `json:"userAddress" binding:"required"`
+	Address      string `json:"address" binding:"required"`
+	RewardType   string `json:"rewardType" binding:"required"`
+	RewardAmount string `json:"rewardAmount" binding:"required"`
 }
 
 // ClaimReward processes a reward claim
 func (h *Handler) ClaimReward(c *gin.Context) {
 	var req ClaimRewardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Missing required fields"})
 		return
 	}
 
 	// Validate user address
-	if !common.IsHexAddress(req.UserAddress) {
+	if !common.IsHexAddress(req.Address) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid user address"})
 		return
 	}
 
-	// For now, return a stub response
+	// Claim reward via SDK
+	txHash, err := h.SDK.ClaimReward(req.Address, req.RewardType, req.RewardAmount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":     "Claim must be initiated from user wallet",
-		"actionId":    req.ActionID,
-		"userAddress": req.UserAddress,
+		"transactionHash": txHash,
 	})
 }
 
@@ -183,5 +193,40 @@ func (h *Handler) GetPendingTransactions(c *gin.Context) {
 	// For now, return a stub response
 	c.JSON(http.StatusOK, gin.H{
 		"transactions": []interface{}{},
+	})
+}
+
+// TransferBOGOTokensRequest represents a BOGO token transfer request
+type TransferBOGOTokensRequest struct {
+	To     string `json:"to" binding:"required"`
+	Amount string `json:"amount" binding:"required"`
+}
+
+// TransferBOGOTokens transfers BOGO tokens to a recipient
+func (h *Handler) TransferBOGOTokens(c *gin.Context) {
+	var req TransferBOGOTokensRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// Validate recipient address
+	if !common.IsHexAddress(req.To) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid recipient address"})
+		return
+	}
+
+	// Execute the transfer
+	txHash, err := h.SDK.TransferBOGOTokens(req.To, req.Amount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Transfer initiated successfully",
+		"transaction": txHash,
+		"to":          req.To,
+		"amount":      req.Amount,
 	})
 }

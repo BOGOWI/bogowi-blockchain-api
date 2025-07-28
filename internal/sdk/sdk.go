@@ -18,11 +18,13 @@ import (
 
 // BOGOWISDK represents the main SDK for interacting with BOGOWI blockchain contracts
 type BOGOWISDK struct {
-	client    *ethclient.Client
-	auth      *bind.TransactOpts
-	chainID   *big.Int
-	contracts *ContractInstances
-	config    *config.Config
+	client            EthClient
+	auth              *bind.TransactOpts
+	chainID           *big.Int
+	contracts         *ContractInstances
+	config            *config.Config
+	privateKey        *ecdsa.PrivateKey
+	rewardDistributor *Contract
 }
 
 // ContractInstances holds all initialized contract instances
@@ -32,16 +34,13 @@ type ContractInstances struct {
 	CommercialNFT     *Contract
 	RewardDistributor *Contract
 	MultisigTreasury  *Contract
-	OceanBOGO         *Contract
-	EarthBOGO         *Contract
-	WildlifeBOGO      *Contract
 }
 
 // Contract represents a generic contract with ABI and address
 type Contract struct {
 	Address  common.Address
 	ABI      abi.ABI
-	Instance *bind.BoundContract
+	Instance BoundContract
 }
 
 // TokenBalance represents a token balance response
@@ -50,11 +49,6 @@ type TokenBalance struct {
 	Balance string `json:"balance"`
 }
 
-// FlavoredBalances represents flavored token balances
-type FlavoredBalances struct {
-	Address  string            `json:"address"`
-	Balances map[string]string `json:"balances"`
-}
 
 // DAOInfo represents DAO information
 type DAOInfo struct {
@@ -87,10 +81,11 @@ func NewBOGOWISDK(cfg *config.Config) (*BOGOWISDK, error) {
 	}
 
 	sdk := &BOGOWISDK{
-		client:  client,
-		auth:    auth,
-		chainID: chainID,
-		config:  cfg,
+		client:     client,
+		auth:       auth,
+		chainID:    chainID,
+		config:     cfg,
+		privateKey: privateKey,
 	}
 
 	// Initialize contracts
@@ -132,31 +127,6 @@ func (s *BOGOWISDK) initializeContracts() error {
 		s.contracts.CommercialNFT = contract
 	}
 
-	// Initialize flavored tokens
-	if s.config.Contracts.OceanBOGO != "" {
-		contract, err := s.initializeContract(s.config.Contracts.OceanBOGO, ERC20ABI)
-		if err != nil {
-			return fmt.Errorf("failed to initialize OceanBOGO: %w", err)
-		}
-		s.contracts.OceanBOGO = contract
-	}
-
-	if s.config.Contracts.EarthBOGO != "" {
-		contract, err := s.initializeContract(s.config.Contracts.EarthBOGO, ERC20ABI)
-		if err != nil {
-			return fmt.Errorf("failed to initialize EarthBOGO: %w", err)
-		}
-		s.contracts.EarthBOGO = contract
-	}
-
-	if s.config.Contracts.WildlifeBOGO != "" {
-		contract, err := s.initializeContract(s.config.Contracts.WildlifeBOGO, ERC20ABI)
-		if err != nil {
-			return fmt.Errorf("failed to initialize WildlifeBOGO: %w", err)
-		}
-		s.contracts.WildlifeBOGO = contract
-	}
-
 	return nil
 }
 
@@ -173,13 +143,17 @@ func (s *BOGOWISDK) initializeContract(address, abiJSON string) (*Contract, erro
 		return nil, fmt.Errorf("failed to parse ABI: %w", err)
 	}
 
-	instance := bind.NewBoundContract(contractAddress, contractABI, s.client, s.client, s.client)
+	// Check if client is a real ethclient.Client to create BoundContract
+	if ethClient, ok := s.client.(*ethclient.Client); ok {
+		instance := bind.NewBoundContract(contractAddress, contractABI, ethClient, ethClient, ethClient)
+		return &Contract{
+			Address:  contractAddress,
+			ABI:      contractABI,
+			Instance: &BoundContractWrapper{instance},
+		}, nil
+	}
 
-	return &Contract{
-		Address:  contractAddress,
-		ABI:      contractABI,
-		Instance: instance,
-	}, nil
+	return nil, fmt.Errorf("client is not an ethclient.Client")
 }
 
 // GetTokenBalance gets the BOGO token balance for an address
@@ -214,69 +188,6 @@ func (s *BOGOWISDK) GetTokenBalance(address string) (*TokenBalance, error) {
 	}, nil
 }
 
-// GetFlavoredTokenBalances gets balances for all flavored tokens
-func (s *BOGOWISDK) GetFlavoredTokenBalances(address string) (*FlavoredBalances, error) {
-	addr := common.HexToAddress(address)
-	balances := make(map[string]string)
-
-	// Get Ocean BOGO balance
-	if s.contracts.OceanBOGO != nil {
-		balance, err := s.getTokenBalanceFromContract(s.contracts.OceanBOGO, addr)
-		if err != nil {
-			balances["ocean"] = "0"
-		} else {
-			balances["ocean"] = balance
-		}
-	}
-
-	// Get Earth BOGO balance
-	if s.contracts.EarthBOGO != nil {
-		balance, err := s.getTokenBalanceFromContract(s.contracts.EarthBOGO, addr)
-		if err != nil {
-			balances["earth"] = "0"
-		} else {
-			balances["earth"] = balance
-		}
-	}
-
-	// Get Wildlife BOGO balance
-	if s.contracts.WildlifeBOGO != nil {
-		balance, err := s.getTokenBalanceFromContract(s.contracts.WildlifeBOGO, addr)
-		if err != nil {
-			balances["wildlife"] = "0"
-		} else {
-			balances["wildlife"] = balance
-		}
-	}
-
-	return &FlavoredBalances{
-		Address:  address,
-		Balances: balances,
-	}, nil
-}
-
-// getTokenBalanceFromContract gets balance from a specific token contract
-func (s *BOGOWISDK) getTokenBalanceFromContract(contract *Contract, address common.Address) (string, error) {
-	var balance *big.Int
-
-	err := contract.Instance.Call(
-		&bind.CallOpts{Context: context.Background()},
-		&[]interface{}{&balance},
-		"balanceOf",
-		address,
-	)
-	if err != nil {
-		return "0", err
-	}
-
-	// Convert wei to ether (18 decimals)
-	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	balanceEther := new(big.Float).Quo(
-		new(big.Float).SetInt(balance),
-		new(big.Float).SetInt(decimals),
-	)
-	return balanceEther.String(), nil
-}
 
 // GetGasPrice gets the current gas price
 func (s *BOGOWISDK) GetGasPrice() (string, error) {
@@ -288,6 +199,57 @@ func (s *BOGOWISDK) GetGasPrice() (string, error) {
 	// Convert to Gwei
 	gwei := new(big.Float).Quo(new(big.Float).SetInt(gasPrice), new(big.Float).SetInt(big.NewInt(1000000000)))
 	return fmt.Sprintf("%.2f gwei", gwei), nil
+}
+
+// TransferBOGOTokens transfers BOGO tokens to a recipient
+func (s *BOGOWISDK) TransferBOGOTokens(to string, amount string) (string, error) {
+	if !common.IsHexAddress(to) {
+		return "", fmt.Errorf("invalid recipient address")
+	}
+
+	if s.contracts.BOGOTokenV2 == nil {
+		return "", fmt.Errorf("BOGO token contract not initialized")
+	}
+
+	// Parse amount (assuming it's in ether units, convert to wei)
+	amountFloat, ok := new(big.Float).SetString(amount)
+	if !ok {
+		return "", fmt.Errorf("invalid amount format")
+	}
+
+	// Convert to wei (multiply by 10^18)
+	decimals := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	amountWei := new(big.Int)
+	amountFloat.Mul(amountFloat, new(big.Float).SetInt(decimals))
+	amountFloat.Int(amountWei)
+
+	// Prepare transaction
+	toAddress := common.HexToAddress(to)
+	
+	// Get current nonce
+	nonce, err := s.client.PendingNonceAt(context.Background(), s.auth.From)
+	if err != nil {
+		return "", fmt.Errorf("failed to get nonce: %w", err)
+	}
+
+	// Get gas price
+	gasPrice, err := s.client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	// Set transaction options
+	s.auth.Nonce = big.NewInt(int64(nonce))
+	s.auth.GasPrice = gasPrice
+	s.auth.GasLimit = uint64(100000) // Standard gas limit for ERC20 transfer
+
+	// Execute transfer
+	tx, err := s.contracts.BOGOTokenV2.Instance.Transact(s.auth, "transfer", toAddress, amountWei)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute transfer: %w", err)
+	}
+
+	return tx.Hash().Hex(), nil
 }
 
 // GetPublicKey returns the public key associated with the private key
@@ -305,6 +267,7 @@ func (s *BOGOWISDK) GetPublicKey() (string, error) {
 
 	return crypto.PubkeyToAddress(*publicKeyECDSA).Hex(), nil
 }
+
 
 // Close closes the SDK and cleans up resources
 func (s *BOGOWISDK) Close() {

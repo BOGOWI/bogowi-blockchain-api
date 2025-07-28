@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -22,17 +23,19 @@ import (
 // @description API for BOGOWI blockchain operations including tokens, NFTs, and DAO functionality
 // @host web3.bogowi.com
 // @BasePath /api
-func main() {
-	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
+// Server represents the application server
+type Server struct {
+	srv    *http.Server
+	sdk    *sdk.BOGOWISDK
+	config *config.Config
+}
 
+// NewServer creates a new server instance
+func NewServer(cfg *config.Config) (*Server, error) {
 	// Initialize SDK
 	bogoSDK, err := sdk.NewBOGOWISDK(cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize SDK: %v", err)
+		return nil, fmt.Errorf("failed to initialize SDK: %w", err)
 	}
 
 	// Set Gin mode
@@ -52,14 +55,52 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	return &Server{
+		srv:    srv,
+		sdk:    bogoSDK,
+		config: cfg,
+	}, nil
+}
+
+// Start starts the server
+func (s *Server) Start() error {
+	log.Printf("🚀 BOGOWI API Server starting on port %s", s.config.APIPort)
+	log.Printf("📚 Swagger documentation available at http://localhost:%s/docs", s.config.APIPort)
+	log.Printf("🌍 Environment: %s", s.config.Environment)
+
+	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
+	return nil
+}
+
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown(ctx context.Context) error {
+	log.Println("🛑 Server shutting down...")
+	err := s.srv.Shutdown(ctx)
+	if err == nil {
+		log.Println("✅ Server exited")
+	}
+	return err
+}
+
+func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Create server
+	server, err := NewServer(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create server: %v", err)
+	}
+
 	// Start server in a goroutine
 	go func() {
-		log.Printf("🚀 BOGOWI API Server starting on port %s", cfg.APIPort)
-		log.Printf("📚 Swagger documentation available at http://localhost:%s/docs", cfg.APIPort)
-		log.Printf("🌍 Environment: %s", cfg.Environment)
-
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+		if err := server.Start(); err != nil {
+			log.Fatalf("Server error: %v", err)
 		}
 	}()
 
@@ -67,17 +108,13 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("🛑 Server shutting down...")
 
-	// The context is used to inform the server it has 5 seconds to finish
+	// Graceful shutdown with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("⚠️ Server forced to shutdown: %v", err)
-		cancel()
 		os.Exit(1)
 	}
-	cancel()
-
-	log.Println("✅ Server exited")
 }

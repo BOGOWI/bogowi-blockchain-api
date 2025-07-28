@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"bogowi-blockchain-go/internal/config"
+	"bogowi-blockchain-go/internal/middleware"
 	"bogowi-blockchain-go/internal/sdk"
 
 	"github.com/gin-contrib/cors"
@@ -15,7 +16,7 @@ import (
 
 // Handler holds the SDK and configuration
 type Handler struct {
-	SDK    *sdk.BOGOWISDK
+	SDK    SDKInterface
 	Config *config.Config
 }
 
@@ -90,7 +91,7 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 	// Token endpoints
 	token := api.Group("/token")
 	token.GET("/balance/:address", handler.GetTokenBalance)
-	token.GET("/flavored-balances/:address", handler.GetFlavoredTokenBalances)
+	token.POST("/transfer", handler.TransferBOGOTokens)
 
 	// NFT endpoints
 	nft := api.Group("/nft")
@@ -98,11 +99,28 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 	nft.POST("/mint-ticket", handler.MintEventTicket)
 	nft.POST("/mint-collectible", handler.MintConservationNFT)
 
-	// Rewards endpoints
+	// Rewards endpoints (existing)
 	rewards := api.Group("/rewards")
 	rewards.GET("/info/:address", handler.GetRewardInfo)
 	rewards.GET("/achievement/:address/:achievementId", handler.GetAchievementProgress)
 	rewards.POST("/claim", handler.ClaimReward)
+
+	// New reward system endpoints
+	// Initialize auth middleware
+	authMiddleware := middleware.NewAuthMiddleware(cfg.FirebaseProjectID)
+	
+	// Public reward endpoints
+	rewards.GET("/templates", handler.GetRewardTemplates)
+	rewards.GET("/templates/:id", handler.GetRewardTemplate)
+	
+	// Authenticated reward endpoints
+	rewards.GET("/eligibility", AuthMiddleware(authMiddleware), handler.CheckRewardEligibility)
+	rewards.GET("/history", AuthMiddleware(authMiddleware), handler.GetRewardHistory)
+	rewards.POST("/claim-v2", AuthMiddleware(authMiddleware), handler.ClaimRewardV2)
+	rewards.POST("/claim-referral", AuthMiddleware(authMiddleware), handler.ClaimReferralV2)
+	
+	// Backend-only endpoint
+	rewards.POST("/claim-custom", handler.ClaimCustomRewardV2)
 
 	// DAO endpoints
 	dao := api.Group("/dao")
