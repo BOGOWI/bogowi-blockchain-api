@@ -204,9 +204,9 @@ jobs:
         sudo chown ec2-user:ec2-user bogowi-api-linux || true
         chmod +x bogowi-api-linux
         
-        # Start the service
-        echo "Starting Go API service..."
-        sudo systemctl start bogowi
+        # Restart the service (force reload of new binary)
+        echo "Restarting Go API service..."
+        sudo systemctl restart bogowi
         
         # Wait for service to be ready
         echo "Waiting for API to be ready..."
