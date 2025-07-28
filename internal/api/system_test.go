@@ -151,7 +151,7 @@ func (m *MockSDK) GetRemainingDailyLimit() (*big.Int, error) {
 
 func setupTestRouter() (*gin.Engine, *MockSDK, *config.Config) {
 	gin.SetMode(gin.TestMode)
-	
+
 	mockSDK := new(MockSDK)
 	cfg := &config.Config{
 		Environment: "test",
@@ -164,35 +164,35 @@ func setupTestRouter() (*gin.Engine, *MockSDK, *config.Config) {
 			MultisigTreasury:  "0xdef",
 		},
 	}
-	
+
 	handler := &Handler{
 		SDK:    mockSDK,
 		Config: cfg,
 	}
-	
+
 	router := gin.New()
 	api := router.Group("/api")
 	api.GET("/health", handler.GetHealth)
 	api.GET("/gas-price", handler.GetGasPrice)
-	
+
 	return router, mockSDK, cfg
 }
 
 func TestGetHealth(t *testing.T) {
 	router, _, cfg := setupTestRouter()
-	
+
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/health", nil)
 	router.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusOK, w.Code)
-	
+
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, "ok", response["status"])
-	
+
 	contracts, ok := response["contracts"].(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, cfg.Contracts.BOGOTokenV2, contracts["bogo_token_v2"])
@@ -225,29 +225,29 @@ func TestGetGasPrice(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			router, mockSDK, _ := setupTestRouter()
-			
+
 			mockSDK.On("GetGasPrice").Return(tt.mockGasPrice, tt.mockError)
-			
+
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", "/api/gas-price", nil)
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			
+
 			var response map[string]interface{}
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
-			
+
 			if tt.expectedStatus == http.StatusOK {
 				assert.Equal(t, tt.expectedBody["gasPrice"], response["gasPrice"])
 			} else {
 				assert.Equal(t, tt.expectedBody["error"], response["error"])
 			}
-			
+
 			mockSDK.AssertExpectations(t)
 		})
 	}

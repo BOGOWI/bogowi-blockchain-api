@@ -281,7 +281,7 @@ func TestGetGasPrice(t *testing.T) {
 func TestTransferBOGOTokens(t *testing.T) {
 	mockClient := new(MockEthClient)
 	mockContract := new(MockBoundContract)
-	
+
 	sdk := &BOGOWISDK{
 		client: mockClient,
 		auth:   &bind.TransactOpts{From: common.HexToAddress("0x1234567890123456789012345678901234567890")},
@@ -316,18 +316,18 @@ func TestTransferBOGOTokens(t *testing.T) {
 			wantError:    false,
 		},
 		{
-			name:         "invalid recipient address",
-			to:           "invalid-address",
-			amount:       "100",
-			wantError:    true,
-			errorMsg:     "invalid recipient address",
+			name:      "invalid recipient address",
+			to:        "invalid-address",
+			amount:    "100",
+			wantError: true,
+			errorMsg:  "invalid recipient address",
 		},
 		{
-			name:         "invalid amount format",
-			to:           "0x742d35Cc6634C0532925a3b844Bc9e7595f8f8E2",
-			amount:       "abc",
-			wantError:    true,
-			errorMsg:     "invalid amount format",
+			name:      "invalid amount format",
+			to:        "0x742d35Cc6634C0532925a3b844Bc9e7595f8f8E2",
+			amount:    "abc",
+			wantError: true,
+			errorMsg:  "invalid amount format",
 		},
 		{
 			name:         "transaction error",
@@ -352,7 +352,7 @@ func TestTransferBOGOTokens(t *testing.T) {
 					Return(tt.mockNonce, nil).Once()
 				mockClient.On("SuggestGasPrice", mock.Anything).
 					Return(tt.mockGasPrice, nil).Once()
-				
+
 				if tt.mockError != nil {
 					mockContract.On("Transact", mock.Anything, "transfer", mock.Anything, mock.Anything).
 						Return(nil, tt.mockError).Once()
@@ -442,9 +442,9 @@ func TestClose(t *testing.T) {
 	}
 
 	mockClient.On("Close").Once()
-	
+
 	sdk.Close()
-	
+
 	mockClient.AssertExpectations(t)
 }
 
@@ -452,7 +452,7 @@ func TestClose_NilClient(t *testing.T) {
 	sdk := &BOGOWISDK{
 		client: nil,
 	}
-	
+
 	// Should not panic
 	assert.NotPanics(t, func() {
 		sdk.Close()
@@ -488,7 +488,7 @@ func TestInitializeContract(t *testing.T) {
 			sdk := &BOGOWISDK{
 				client: new(MockEthClient),
 			}
-			
+
 			contract, err := sdk.initializeContract(tt.address, tt.abiJSON)
 
 			if tt.wantError {

@@ -18,11 +18,11 @@ import (
 
 func TestGetRewardTemplates(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	cfg := &config.Config{
 		BackendSecret: "test-secret",
 	}
-	
+
 	handler := &Handler{
 		SDK:    &MockSDK{},
 		Config: cfg,
@@ -35,11 +35,11 @@ func TestGetRewardTemplates(t *testing.T) {
 	handler.GetRewardTemplates(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	
+
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	
+
 	templates, ok := response["templates"].([]interface{})
 	assert.True(t, ok)
 	assert.Equal(t, 10, len(templates))
@@ -47,11 +47,11 @@ func TestGetRewardTemplates(t *testing.T) {
 
 func TestGetRewardTemplate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	cfg := &config.Config{
 		BackendSecret: "test-secret",
 	}
-	
+
 	handler := &Handler{
 		SDK:    &MockSDK{},
 		Config: cfg,
@@ -90,7 +90,7 @@ func TestGetRewardTemplate(t *testing.T) {
 
 func TestClaimRewardV2(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
 		name       string
 		wallet     string
@@ -137,7 +137,7 @@ func TestClaimRewardV2(t *testing.T) {
 			cfg := &config.Config{
 				BackendSecret: "test-secret",
 			}
-			
+
 			handler := &Handler{
 				SDK:    mockSDK,
 				Config: cfg,
@@ -145,7 +145,7 @@ func TestClaimRewardV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			body, _ := json.Marshal(tt.request)
 			c.Request, _ = http.NewRequest("POST", "/api/rewards/claim-v2", bytes.NewBuffer(body))
 			c.Request.Header.Set("Content-Type", "application/json")
@@ -161,7 +161,7 @@ func TestClaimRewardV2(t *testing.T) {
 
 func TestClaimCustomRewardV2(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
 		name       string
 		authHeader string
@@ -193,7 +193,7 @@ func TestClaimCustomRewardV2(t *testing.T) {
 				Amount: "500",
 				Reason: "contest_winner",
 			},
-			setupMock: func(m *MockSDK) {},
+			setupMock:  func(m *MockSDK) {},
 			wantStatus: http.StatusUnauthorized,
 		},
 		{
@@ -204,7 +204,7 @@ func TestClaimCustomRewardV2(t *testing.T) {
 				Amount: "1500",
 				Reason: "contest_winner",
 			},
-			setupMock: func(m *MockSDK) {},
+			setupMock:  func(m *MockSDK) {},
 			wantStatus: http.StatusBadRequest,
 		},
 	}
@@ -219,7 +219,7 @@ func TestClaimCustomRewardV2(t *testing.T) {
 			cfg := &config.Config{
 				BackendSecret: "test-secret",
 			}
-			
+
 			handler := &Handler{
 				SDK:    mockSDK,
 				Config: cfg,
@@ -227,7 +227,7 @@ func TestClaimCustomRewardV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			body, _ := json.Marshal(tt.request)
 			c.Request, _ = http.NewRequest("POST", "/api/rewards/claim-custom", bytes.NewBuffer(body))
 			c.Request.Header.Set("Content-Type", "application/json")
@@ -243,7 +243,7 @@ func TestClaimCustomRewardV2(t *testing.T) {
 
 func TestCheckRewardEligibility(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	cfg := &config.Config{
 		BackendSecret: "test-secret",
 	}
@@ -298,32 +298,32 @@ func TestCheckRewardEligibility(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			url := "/api/rewards/eligibility"
 			if tt.templateID != "" {
 				url += "?templateId=" + tt.templateID
 			}
-			
+
 			c.Request, _ = http.NewRequest("GET", url, nil)
 			c.Set("wallet", tt.wallet)
 
 			handler.CheckRewardEligibility(c)
 
 			assert.Equal(t, tt.wantStatus, w.Code)
-			
+
 			var response map[string]interface{}
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
-			
+
 			eligibilities, ok := response["eligibilities"].([]interface{})
 			assert.True(t, ok)
-			
+
 			if tt.templateID != "" {
 				assert.Equal(t, 1, len(eligibilities))
 			} else {
 				assert.True(t, len(eligibilities) > 1)
 			}
-			
+
 			mockSDK.AssertExpectations(t)
 		})
 	}

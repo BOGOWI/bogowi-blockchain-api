@@ -14,9 +14,9 @@ import (
 
 type AuthMiddleware struct {
 	firebaseProjectID string
-	jwksURL          string
-	tokenCache       *cache.Cache
-	jwksCache        *cache.Cache
+	jwksURL           string
+	tokenCache        *cache.Cache
+	jwksCache         *cache.Cache
 }
 
 type FirebaseClaims struct {
@@ -40,9 +40,9 @@ type JWK struct {
 func NewAuthMiddleware(projectID string) *AuthMiddleware {
 	return &AuthMiddleware{
 		firebaseProjectID: projectID,
-		jwksURL:          "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
-		tokenCache:       cache.New(5*time.Minute, 10*time.Minute),
-		jwksCache:        cache.New(1*time.Hour, 2*time.Hour),
+		jwksURL:           "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+		tokenCache:        cache.New(5*time.Minute, 10*time.Minute),
+		jwksCache:         cache.New(1*time.Hour, 2*time.Hour),
 	}
 }
 

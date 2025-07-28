@@ -49,7 +49,6 @@ type TokenBalance struct {
 	Balance string `json:"balance"`
 }
 
-
 // DAOInfo represents DAO information
 type DAOInfo struct {
 	Threshold        int `json:"threshold"`
@@ -188,7 +187,6 @@ func (s *BOGOWISDK) GetTokenBalance(address string) (*TokenBalance, error) {
 	}, nil
 }
 
-
 // GetGasPrice gets the current gas price
 func (s *BOGOWISDK) GetGasPrice() (string, error) {
 	gasPrice, err := s.client.SuggestGasPrice(context.Background())
@@ -225,7 +223,7 @@ func (s *BOGOWISDK) TransferBOGOTokens(to string, amount string) (string, error)
 
 	// Prepare transaction
 	toAddress := common.HexToAddress(to)
-	
+
 	// Get current nonce
 	nonce, err := s.client.PendingNonceAt(context.Background(), s.auth.From)
 	if err != nil {
@@ -267,7 +265,6 @@ func (s *BOGOWISDK) GetPublicKey() (string, error) {
 
 	return crypto.PubkeyToAddress(*publicKeyECDSA).Hex(), nil
 }
-
 
 // Close closes the SDK and cleans up resources
 func (s *BOGOWISDK) Close() {

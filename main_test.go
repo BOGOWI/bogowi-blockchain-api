@@ -75,16 +75,16 @@ func TestNewServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup()
-			
+
 			cfg, err := config.Load()
 			if tt.name == "missing private key" && err != nil {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "PRIVATE_KEY is required")
 				return
 			}
-			
+
 			server, err := NewServer(cfg)
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {
@@ -186,10 +186,10 @@ func TestServerShutdownTimeout(t *testing.T) {
 	// On some systems, shutdown might succeed even with cancelled context
 	// if the server hasn't fully started yet
 	if err != nil {
-		assert.True(t, 
-			err.Error() == "context canceled" || 
-			strings.Contains(err.Error(), "shutdown") ||
-			strings.Contains(err.Error(), "context deadline exceeded"),
+		assert.True(t,
+			err.Error() == "context canceled" ||
+				strings.Contains(err.Error(), "shutdown") ||
+				strings.Contains(err.Error(), "context deadline exceeded"),
 			"Expected context canceled or shutdown error, got: %s", err.Error())
 	}
 
@@ -203,7 +203,7 @@ func TestMainFunction(t *testing.T) {
 	// This test verifies that main() can be called without panicking
 	// We can't easily test the full main() with signal handling,
 	// but we can verify it compiles and basic structure is correct
-	
+
 	// Save original args
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
@@ -222,7 +222,7 @@ func TestMainFunction(t *testing.T) {
 		// Verify main exists by checking function signature
 		var _ func() = main
 	})
-	
+
 	// Verify exit wasn't called during compilation
 	assert.Equal(t, 0, exitCode)
 }

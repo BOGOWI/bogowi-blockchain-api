@@ -21,7 +21,7 @@ type SDKInterface interface {
 	GetRewardInfo(address string) (map[string]interface{}, error)
 	GetAchievementProgress(address string, achievementId string) (map[string]interface{}, error)
 	ClaimReward(address string, rewardType string, rewardAmount string) (string, error)
-	
+
 	// New reward system methods
 	CheckRewardEligibility(templateID string, wallet common.Address) (bool, string, error)
 	ClaimRewardV2(templateID string, recipient common.Address) (*types.Transaction, error)

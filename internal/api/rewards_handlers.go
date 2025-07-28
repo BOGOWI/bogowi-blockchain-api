@@ -49,16 +49,16 @@ func (h *Handler) GetRewardTemplate(c *gin.Context) {
 	templateID := c.Param("id")
 
 	templates := map[string]gin.H{
-		"welcome_bonus":      {"id": "welcome_bonus", "fixedAmount": "10", "maxClaimsPerWallet": 1, "active": true},
-		"founder_bonus":      {"id": "founder_bonus", "fixedAmount": "100", "maxClaimsPerWallet": 1, "requiresWhitelist": true, "active": true},
-		"referral_bonus":     {"id": "referral_bonus", "fixedAmount": "20", "active": true},
-		"first_nft_mint":     {"id": "first_nft_mint", "fixedAmount": "25", "maxClaimsPerWallet": 1, "active": true},
-		"dao_participation":  {"id": "dao_participation", "fixedAmount": "15", "cooldownPeriod": 2592000, "active": true},
-		"attraction_tier_1":  {"id": "attraction_tier_1", "fixedAmount": "10", "active": true},
-		"attraction_tier_2":  {"id": "attraction_tier_2", "fixedAmount": "20", "active": true},
-		"attraction_tier_3":  {"id": "attraction_tier_3", "fixedAmount": "40", "active": true},
-		"attraction_tier_4":  {"id": "attraction_tier_4", "fixedAmount": "50", "active": true},
-		"custom_reward":      {"id": "custom_reward", "maxAmount": "1000", "active": true},
+		"welcome_bonus":     {"id": "welcome_bonus", "fixedAmount": "10", "maxClaimsPerWallet": 1, "active": true},
+		"founder_bonus":     {"id": "founder_bonus", "fixedAmount": "100", "maxClaimsPerWallet": 1, "requiresWhitelist": true, "active": true},
+		"referral_bonus":    {"id": "referral_bonus", "fixedAmount": "20", "active": true},
+		"first_nft_mint":    {"id": "first_nft_mint", "fixedAmount": "25", "maxClaimsPerWallet": 1, "active": true},
+		"dao_participation": {"id": "dao_participation", "fixedAmount": "15", "cooldownPeriod": 2592000, "active": true},
+		"attraction_tier_1": {"id": "attraction_tier_1", "fixedAmount": "10", "active": true},
+		"attraction_tier_2": {"id": "attraction_tier_2", "fixedAmount": "20", "active": true},
+		"attraction_tier_3": {"id": "attraction_tier_3", "fixedAmount": "40", "active": true},
+		"attraction_tier_4": {"id": "attraction_tier_4", "fixedAmount": "50", "active": true},
+		"custom_reward":     {"id": "custom_reward", "maxAmount": "1000", "active": true},
 	}
 
 	template, exists := templates[templateID]
@@ -274,8 +274,8 @@ func (h *Handler) GetRewardHistory(c *gin.Context) {
 
 	// TODO: Implement claim history from database
 	c.JSON(http.StatusOK, gin.H{
-		"wallet": wallet,
-		"claims": []interface{}{},
+		"wallet":  wallet,
+		"claims":  []interface{}{},
 		"message": "Claim history not yet implemented",
 	})
 }

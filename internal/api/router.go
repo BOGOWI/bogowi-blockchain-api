@@ -108,17 +108,17 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 	// New reward system endpoints
 	// Initialize auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.FirebaseProjectID)
-	
+
 	// Public reward endpoints
 	rewards.GET("/templates", handler.GetRewardTemplates)
 	rewards.GET("/templates/:id", handler.GetRewardTemplate)
-	
+
 	// Authenticated reward endpoints
 	rewards.GET("/eligibility", AuthMiddleware(authMiddleware), handler.CheckRewardEligibility)
 	rewards.GET("/history", AuthMiddleware(authMiddleware), handler.GetRewardHistory)
 	rewards.POST("/claim-v2", AuthMiddleware(authMiddleware), handler.ClaimRewardV2)
 	rewards.POST("/claim-referral", AuthMiddleware(authMiddleware), handler.ClaimReferralV2)
-	
+
 	// Backend-only endpoint
 	rewards.POST("/claim-custom", handler.ClaimCustomRewardV2)
 

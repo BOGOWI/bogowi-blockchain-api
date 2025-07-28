@@ -86,9 +86,9 @@ func (s *BOGOWISDK) CheckRewardEligibility(templateID string, wallet common.Addr
 		eligible bool
 		reason   string
 	}{
-		"welcome_bonus": {true, ""},
-		"founder_bonus": {false, "Not whitelisted"},
-		"first_nft_mint": {true, ""},
+		"welcome_bonus":     {true, ""},
+		"founder_bonus":     {false, "Not whitelisted"},
+		"first_nft_mint":    {true, ""},
 		"dao_participation": {false, "Cooldown period active"},
 	}
 

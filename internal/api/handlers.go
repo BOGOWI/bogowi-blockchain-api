@@ -36,9 +36,9 @@ func (h *Handler) GetNFTBalance(c *gin.Context) {
 
 // MintEventTicketRequest represents the request to mint an event ticket
 type MintEventTicketRequest struct {
-	To         string `json:"to" binding:"required"`
-	EventName  string `json:"eventName" binding:"required"`
-	EventDate  string `json:"eventDate" binding:"required"`
+	To        string `json:"to" binding:"required"`
+	EventName string `json:"eventName" binding:"required"`
+	EventDate string `json:"eventDate" binding:"required"`
 }
 
 // MintEventTicket mints a new event ticket NFT
