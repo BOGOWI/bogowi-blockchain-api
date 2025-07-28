@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title ConservationNFT
@@ -199,14 +199,14 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
         address from,
         address to,
         uint256[] memory ids,
-        uint256[] memory values
+        uint256[] memory amounts
     ) internal override(ERC1155, ERC1155Supply) whenNotPaused {
         for (uint256 i = 0; i < ids.length; i++) {
             if (isSoulbound[ids[i]] && from != address(0)) {
                 revert("Soulbound token cannot be transferred");
             }
         }
-        super._update(from, to, ids, values);
+        super._update(from, to, ids, amounts);
     }
 
     function uri(uint256 tokenId) public view override returns (string memory) {

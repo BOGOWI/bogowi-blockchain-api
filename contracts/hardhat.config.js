@@ -5,7 +5,7 @@ require("dotenv").config();
 
 module.exports = {
   solidity: {
-    version: "0.8.19",
+    version: "0.8.20",
     settings: {
       optimizer: {
         enabled: true,
@@ -25,10 +25,10 @@ module.exports = {
       timeout: 60000
     },
     camino: {
-      url: process.env.RPC_URL || "https://api.camino.network/ext/bc/C/rpc",
-      chainId: 500,
+      url: process.env.RPC_URL || "https://columbus.camino.network/ext/bc/C/rpc",
+      chainId: 501,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 25000000000, // 25 gwei
+      gasPrice: 225000000000, // 225 gwei (above minimum 200 gwei) 
       timeout: 60000
     }
   },

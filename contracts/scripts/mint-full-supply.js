@@ -26,15 +26,15 @@ async function main() {
   const businessMinted = await bogoToken.businessMinted();
   const rewardsMinted = await bogoToken.rewardsMinted();
   
-  console.log(`Total Supply: ${ethers.formatEther(totalSupply)} BOGO`);
-  console.log(`Max Supply: ${ethers.formatEther(maxSupply)} BOGO`);
-  console.log(`DAO Minted: ${ethers.formatEther(daoMinted)} BOGO`);
-  console.log(`Business Minted: ${ethers.formatEther(businessMinted)} BOGO`);
-  console.log(`Rewards Minted: ${ethers.formatEther(rewardsMinted)} BOGO`);
+  console.log(`Total Supply: ${ethers.utils.formatEther(totalSupply)} BOGO`);
+  console.log(`Max Supply: ${ethers.utils.formatEther(maxSupply)} BOGO`);
+  console.log(`DAO Minted: ${ethers.utils.formatEther(daoMinted)} BOGO`);
+  console.log(`Business Minted: ${ethers.utils.formatEther(businessMinted)} BOGO`);
+  console.log(`Rewards Minted: ${ethers.utils.formatEther(rewardsMinted)} BOGO`);
 
   // Check wallet balance
   const walletBalance = await bogoToken.balanceOf(deployer.address);
-  console.log(`\nMain Wallet Balance: ${ethers.formatEther(walletBalance)} BOGO\n`);
+  console.log(`\nMain Wallet Balance: ${ethers.utils.formatEther(walletBalance)} BOGO\n`);
 
   // Check roles
   console.log("🔐 Checking Roles:");
@@ -96,12 +96,12 @@ async function main() {
   const remainingRewards = rewardsAllocation - rewardsMinted;
 
   console.log("💰 Available to Mint:");
-  console.log(`DAO Allocation: ${ethers.formatEther(remainingDao)} BOGO`);
-  console.log(`Business Allocation: ${ethers.formatEther(remainingBusiness)} BOGO`);
-  console.log(`Rewards Allocation: ${ethers.formatEther(remainingRewards)} BOGO`);
+  console.log(`DAO Allocation: ${ethers.utils.formatEther(remainingDao)} BOGO`);
+  console.log(`Business Allocation: ${ethers.utils.formatEther(remainingBusiness)} BOGO`);
+  console.log(`Rewards Allocation: ${ethers.utils.formatEther(remainingRewards)} BOGO`);
   
   const totalAvailable = remainingDao + remainingBusiness + remainingRewards;
-  console.log(`Total Available: ${ethers.formatEther(totalAvailable)} BOGO\n`);
+  console.log(`Total Available: ${ethers.utils.formatEther(totalAvailable)} BOGO\n`);
 
   if (totalAvailable === 0n) {
     console.log("✅ All tokens already minted!");
@@ -109,7 +109,7 @@ async function main() {
   }
 
   // Ask for confirmation
-  console.log(`⚠️  About to mint ${ethers.formatEther(totalAvailable)} BOGO tokens to ${deployer.address}`);
+  console.log(`⚠️  About to mint ${ethers.utils.formatEther(totalAvailable)} BOGO tokens to ${deployer.address}`);
   console.log("Type 'yes' to continue or anything else to cancel:");
   
   const readline = require('readline').createInterface({
@@ -131,21 +131,21 @@ async function main() {
   console.log("\n🔨 Minting Tokens:");
 
   if (remainingDao > 0n) {
-    console.log(`Minting ${ethers.formatEther(remainingDao)} BOGO from DAO allocation...`);
+    console.log(`Minting ${ethers.utils.formatEther(remainingDao)} BOGO from DAO allocation...`);
     const tx1 = await bogoToken.mintFromDAO(deployer.address, remainingDao);
     await tx1.wait();
     console.log("✅ DAO allocation minted");
   }
 
   if (remainingBusiness > 0n) {
-    console.log(`Minting ${ethers.formatEther(remainingBusiness)} BOGO from Business allocation...`);
+    console.log(`Minting ${ethers.utils.formatEther(remainingBusiness)} BOGO from Business allocation...`);
     const tx2 = await bogoToken.mintFromBusiness(deployer.address, remainingBusiness);
     await tx2.wait();
     console.log("✅ Business allocation minted");
   }
 
   if (remainingRewards > 0n) {
-    console.log(`Minting ${ethers.formatEther(remainingRewards)} BOGO from Rewards allocation...`);
+    console.log(`Minting ${ethers.utils.formatEther(remainingRewards)} BOGO from Rewards allocation...`);
     const tx3 = await bogoToken.mintFromRewards(deployer.address, remainingRewards);
     await tx3.wait();
     console.log("✅ Rewards allocation minted");
@@ -156,13 +156,13 @@ async function main() {
   const finalTotalSupply = await bogoToken.totalSupply();
   const finalWalletBalance = await bogoToken.balanceOf(deployer.address);
   
-  console.log(`Total Supply: ${ethers.formatEther(finalTotalSupply)} BOGO`);
-  console.log(`Main Wallet Balance: ${ethers.formatEther(finalWalletBalance)} BOGO`);
+  console.log(`Total Supply: ${ethers.utils.formatEther(finalTotalSupply)} BOGO`);
+  console.log(`Main Wallet Balance: ${ethers.utils.formatEther(finalWalletBalance)} BOGO`);
   
   if (finalTotalSupply === maxSupply) {
     console.log("\n🎉 SUCCESS! Full 1 billion BOGO supply minted!");
   } else {
-    console.log(`\n⚠️  Total supply is ${ethers.formatEther(finalTotalSupply)} / ${ethers.formatEther(maxSupply)} BOGO`);
+    console.log(`\n⚠️  Total supply is ${ethers.utils.formatEther(finalTotalSupply)} / ${ethers.utils.formatEther(maxSupply)} BOGO`);
   }
 }
 

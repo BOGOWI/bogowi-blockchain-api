@@ -183,32 +183,40 @@ jobs:
         echo "=== Starting BOGOWI Go API Deployment ==="
         echo "Timestamp: $(date)"
         
-        # Create deployment directory
-        sudo mkdir -p /home/ec2-user
+        # Navigate to home directory
         cd /home/ec2-user
         
-        # Stop existing service
-        echo "Stopping existing Go API service..."
-        sudo systemctl stop bogowi || true
+        # Stop existing process (kill any running bogowi-api-linux process)
+        echo "Stopping existing Go API process..."
+        pkill -f "bogowi-api-linux" || echo "No existing process found"
+        
+        # Wait for process to stop
+        sleep 2
         
         # Backup current binary if exists
         if [ -f "bogowi-api-linux" ]; then
           echo "Backing up current binary..."
-          sudo mv bogowi-api-linux bogowi-api-linux.backup.$(date +%Y%m%d_%H%M%S) || true
+          mv bogowi-api-linux bogowi-api-linux.backup.$(date +%Y%m%d_%H%M%S) || true
         fi
         
-        # Binary will be copied by SCP
-        echo "Binary will be copied via SCP..."
+        # Move new binary from /tmp/ to home directory
+        echo "Moving new binary from /tmp/..."
+        if [ -f "/tmp/bogowi-api-linux" ]; then
+          mv /tmp/bogowi-api-linux /home/ec2-user/bogowi-api-linux
+          chown ec2-user:ec2-user /home/ec2-user/bogowi-api-linux
+          chmod +x /home/ec2-user/bogowi-api-linux
+          echo "Binary moved and permissions set"
+        else
+          echo "ERROR: Binary not found in /tmp/"
+          exit 1
+        fi
         
-        # Set proper permissions
-        sudo chown ec2-user:ec2-user bogowi-api-linux || true
-        chmod +x bogowi-api-linux
+        # Start the API process
+        echo "Starting Go API process..."
+        cd /home/ec2-user
+        nohup ./bogowi-api-linux > api.log 2>&1 &
         
-        # Restart the service (force reload of new binary)
-        echo "Restarting Go API service..."
-        sudo systemctl restart bogowi
-        
-        # Wait for service to be ready
+        # Wait for API to be ready
         echo "Waiting for API to be ready..."
         for i in {1..30}; do
           if curl -f http://localhost:3001/api/health &>/dev/null; then
@@ -219,31 +227,42 @@ jobs:
           sleep 2
         done
         
-        # Check service status
-        sudo systemctl status bogowi --no-pager || true
+        # Check if process is running
+        if pgrep -f "bogowi-api-linux" > /dev/null; then
+          echo "=== Deployment successful! ==="
+          echo "API process is running with PID: $(pgrep -f bogowi-api-linux)"
+        else
+          echo "=== Deployment failed - Process not running ==="
+          echo "Checking logs:"
+          tail -20 api.log
+          exit 1
+        fi
         
         # Final health check
         if curl -f http://localhost:3001/api/health; then
-          echo "=== Deployment successful! ==="
-          echo "Service status:"
-          sudo systemctl is-active bogowi
+          echo "✅ Health check passed!"
         else
-          echo "=== Deployment failed - API not responding ==="
-          echo "Service logs:"
-          sudo journalctl -u bogowi --no-pager --since "5 minutes ago"
+          echo "❌ Health check failed!"
           exit 1
         fi
         SCRIPT
         
-        # Copy deployment script and binary
-        echo "Copying deployment script and binary to EC2..."
+        # Copy binary first, then deployment script
+        echo "Copying binary to EC2..."
         scp -o StrictHostKeyChecking=no \
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=120 \
             -o ConnectTimeout=300 \
-            -i ec2_key.pem deploy.sh bogowi-api-linux $EC2_USERNAME@$EC2_HOST:/tmp/
+            -i ec2_key.pem bogowi-api-linux $EC2_USERNAME@$EC2_HOST:/tmp/
         
-        # Move binary to correct location and execute deployment script
+        echo "Copying deployment script to EC2..."
+        scp -o StrictHostKeyChecking=no \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=120 \
+            -o ConnectTimeout=300 \
+            -i ec2_key.pem deploy.sh $EC2_USERNAME@$EC2_HOST:/tmp/
+        
+        # Execute deployment script
         echo "Executing deployment script..."
         ssh -o StrictHostKeyChecking=no \
             -o ServerAliveInterval=30 \
@@ -251,7 +270,7 @@ jobs:
             -o ConnectTimeout=300 \
             -o TCPKeepAlive=yes \
             -i ec2_key.pem $EC2_USERNAME@$EC2_HOST \
-            'sudo mv /tmp/bogowi-api-linux /home/ec2-user/ && bash /tmp/deploy.sh 2>&1 | tee /tmp/deploy.log'
+            'bash /tmp/deploy.sh 2>&1 | tee /tmp/deploy.log'
         
         # Cleanup
         rm -f ec2_key.pem deploy.sh

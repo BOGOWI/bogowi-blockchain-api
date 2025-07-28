@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title BOGOTokenV2
@@ -171,12 +171,12 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard {
     }
 
     // Override transfer functions to respect pause state
-    function _beforeTokenTransfer(address from, address to, uint256 amount)
+    function _update(address from, address to, uint256 value)
         internal
-        whenNotPaused
         override
+        whenNotPaused
     {
-        super._beforeTokenTransfer(from, to, amount);
+        super._update(from, to, value);
     }
 
     // L1 fix: Contract address validation

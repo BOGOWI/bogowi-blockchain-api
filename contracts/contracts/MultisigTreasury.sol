@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -453,7 +453,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
     function onERC1155Received(
         address,
         address from,
-        uint256 id,
+        uint256 /* id */,
         uint256 value,
         bytes memory
     ) external returns (bytes4) {
