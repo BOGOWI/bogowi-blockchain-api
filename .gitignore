@@ -90,3 +90,10 @@ coverage.txt
 
 # Kubernetes secrets
 secrets/
+nice-coverage.html
+contracts/.env.example
+docs/reward-system/REWARD_CONTRACT_DEPLOYMENT_PLAN.txt
+docs/reward-system/REWARD_SYSTEM_IMPLEMENTATION_PLAN.md
+docs/reward-system/REWARD_TEMPLATES_PLAN.txt
+docs/reward-system/state-28-july.txt
+contracts/.env.example

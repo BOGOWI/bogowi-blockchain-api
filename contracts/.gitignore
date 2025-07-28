@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+artifacts/
+cache/
+typechain/
+typechain-types/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Deployment outputs
+deployment-*.json
+
+# IDE
+.idea/
+.vscode/
+
+# Coverage
+coverage/
+coverage.json
+
+# Hardhat
+*.log

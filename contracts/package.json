@@ -1,0 +1,31 @@
+{
+  "name": "bogowi-contracts",
+  "version": "1.0.0",
+  "description": "BOGOWI Smart Contracts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "check": "hardhat run scripts/check-existing-deployment.js",
+    "check:columbus": "hardhat run scripts/check-existing-deployment.js --network columbus",
+    "deploy": "hardhat run deploy/01-deploy-reward-distributor.js",
+    "deploy:columbus": "hardhat run deploy/01-deploy-reward-distributor.js --network columbus",
+    "verify": "hardhat run scripts/verify-deployment.js",
+    "verify:columbus": "hardhat run scripts/verify-deployment.js --network columbus",
+    "fund": "hardhat run scripts/fund-distributor.js",
+    "fund:columbus": "hardhat run scripts/fund-distributor.js --network columbus",
+    "setup-backend": "hardhat run scripts/setup-backend.js",
+    "setup-backend:columbus": "hardhat run scripts/setup-backend.js --network columbus",
+    "whitelist": "hardhat run scripts/whitelist-founders.js",
+    "whitelist:columbus": "hardhat run scripts/whitelist-founders.js --network columbus"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-etherscan": "^3.1.7",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "@openzeppelin/contracts": "^4.9.3",
+    "chai": "^4.3.10",
+    "dotenv": "^16.3.1",
+    "ethereum-waffle": "^4.0.10",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.19.0"
+  }
+}
