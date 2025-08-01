@@ -6,12 +6,18 @@ async function main() {
   
   // Get configuration
   const bogoTokenAddress = process.env.BOGO_TOKEN_V2_ADDRESS;
+  const treasuryAddress = process.env.MULTISIG_TREASURY_ADDRESS;
   
   if (!bogoTokenAddress) {
     throw new Error("BOGO_TOKEN_V2_ADDRESS environment variable not set");
   }
   
+  if (!treasuryAddress) {
+    throw new Error("MULTISIG_TREASURY_ADDRESS environment variable not set");
+  }
+  
   console.log("BOGO Token Address:", bogoTokenAddress);
+  console.log("MultisigTreasury Address:", treasuryAddress);
   console.log("Deploying from account:", (await hre.ethers.getSigners())[0].address);
   
   // Get contract factory
@@ -19,7 +25,7 @@ async function main() {
   
   // Deploy contract
   console.log("Deploying contract...");
-  const rewardDistributor = await RewardDistributor.deploy(bogoTokenAddress);
+  const rewardDistributor = await RewardDistributor.deploy(bogoTokenAddress, treasuryAddress);
   
   // Wait for deployment
   await rewardDistributor.deployed();
@@ -35,6 +41,7 @@ async function main() {
   console.log("\n=== DEPLOYMENT SUMMARY ===");
   console.log("Contract Address:", rewardDistributor.address);
   console.log("BOGO Token:", bogoTokenAddress);
+  console.log("Treasury:", treasuryAddress);
   console.log("Network:", hre.network.name);
   console.log("========================\n");
   
@@ -44,6 +51,7 @@ async function main() {
     network: hre.network.name,
     contractAddress: rewardDistributor.address,
     bogoTokenAddress: bogoTokenAddress,
+    treasuryAddress: treasuryAddress,
     deploymentTx: rewardDistributor.deployTransaction.hash,
     deployedAt: new Date().toISOString(),
     deployer: (await hre.ethers.getSigners())[0].address
@@ -58,8 +66,9 @@ async function main() {
   console.log("\nNEXT STEPS:");
   console.log("1. Add to .env: REWARD_DISTRIBUTOR_V2_ADDRESS=" + rewardDistributor.address);
   console.log("2. Fund the contract with BOGO tokens");
-  console.log("3. Set authorized backend addresses");
-  console.log("4. Add founder addresses to whitelist (if needed)");
+  console.log("3. Use MultisigTreasury to set authorized backend addresses");
+  console.log("4. Use MultisigTreasury to add founder addresses to whitelist (if needed)");
+  console.log("5. All admin functions now require multisig approval through the treasury");
 }
 
 main()

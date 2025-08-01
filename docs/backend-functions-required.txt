@@ -1,0 +1,61 @@
+BACKEND FUNCTIONS REQUIRED
+=========================
+
+These are the exact functions your Firebase backend needs to implement based on the actual Go API endpoints.
+
+==================================================
+FUNCTIONS TO IMPLEMENT
+==================================================
+
+1. transferBOGOTokens
+   Endpoint: POST /api/token/transfer
+   Input: 
+   - to: string (Ethereum address)
+   - amount: string (amount in BOGO tokens)
+   Action: Transfer BOGO tokens using private key
+   Return: { transactionHash: string }
+
+2. mintEventTicket  
+   Endpoint: POST /api/nft/mint-ticket
+   Input:
+   - to: string (recipient address)
+   - eventName: string
+   - eventDate: string
+   Action: Mint commercial NFT as event ticket
+   Return: { transactionHash: string }
+
+3. mintConservationNFT
+   Endpoint: POST /api/nft/mint-collectible
+   Input:
+   - to: string (recipient address)
+   - tokenURI: string (IPFS metadata URI)
+   - description: string (optional)
+   Action: Mint conservation NFT
+   Return: { transactionHash: string }
+
+4. claimReward (Legacy)
+   Endpoint: POST /api/rewards/claim
+   Input:
+   - address: string (user address)
+   - rewardType: string
+   - rewardAmount: string
+   Action: Process legacy reward claim
+   Return: { transactionHash: string }
+
+5. claimCustomReward (Admin only)
+   Endpoint: POST /api/rewards/claim-custom
+   Input:
+   - wallet: string (recipient address)  
+   - amount: string (in BOGO tokens)
+   - reason: string
+   Headers: X-Backend-Auth: YOUR_BACKEND_SECRET
+   Action: Call Go API endpoint with backend authentication
+   Return: { success: true, txHash: string, amount: string, reason: string }
+
+==================================================
+AUTHENTICATION NOTES
+==================================================
+
+- Functions 1-4: Need wallet private key to execute blockchain transactions
+- Function 5: Needs backend secret to authenticate with Go API
+- Frontend calls Firebase Functions → Firebase Functions call Go API or blockchain directly

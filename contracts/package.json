@@ -15,7 +15,9 @@
     "setup-backend": "hardhat run scripts/setup-backend.js",
     "setup-backend:columbus": "hardhat run scripts/setup-backend.js --network columbus",
     "whitelist": "hardhat run scripts/whitelist-founders.js",
-    "whitelist:columbus": "hardhat run scripts/whitelist-founders.js --network columbus"
+    "whitelist:columbus": "hardhat run scripts/whitelist-founders.js --network columbus",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.3",
@@ -26,6 +28,7 @@
     "dotenv": "^16.3.1",
     "ethereum-waffle": "^4.0.10",
     "ethers": "^5.7.2",
-    "hardhat": "^2.19.0"
+    "hardhat": "^2.19.0",
+    "solidity-coverage": "^0.8.16"
   }
 }

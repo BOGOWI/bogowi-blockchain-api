@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract BOGORewardDistributor is Ownable, Pausable, ReentrancyGuard {
+contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     IERC20 public immutable bogoToken;
+    address public immutable treasury;
     
     struct RewardTemplate {
         string id;
@@ -45,8 +45,15 @@ contract BOGORewardDistributor is Ownable, Pausable, ReentrancyGuard {
         _;
     }
     
-    constructor(address _bogoToken) Ownable(msg.sender) {
+    modifier onlyTreasury() {
+        require(msg.sender == treasury, "Only treasury can call this function");
+        _;
+    }
+    
+    constructor(address _bogoToken, address _treasury) {
+        require(_treasury != address(0), "Invalid treasury address");
         bogoToken = IERC20(_bogoToken);
+        treasury = _treasury;
         lastResetTime = block.timestamp;
         _initializeTemplates();
     }
@@ -241,33 +248,33 @@ contract BOGORewardDistributor is Ownable, Pausable, ReentrancyGuard {
     }
     
     // Admin functions
-    function addToWhitelist(address[] memory wallets) external onlyOwner {
+    function addToWhitelist(address[] memory wallets) external onlyTreasury {
         for (uint i = 0; i < wallets.length; i++) {
             founderWhitelist[wallets[i]] = true;
             emit WhitelistUpdated(wallets[i], true);
         }
     }
     
-    function removeFromWhitelist(address wallet) external onlyOwner {
+    function removeFromWhitelist(address wallet) external onlyTreasury {
         founderWhitelist[wallet] = false;
         emit WhitelistUpdated(wallet, false);
     }
     
-    function setAuthorizedBackend(address backend, bool authorized) external onlyOwner {
+    function setAuthorizedBackend(address backend, bool authorized) external onlyTreasury {
         authorizedBackends[backend] = authorized;
     }
     
     function updateTemplate(string memory templateId, RewardTemplate memory newTemplate) 
-        external onlyOwner {
+        external onlyTreasury {
         templates[templateId] = newTemplate;
         emit TemplateUpdated(templateId);
     }
     
-    function pause() external onlyOwner {
+    function pause() external onlyTreasury {
         _pause();
     }
     
-    function unpause() external onlyOwner {
+    function unpause() external onlyTreasury {
         _unpause();
     }
     
@@ -300,4 +307,24 @@ contract BOGORewardDistributor is Ownable, Pausable, ReentrancyGuard {
         }
         return DAILY_GLOBAL_LIMIT - dailyDistributed;
     }
+    
+    // Treasury sweep function - for token migration during contract upgrades
+    function treasurySweep(address token, address to, uint256 amount) external onlyTreasury {
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Invalid amount");
+        
+        if (token == address(0)) {
+            // Withdraw ETH
+            (bool success, ) = to.call{value: amount}("");
+            require(success, "ETH transfer failed");
+        } else {
+            // Withdraw ERC20 tokens
+            IERC20(token).transfer(to, amount);
+        }
+        
+        emit TreasurySweep(token, to, amount);
+    }
+    
+    // Event for treasury sweep operations
+    event TreasurySweep(address indexed token, address indexed to, uint256 amount);
 }
