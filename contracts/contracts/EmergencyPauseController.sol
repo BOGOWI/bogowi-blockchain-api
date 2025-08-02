@@ -170,7 +170,7 @@ contract EmergencyPauseController is AccessControlEnumerable, StandardErrors {
     function proposePause(
         address[] memory contractAddresses,
         string memory reason
-    ) external onlyRole(GUARDIAN_ROLE) returns (uint256) {
+    ) public onlyRole(GUARDIAN_ROLE) returns (uint256) {
         require(contractAddresses.length > 0, INVALID_LENGTH);
         require(bytes(reason).length > 0, EMPTY_STRING);
         
