@@ -37,6 +37,9 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
     // Constants
     uint256 public constant MAX_ROYALTY_PERCENTAGE = 1000; // 10% max royalty
     uint256 public constant DEFAULT_ROYALTY = 500; // 5%
+    
+    // Treasury address for withdrawals
+    address public treasuryAddress;
 
     // Token metadata
     mapping(uint256 => TokenInfo) public tokenInfo;
@@ -71,16 +74,22 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
     event TicketRedeemed(uint256 indexed tokenId, address indexed holder);
     event TokenURIUpdated(uint256 indexed tokenId, string newUri);
     event FundsWithdrawn(address indexed recipient, uint256 amount);
+    event TreasuryAddressUpdated(address indexed oldTreasury, address indexed newTreasury);
 
-    constructor() ERC1155("") {
+    constructor(address _treasuryAddress) ERC1155("") {
+        require(_treasuryAddress != address(0), "Invalid treasury address");
+        
         // Grant admin roles to deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         _grantRole(BUSINESS_ROLE, msg.sender);
-        _grantRole(TREASURY_ROLE, msg.sender);
+        _grantRole(TREASURY_ROLE, _treasuryAddress);
         
-        // Set default royalty for all tokens (5%)
-        _setDefaultRoyalty(msg.sender, uint96(DEFAULT_ROYALTY));
+        // Set treasury address
+        treasuryAddress = _treasuryAddress;
+        
+        // Set default royalty for all tokens (5%) - royalties go to contract
+        _setDefaultRoyalty(address(this), uint96(DEFAULT_ROYALTY));
     }
 
     /**
@@ -155,10 +164,9 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
                 royaltyPercentage: royaltyPercentage
             });
             
-            // Set specific royalty for this token
-            address royaltyRecipient = getRoleAdmin(TREASURY_ROLE) != bytes32(0) ? 
-                getRoleMember(TREASURY_ROLE, 0) : msg.sender;
-            _setTokenRoyalty(tokenId, royaltyRecipient, uint96(royaltyPercentage));
+            // Set specific royalty for this token - royalties go to the contract address
+            // The TREASURY_ROLE can withdraw accumulated royalties via withdraw()
+            _setTokenRoyalty(tokenId, address(this), uint96(royaltyPercentage));
         } else {
             require(maxSupply[tokenId] == _maxSupply, "Max supply mismatch");
         }
@@ -300,19 +308,35 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
     }
     
     /**
-     * @dev Withdraw accumulated funds
+     * @dev Withdraw accumulated funds to the treasury address
      */
     function withdraw() external onlyRole(TREASURY_ROLE) nonReentrant {
+        require(treasuryAddress != address(0), "Treasury address not set");
+        
         uint256 balance = address(this).balance;
         require(balance > 0, "No funds to withdraw");
         
-        address recipient = getRoleAdmin(TREASURY_ROLE) != bytes32(0) ? 
-            getRoleMember(TREASURY_ROLE, 0) : msg.sender;
-        
-        (bool success, ) = payable(recipient).call{value: balance}("");
+        (bool success, ) = payable(treasuryAddress).call{value: balance}("");
         require(success, "Withdrawal failed");
         
-        emit FundsWithdrawn(recipient, balance);
+        emit FundsWithdrawn(treasuryAddress, balance);
+    }
+    
+    /**
+     * @dev Update treasury address (admin only)
+     * @param newTreasuryAddress The new treasury address
+     */
+    function setTreasuryAddress(address newTreasuryAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newTreasuryAddress != address(0), "Invalid treasury address");
+        
+        // Revoke TREASURY_ROLE from old address and grant to new
+        address oldTreasury = treasuryAddress;
+        _revokeRole(TREASURY_ROLE, oldTreasury);
+        _grantRole(TREASURY_ROLE, newTreasuryAddress);
+        
+        treasuryAddress = newTreasuryAddress;
+        
+        emit TreasuryAddressUpdated(oldTreasury, newTreasuryAddress);
     }
 
     function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -332,16 +356,6 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
         return super.supportsInterface(interfaceId);
     }
     
-    /**
-     * @dev Get role member at index (helper for getting treasury recipient)
-     */
-    function getRoleMember(bytes32 role, uint256 index) public view returns (address) {
-        // This is a simplified version - in production you might want to track role members
-        if (index == 0 && hasRole(role, msg.sender)) {
-            return msg.sender;
-        }
-        return address(0);
-    }
     
     /**
      * @dev Receive function to accept ETH

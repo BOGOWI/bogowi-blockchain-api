@@ -28,6 +28,8 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     // Referral tracking
     mapping(address => address) public referredBy;
     mapping(address => uint256) public referralCount;
+    mapping(address => uint256) public referralDepth; // Track depth in referral chain
+    uint256 public constant MAX_REFERRAL_DEPTH = 10; // Maximum depth to prevent long chains
     
     // Daily limits
     uint256 public constant DAILY_GLOBAL_LIMIT = 500000 * 10**18; // 500k BOGO
@@ -229,6 +231,13 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         require(referrer != msg.sender, "Cannot refer yourself");
         require(referrer != address(0), "Invalid referrer");
         
+        // Check for circular referrals
+        require(!_hasCircularReferral(msg.sender, referrer), "Circular referral detected");
+        
+        // Check referral depth
+        uint256 referrerDepth = referralDepth[referrer];
+        require(referrerDepth < MAX_REFERRAL_DEPTH, "Max referral depth exceeded");
+        
         RewardTemplate memory template = templates["referral_bonus"];
         require(template.active, "Referral rewards not active");
         
@@ -239,6 +248,7 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         // Update state
         referredBy[msg.sender] = referrer;
         referralCount[referrer]++;
+        referralDepth[msg.sender] = referrerDepth + 1;
         dailyDistributed += template.fixedAmount;
         
         // Transfer to referrer
@@ -309,7 +319,7 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     }
     
     // Treasury sweep function - for token migration during contract upgrades
-    function treasurySweep(address token, address to, uint256 amount) external onlyTreasury {
+    function treasurySweep(address token, address to, uint256 amount) external onlyTreasury nonReentrant {
         require(to != address(0), "Invalid recipient");
         require(amount > 0, "Invalid amount");
         
@@ -327,4 +337,53 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     
     // Event for treasury sweep operations
     event TreasurySweep(address indexed token, address indexed to, uint256 amount);
+    
+    /**
+     * @dev Check if adding a referral would create a circular reference
+     * @param newUser The user being referred
+     * @param referrer The proposed referrer
+     * @return bool True if circular reference detected
+     */
+    function _hasCircularReferral(address newUser, address referrer) private view returns (bool) {
+        address current = referrer;
+        uint256 depth = 0;
+        
+        // Traverse up the referral chain
+        while (current != address(0) && depth < MAX_REFERRAL_DEPTH) {
+            if (current == newUser) {
+                return true; // Circular reference found
+            }
+            current = referredBy[current];
+            depth++;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * @dev Get the referral chain for a user
+     * @param user The user to check
+     * @return chain Array of addresses in the referral chain
+     */
+    function getReferralChain(address user) external view returns (address[] memory) {
+        address[] memory tempChain = new address[](MAX_REFERRAL_DEPTH);
+        address current = user;
+        uint256 count = 0;
+        
+        while (current != address(0) && count < MAX_REFERRAL_DEPTH) {
+            current = referredBy[current];
+            if (current != address(0)) {
+                tempChain[count] = current;
+                count++;
+            }
+        }
+        
+        // Create properly sized array
+        address[] memory chain = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            chain[i] = tempChain[i];
+        }
+        
+        return chain;
+    }
 }

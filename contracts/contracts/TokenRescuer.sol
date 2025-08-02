@@ -2,8 +2,9 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract TokenRescuer {
+contract TokenRescuer is ReentrancyGuard {
     address public immutable owner;
     
     modifier onlyOwner() {
@@ -19,7 +20,7 @@ contract TokenRescuer {
     function rescue(
         address target,
         bytes calldata data
-    ) external onlyOwner returns (bool success, bytes memory result) {
+    ) external onlyOwner nonReentrant returns (bool success, bytes memory result) {
         (success, result) = target.call(data);
         require(success, "Rescue call failed");
     }
@@ -30,7 +31,7 @@ contract TokenRescuer {
         address from, 
         address to,
         uint256 amount
-    ) external onlyOwner {
+    ) external onlyOwner nonReentrant {
         // This only works if 'from' contract has a function to transfer tokens
         // and we are authorized to call it
         (bool success, ) = from.call(
