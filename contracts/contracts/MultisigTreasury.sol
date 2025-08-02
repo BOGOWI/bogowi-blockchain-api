@@ -8,8 +8,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "./StandardErrors.sol";
 
-contract MultisigTreasury is ReentrancyGuard, Pausable {
+contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -69,42 +70,42 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
     event EmergencyApprovalRevoked(address indexed signer);
 
     modifier onlySigner() {
-        require(signers[msg.sender].isSigner, "Not a signer");
+        require(signers[msg.sender].isSigner, NOT_SIGNER);
         _;
     }
 
     modifier onlyMultisig() {
-        require(msg.sender == address(this), "Only multisig");
+        require(msg.sender == address(this), NOT_MULTISIG);
         _;
     }
 
     modifier transactionExists(uint256 _txId) {
-        require(_txId < transactionCount, "Transaction does not exist");
+        require(_txId < transactionCount, DOES_NOT_EXIST);
         _;
     }
 
     modifier notExecuted(uint256 _txId) {
-        require(!transactions[_txId].executed, "Transaction already executed");
+        require(!transactions[_txId].executed, ALREADY_PROCESSED);
         _;
     }
 
     modifier notExpired(uint256 _txId) {
         require(
             block.timestamp <= transactions[_txId].timestamp + TRANSACTION_EXPIRY,
-            "Transaction expired"
+            EXPIRED
         );
         _;
     }
 
     constructor(address[] memory _signers, uint256 _threshold) {
-        require(_signers.length > 0, "Signers required");
-        require(_signers.length <= MAX_SIGNERS, "Too many signers");
-        require(_threshold > 0 && _threshold <= _signers.length, "Invalid threshold");
+        require(_signers.length > 0, INVALID_PARAMETER);
+        require(_signers.length <= MAX_SIGNERS, EXCEEDS_LIMIT);
+        require(_threshold > 0 && _threshold <= _signers.length, INVALID_PARAMETER);
 
         for (uint256 i = 0; i < _signers.length; i++) {
             address signer = _signers[i];
-            require(signer != address(0), "Invalid signer");
-            require(!signers[signer].isSigner, "Duplicate signer");
+            require(signer != address(0), ZERO_ADDRESS);
+            require(!signers[signer].isSigner, ALREADY_EXISTS);
             
             signers[signer] = Signer({
                 isSigner: true,
@@ -127,7 +128,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
         bytes memory _data,
         string memory _description
     ) external onlySigner whenNotPaused returns (uint256) {
-        require(_to != address(0), "Invalid recipient");
+        require(_to != address(0), ZERO_ADDRESS);
         
         uint256 txId = transactionCount++;
         
@@ -156,7 +157,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
         notExecuted(_txId)
         notExpired(_txId)
     {
-        require(!confirmations[_txId][msg.sender], "Already confirmed");
+        require(!confirmations[_txId][msg.sender], ALREADY_PROCESSED);
         
         confirmations[_txId][msg.sender] = true;
         transactions[_txId].confirmations++;
@@ -178,7 +179,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
         transactionExists(_txId)
         notExecuted(_txId)
     {
-        require(confirmations[_txId][msg.sender], "Not confirmed");
+        require(confirmations[_txId][msg.sender], NOT_INITIALIZED);
         
         confirmations[_txId][msg.sender] = false;
         transactions[_txId].confirmations--;
@@ -195,14 +196,14 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
         nonReentrant
     {
         Transaction storage txn = transactions[_txId];
-        require(txn.confirmations >= threshold, "Insufficient confirmations");
+        require(txn.confirmations >= threshold, CONDITIONS_NOT_MET);
         
         // M1: Ensure execution delay has passed
-        require(block.timestamp >= txn.timestamp + EXECUTION_DELAY, "Execution delay not met");
+        require(block.timestamp >= txn.timestamp + EXECUTION_DELAY, NOT_READY);
         
         // M2: Validate transaction parameters
         require(txn.to != address(0), "Invalid recipient");
-        require(gasleft() >= MAX_GAS_LIMIT / 2, "Insufficient gas");
+        require(gasleft() >= MAX_GAS_LIMIT / 2, EXCEEDS_LIMIT);
         
         // M3: Check function call restrictions if enabled
         if (restrictFunctionCalls && txn.data.length >= 4) {
@@ -211,7 +212,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
             assembly {
                 selector := mload(add(data, 32))
             }
-            require(allowedFunctions[txn.to][selector], "Function not allowed");
+            require(allowedFunctions[txn.to][selector], UNAUTHORIZED);
         }
         
         txn.executed = true;
@@ -230,7 +231,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
     {
         require(
             block.timestamp > transactions[_txId].timestamp + TRANSACTION_EXPIRY,
-            "Transaction not expired"
+            NOT_EXPIRED
         );
         
         transactions[_txId].executed = true; // Mark as executed to prevent future execution
@@ -240,9 +241,9 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
     // Signer Management Functions (only callable by multisig itself)
     
     function addSigner(address _signer) external onlyMultisig {
-        require(_signer != address(0), "Invalid signer");
-        require(!signers[_signer].isSigner, "Already a signer");
-        require(signerCount < MAX_SIGNERS, "Max signers reached");
+        require(_signer != address(0), ZERO_ADDRESS);
+        require(!signers[_signer].isSigner, ALREADY_EXISTS);
+        require(signerCount < MAX_SIGNERS, MAX_REACHED);
         
         signers[_signer] = Signer({
             isSigner: true,
@@ -255,8 +256,8 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
     }
 
     function removeSigner(address _signer) external onlyMultisig {
-        require(signers[_signer].isSigner, "Not a signer");
-        require(signerCount - 1 >= threshold, "Would break threshold");
+        require(signers[_signer].isSigner, NOT_SIGNER);
+        require(signerCount - 1 >= threshold, CONDITIONS_NOT_MET);
         
         signers[_signer].isSigner = false;
         signerCount--;
@@ -273,7 +274,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
     }
 
     function changeThreshold(uint256 _threshold) external onlyMultisig {
-        require(_threshold > 0 && _threshold <= signerCount, "Invalid threshold");
+        require(_threshold > 0 && _threshold <= signerCount, INVALID_PARAMETER);
         
         uint256 oldThreshold = threshold;
         threshold = _threshold;
@@ -342,11 +343,11 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
         nonReentrant
     {
         // H1: Use separate mapping for emergency approvals
-        require(!emergencyApprovals[msg.sender], "Already approved emergency");
+        require(!emergencyApprovals[msg.sender], ALREADY_PROCESSED);
         
         // M4: Additional authorization check
-        require(_amount <= address(this).balance / 2, "Amount exceeds 50% of balance");
-        require(_to != address(0), "Invalid recipient");
+        require(_amount <= address(this).balance / 2, EXCEEDS_LIMIT);
+        require(_to != address(0), ZERO_ADDRESS);
         
         // Mark emergency approval
         emergencyApprovals[msg.sender] = true;

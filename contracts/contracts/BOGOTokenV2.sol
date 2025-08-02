@@ -5,13 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./StandardErrors.sol";
 
 /**
  * @title BOGOTokenV2
  * @dev Enhanced BOGO token with role-based access control, supply management, and timelock governance
  * @dev Replaces the basic Token.sol contract with enterprise-grade features
  */
-contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard {
+contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard, StandardErrors {
     // Role definitions
     bytes32 public constant DAO_ROLE = keccak256("DAO_ROLE");
     bytes32 public constant BUSINESS_ROLE = keccak256("BUSINESS_ROLE");
@@ -53,8 +54,8 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard {
 
     // DAO allocation minting
     function mintFromDAO(address to, uint256 amount) external onlyRole(DAO_ROLE) nonReentrant {
-        require(daoMinted + amount <= DAO_ALLOCATION, "Exceeds DAO allocation");
-        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
+        require(daoMinted + amount <= DAO_ALLOCATION, EXCEEDS_ALLOCATION);
+        require(totalSupply() + amount <= MAX_SUPPLY, EXCEEDS_SUPPLY);
         
         daoMinted += amount;
         _mint(to, amount);
@@ -64,8 +65,8 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard {
 
     // Business allocation minting
     function mintFromBusiness(address to, uint256 amount) external onlyRole(BUSINESS_ROLE) nonReentrant {
-        require(businessMinted + amount <= BUSINESS_ALLOCATION, "Exceeds business allocation");
-        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
+        require(businessMinted + amount <= BUSINESS_ALLOCATION, EXCEEDS_ALLOCATION);
+        require(totalSupply() + amount <= MAX_SUPPLY, EXCEEDS_SUPPLY);
         
         businessMinted += amount;
         _mint(to, amount);
@@ -76,9 +77,9 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard {
     // Rewards allocation minting (can be used by DAO or Business roles)
     function mintFromRewards(address to, uint256 amount) external nonReentrant {
         require(hasRole(DAO_ROLE, msg.sender) || hasRole(BUSINESS_ROLE, msg.sender), 
-                "Must have DAO or BUSINESS role");
-        require(rewardsMinted + amount <= REWARDS_ALLOCATION, "Exceeds rewards allocation");
-        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
+                UNAUTHORIZED);
+        require(rewardsMinted + amount <= REWARDS_ALLOCATION, EXCEEDS_ALLOCATION);
+        require(totalSupply() + amount <= MAX_SUPPLY, EXCEEDS_SUPPLY);
         
         rewardsMinted += amount;
         _mint(to, amount);
@@ -89,8 +90,8 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard {
     // Timelock governance for flavored token registration (M1 + L1 fixes)
     function queueRegisterFlavoredToken(string memory flavor, address tokenAddress) 
         external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(tokenAddress != address(0), "Invalid token address"); // L1 fix
-        require(_isContract(tokenAddress), "Address must be a contract"); // L1 fix
+        require(tokenAddress != address(0), ZERO_ADDRESS); // L1 fix
+        require(_isContract(tokenAddress), INVALID_ADDRESS); // L1 fix
         
         bytes32 operationId = keccak256(
             abi.encodePacked("registerFlavoredToken", flavor, tokenAddress)
@@ -109,8 +110,8 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard {
         );
         
         uint256 executeTime = timelockOperations[operationId];
-        require(executeTime != 0, "Operation not queued");
-        require(block.timestamp >= executeTime, "Timelock not expired");
+        require(executeTime != 0, NOT_INITIALIZED);
+        require(block.timestamp >= executeTime, NOT_EXPIRED);
         
         // Execute the registration
         flavoredTokens[flavor] = tokenAddress;
@@ -127,7 +128,7 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard {
     }
 
     function cancelTimelockOperation(bytes32 operationId) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(timelockOperations[operationId] != 0, "Operation not queued");
+        require(timelockOperations[operationId] != 0, NOT_INITIALIZED);
         
         delete timelockOperations[operationId];
         emit TimelockCancelled(operationId);

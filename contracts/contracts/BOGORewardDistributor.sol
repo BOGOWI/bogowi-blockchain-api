@@ -4,8 +4,9 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./StandardErrors.sol";
 
-contract BOGORewardDistributor is Pausable, ReentrancyGuard {
+contract BOGORewardDistributor is Pausable, ReentrancyGuard, StandardErrors {
     IERC20 public immutable bogoToken;
     address public immutable treasury;
     
@@ -45,17 +46,17 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     event DailyLimitReset(uint256 timestamp, uint256 previousDistributed);
     
     modifier onlyAuthorized() {
-        require(authorizedBackends[msg.sender], "Not authorized backend");
+        require(authorizedBackends[msg.sender], NOT_BACKEND);
         _;
     }
     
     modifier onlyTreasury() {
-        require(msg.sender == treasury, "Only treasury can call this function");
+        require(msg.sender == treasury, NOT_TREASURY);
         _;
     }
     
     constructor(address _bogoToken, address _treasury) {
-        require(_treasury != address(0), "Invalid treasury address");
+        require(_treasury != address(0), ZERO_ADDRESS);
         bogoToken = IERC20(_bogoToken);
         treasury = _treasury;
         lastResetTime = block.timestamp;
@@ -181,27 +182,27 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         _resetDailyLimit();
         
         RewardTemplate memory template = templates[templateId];
-        require(template.active, "Template not active");
-        require(template.fixedAmount > 0, "Use claimCustomReward for custom amounts");
+        require(template.active, INACTIVE);
+        require(template.fixedAmount > 0, INVALID_AMOUNT);
         
         // Check eligibility
         if (template.maxClaimsPerWallet > 0) {
             require(claimCount[msg.sender][templateId] < template.maxClaimsPerWallet, 
-                    "Max claims reached");
+                    MAX_REACHED);
         }
         
         if (template.cooldownPeriod > 0) {
             require(block.timestamp >= lastClaim[msg.sender][templateId] + template.cooldownPeriod,
-                    "Cooldown period active");
+                    COOLDOWN_ACTIVE);
         }
         
         if (template.requiresWhitelist) {
-            require(founderWhitelist[msg.sender], "Not whitelisted");
+            require(founderWhitelist[msg.sender], NOT_WHITELISTED);
         }
         
         // Check daily limit
         require(dailyDistributed + template.fixedAmount <= DAILY_GLOBAL_LIMIT, 
-                "Daily limit exceeded");
+                DAILY_LIMIT_EXCEEDED);
         
         // Update state
         claimCount[msg.sender][templateId]++;
@@ -209,7 +210,7 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         dailyDistributed += template.fixedAmount;
         
         // Transfer tokens
-        require(bogoToken.transfer(msg.sender, template.fixedAmount), "Transfer failed");
+        require(bogoToken.transfer(msg.sender, template.fixedAmount), TRANSFER_FAILED);
         
         emit RewardClaimed(msg.sender, templateId, template.fixedAmount);
     }
@@ -219,35 +220,35 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         _resetDailyLimit();
         
         RewardTemplate memory template = templates["custom_reward"];
-        require(template.active, "Custom rewards not active");
-        require(amount > 0 && amount <= template.maxAmount, "Invalid amount");
-        require(dailyDistributed + amount <= DAILY_GLOBAL_LIMIT, "Daily limit exceeded");
+        require(template.active, INACTIVE);
+        require(amount > 0 && amount <= template.maxAmount, INVALID_AMOUNT);
+        require(dailyDistributed + amount <= DAILY_GLOBAL_LIMIT, DAILY_LIMIT_EXCEEDED);
         
         dailyDistributed += amount;
         
-        require(bogoToken.transfer(recipient, amount), "Transfer failed");
+        require(bogoToken.transfer(recipient, amount), TRANSFER_FAILED);
         
         emit RewardClaimed(recipient, reason, amount);
     }
     
     function claimReferralBonus(address referrer) external nonReentrant whenNotPaused {
-        require(referredBy[msg.sender] == address(0), "Already referred");
-        require(referrer != msg.sender, "Cannot refer yourself");
-        require(referrer != address(0), "Invalid referrer");
+        require(referredBy[msg.sender] == address(0), ALREADY_EXISTS);
+        require(referrer != msg.sender, SELF_REFERENCE);
+        require(referrer != address(0), ZERO_ADDRESS);
         
         // Check for circular referrals
-        require(!_hasCircularReferral(msg.sender, referrer), "Circular referral detected");
+        require(!_hasCircularReferral(msg.sender, referrer), CIRCULAR_REFERENCE);
         
         // Check referral depth
         uint256 referrerDepth = referralDepth[referrer];
-        require(referrerDepth < MAX_REFERRAL_DEPTH, "Max referral depth exceeded");
+        require(referrerDepth < MAX_REFERRAL_DEPTH, EXCEEDS_LIMIT);
         
         RewardTemplate memory template = templates["referral_bonus"];
-        require(template.active, "Referral rewards not active");
+        require(template.active, INACTIVE);
         
         _resetDailyLimit();
         require(dailyDistributed + template.fixedAmount <= DAILY_GLOBAL_LIMIT, 
-                "Daily limit exceeded");
+                DAILY_LIMIT_EXCEEDED);
         
         // Update state
         referredBy[msg.sender] = referrer;
@@ -256,7 +257,7 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         dailyDistributed += template.fixedAmount;
         
         // Transfer to referrer
-        require(bogoToken.transfer(referrer, template.fixedAmount), "Transfer failed");
+        require(bogoToken.transfer(referrer, template.fixedAmount), TRANSFER_FAILED);
         
         emit ReferralClaimed(referrer, msg.sender, template.fixedAmount);
     }
@@ -325,13 +326,13 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     
     // Treasury sweep function - for token migration during contract upgrades
     function treasurySweep(address token, address to, uint256 amount) external onlyTreasury nonReentrant {
-        require(to != address(0), "Invalid recipient");
-        require(amount > 0, "Invalid amount");
+        require(to != address(0), ZERO_ADDRESS);
+        require(amount > 0, ZERO_AMOUNT);
         
         if (token == address(0)) {
             // Withdraw ETH
             (bool success, ) = to.call{value: amount}("");
-            require(success, "ETH transfer failed");
+            require(success, TRANSFER_FAILED);
         } else {
             // Withdraw ERC20 tokens
             IERC20(token).transfer(to, amount);

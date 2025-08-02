@@ -7,12 +7,13 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./StandardErrors.sol";
 
 /**
  * @title CommercialNFT
  * @dev NFT contract for commercial assets, controlled by BOGOWI business
  */
-contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC2981, ReentrancyGuard {
+contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC2981, ReentrancyGuard, StandardErrors {
     // Role constants
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BUSINESS_ROLE = keccak256("BUSINESS_ROLE");
@@ -77,7 +78,7 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
     event TreasuryAddressUpdated(address indexed oldTreasury, address indexed newTreasury);
 
     constructor(address _treasuryAddress) ERC1155("") {
-        require(_treasuryAddress != address(0), "Invalid treasury address");
+        require(_treasuryAddress != address(0), ZERO_ADDRESS);
         
         // Grant admin roles to deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -104,13 +105,13 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
         string memory tokenUri,
         uint256 price
     ) external onlyRole(MINTER_ROLE) {
-        require(to != address(0), "Invalid recipient address");
-        require(tokenId >= TICKET_ID_START && tokenId <= TICKET_ID_END, "Invalid ticket token ID range");
-        require(!tokenExists[tokenId], "Token ID already exists");
-        require(eventDate > block.timestamp, "Event date must be in future");
-        require(expiryDate > eventDate, "Expiry must be after event date");
-        require(bytes(venue).length > 0, "Venue cannot be empty");
-        require(bytes(tokenUri).length > 0, "URI cannot be empty");
+        require(to != address(0), ZERO_ADDRESS);
+        require(tokenId >= TICKET_ID_START && tokenId <= TICKET_ID_END, INVALID_PARAMETER);
+        require(!tokenExists[tokenId], ALREADY_EXISTS);
+        require(eventDate > block.timestamp, INVALID_PARAMETER);
+        require(expiryDate > eventDate, INVALID_PARAMETER);
+        require(bytes(venue).length > 0, EMPTY_STRING);
+        require(bytes(tokenUri).length > 0, EMPTY_STRING);
         
         eventData[tokenId] = EventData({
             eventDate: eventDate,
@@ -145,13 +146,13 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
         uint256 price,
         uint256 royaltyPercentage
     ) external onlyRole(MINTER_ROLE) {
-        require(to != address(0), "Invalid recipient address");
-        require(tokenId >= COLLECTIBLE_ID_START && tokenId <= COLLECTIBLE_ID_END, "Invalid collectible token ID range");
-        require(amount > 0, "Amount must be greater than 0");
-        require(_maxSupply > 0, "Max supply must be greater than 0");
-        require(bytes(tokenUri).length > 0, "URI cannot be empty");
-        require(royaltyPercentage <= MAX_ROYALTY_PERCENTAGE, "Royalty exceeds maximum");
-        require(super.totalSupply(tokenId) + amount <= _maxSupply, "Exceeds max supply");
+        require(to != address(0), ZERO_ADDRESS);
+        require(tokenId >= COLLECTIBLE_ID_START && tokenId <= COLLECTIBLE_ID_END, INVALID_PARAMETER);
+        require(amount > 0, ZERO_AMOUNT);
+        require(_maxSupply > 0, ZERO_AMOUNT);
+        require(bytes(tokenUri).length > 0, EMPTY_STRING);
+        require(royaltyPercentage <= MAX_ROYALTY_PERCENTAGE, EXCEEDS_LIMIT);
+        require(super.totalSupply(tokenId) + amount <= _maxSupply, EXCEEDS_SUPPLY);
         
         if (!tokenExists[tokenId]) {
             tokenExists[tokenId] = true;
@@ -168,7 +169,7 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
             // The TREASURY_ROLE can withdraw accumulated royalties via withdraw()
             _setTokenRoyalty(tokenId, address(this), uint96(royaltyPercentage));
         } else {
-            require(maxSupply[tokenId] == _maxSupply, "Max supply mismatch");
+            require(maxSupply[tokenId] == _maxSupply, INVALID_PARAMETER);
         }
         
         _mint(to, tokenId, amount, "");
@@ -187,18 +188,18 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
         string memory tokenUri,
         uint256 price
     ) external onlyRole(BUSINESS_ROLE) {
-        require(recipients.length > 0, "No recipients");
-        require(recipients.length <= 100, "Too many recipients");
-        require(tokenId >= MERCHANDISE_ID_START && tokenId <= MERCHANDISE_ID_END, "Invalid promo token ID range");
-        require(amount > 0, "Amount must be greater than 0");
+        require(recipients.length > 0, INVALID_LENGTH);
+        require(recipients.length <= 100, EXCEEDS_LIMIT);
+        require(tokenId >= MERCHANDISE_ID_START && tokenId <= MERCHANDISE_ID_END, INVALID_PARAMETER);
+        require(amount > 0, ZERO_AMOUNT);
         
         uint256 totalAmount = recipients.length * amount;
         
         // Initialize token if new
         if (!tokenExists[tokenId]) {
-            require(_maxSupply > 0, "Max supply must be set for new token");
-            require(bytes(tokenUri).length > 0, "URI cannot be empty");
-            require(totalAmount <= _maxSupply, "Total mint exceeds max supply");
+            require(_maxSupply > 0, ZERO_AMOUNT);
+            require(bytes(tokenUri).length > 0, EMPTY_STRING);
+            require(totalAmount <= _maxSupply, EXCEEDS_SUPPLY);
             
             tokenExists[tokenId] = true;
             maxSupply[tokenId] = _maxSupply;
@@ -210,11 +211,11 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
                 royaltyPercentage: DEFAULT_ROYALTY
             });
         } else {
-            require(super.totalSupply(tokenId) + totalAmount <= maxSupply[tokenId], "Exceeds max supply");
+            require(super.totalSupply(tokenId) + totalAmount <= maxSupply[tokenId], EXCEEDS_SUPPLY);
         }
         
         for (uint256 i = 0; i < recipients.length; i++) {
-            require(recipients[i] != address(0), "Invalid recipient");
+            require(recipients[i] != address(0), ZERO_ADDRESS);
             _mint(recipients[i], tokenId, amount, "");
         }
     }
@@ -223,10 +224,10 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
      * @dev Redeem event ticket
      */
     function redeemTicket(uint256 tokenId) external {
-        require(balanceOf(msg.sender, tokenId) > 0, "Not ticket holder");
-        require(tokenId >= 10000 && tokenId < 20000, "Not a ticket");
-        require(!eventData[tokenId].used, "Ticket already used");
-        require(block.timestamp <= eventData[tokenId].expiryDate, "Ticket expired");
+        require(balanceOf(msg.sender, tokenId) > 0, INSUFFICIENT_BALANCE);
+        require(tokenId >= 10000 && tokenId < 20000, INVALID_PARAMETER);
+        require(!eventData[tokenId].used, ALREADY_PROCESSED);
+        require(block.timestamp <= eventData[tokenId].expiryDate, EXPIRED);
         
         eventData[tokenId].used = true;
         emit TicketRedeemed(tokenId, msg.sender);
@@ -236,7 +237,7 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
      * @dev Burn tokens (if burnable)
      */
     function burn(uint256 tokenId, uint256 amount) external {
-        require(tokenInfo[tokenId].burnable, "Token not burnable");
+        require(tokenInfo[tokenId].burnable, CONDITIONS_NOT_MET);
         _burn(msg.sender, tokenId, amount);
     }
 
@@ -251,7 +252,7 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
     ) internal override(ERC1155, ERC1155Supply) whenNotPaused {
         for (uint256 i = 0; i < ids.length; i++) {
             if (from != address(0) && to != address(0)) { // Not mint or burn
-                require(tokenInfo[ids[i]].tradeable, "Token not tradeable");
+                require(tokenInfo[ids[i]].tradeable, CONDITIONS_NOT_MET);
             }
         }
         super._update(from, to, ids, amounts);
@@ -265,8 +266,8 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
      * @dev Update token URI (for dynamic metadata)
      */
     function updateTokenURI(uint256 tokenId, string memory newUri) external onlyRole(BUSINESS_ROLE) {
-        require(tokenExists[tokenId], "Token does not exist");
-        require(bytes(newUri).length > 0, "URI cannot be empty");
+        require(tokenExists[tokenId], DOES_NOT_EXIST);
+        require(bytes(newUri).length > 0, EMPTY_STRING);
         tokenInfo[tokenId].uri = newUri;
         emit TokenURIUpdated(tokenId, newUri);
     }
@@ -282,12 +283,12 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
         string memory tokenUri,
         uint256 price
     ) external onlyRole(MINTER_ROLE) {
-        require(to != address(0), "Invalid recipient address");
-        require(tokenId >= GAMING_ID_START && tokenId <= GAMING_ID_END, "Invalid gaming token ID range");
-        require(amount > 0, "Amount must be greater than 0");
-        require(_maxSupply > 0, "Max supply must be greater than 0");
-        require(bytes(tokenUri).length > 0, "URI cannot be empty");
-        require(super.totalSupply(tokenId) + amount <= _maxSupply, "Exceeds max supply");
+        require(to != address(0), ZERO_ADDRESS);
+        require(tokenId >= GAMING_ID_START && tokenId <= GAMING_ID_END, INVALID_PARAMETER);
+        require(amount > 0, ZERO_AMOUNT);
+        require(_maxSupply > 0, ZERO_AMOUNT);
+        require(bytes(tokenUri).length > 0, EMPTY_STRING);
+        require(super.totalSupply(tokenId) + amount <= _maxSupply, EXCEEDS_SUPPLY);
         
         if (!tokenExists[tokenId]) {
             tokenExists[tokenId] = true;
@@ -300,7 +301,7 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
                 royaltyPercentage: DEFAULT_ROYALTY
             });
         } else {
-            require(maxSupply[tokenId] == _maxSupply, "Max supply mismatch");
+            require(maxSupply[tokenId] == _maxSupply, INVALID_PARAMETER);
         }
         
         _mint(to, tokenId, amount, "");
@@ -311,13 +312,13 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
      * @dev Withdraw accumulated funds to the treasury address
      */
     function withdraw() external onlyRole(TREASURY_ROLE) nonReentrant {
-        require(treasuryAddress != address(0), "Treasury address not set");
+        require(treasuryAddress != address(0), NOT_INITIALIZED);
         
         uint256 balance = address(this).balance;
-        require(balance > 0, "No funds to withdraw");
+        require(balance > 0, INSUFFICIENT_BALANCE);
         
         (bool success, ) = payable(treasuryAddress).call{value: balance}("");
-        require(success, "Withdrawal failed");
+        require(success, TRANSFER_FAILED);
         
         emit FundsWithdrawn(treasuryAddress, balance);
     }
@@ -327,7 +328,7 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
      * @param newTreasuryAddress The new treasury address
      */
     function setTreasuryAddress(address newTreasuryAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newTreasuryAddress != address(0), "Invalid treasury address");
+        require(newTreasuryAddress != address(0), ZERO_ADDRESS);
         
         // Revoke TREASURY_ROLE from old address and grant to new
         address oldTreasury = treasuryAddress;

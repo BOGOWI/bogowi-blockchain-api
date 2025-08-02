@@ -6,12 +6,13 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./StandardErrors.sol";
 
 /**
  * @title ConservationNFT
  * @dev NFT contract for conservation-related assets, controlled by DAO
  */
-contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ReentrancyGuard {
+contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ReentrancyGuard, StandardErrors {
     // Role constants
     bytes32 public constant DAO_ROLE = keccak256("DAO_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -90,13 +91,13 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
         uint256 impactScore
     ) external onlyRole(MINTER_ROLE) {
         require(to != address(0), "Invalid recipient address");
-        require(tokenId >= ADOPTION_ID_START && tokenId <= ADOPTION_ID_END, "Invalid adoption token ID range");
+        require(tokenId >= ADOPTION_ID_START && tokenId <= ADOPTION_ID_END, INVALID_PARAMETER);
         require(!tokenExists[tokenId], "Token ID already exists");
-        require(bytes(species).length > 0, "Species cannot be empty");
-        require(bytes(location).length > 0, "Location cannot be empty");
+        require(bytes(species).length > 0, EMPTY_STRING);
+        require(bytes(location).length > 0, EMPTY_STRING);
         require(bytes(tokenUri).length > 0, "URI cannot be empty");
         require(impactScore > 0 && impactScore <= 1000, "Invalid impact score");
-        require(mintedPerType[ADOPTION_CERTIFICATE] < maxSupplyPerType[ADOPTION_CERTIFICATE], "Max supply reached");
+        require(mintedPerType[ADOPTION_CERTIFICATE] < maxSupplyPerType[ADOPTION_CERTIFICATE], MAX_REACHED);
         
         conservationData[tokenId] = ConservationData({
             species: species,
@@ -127,12 +128,12 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
         string memory achievementType
     ) external onlyRole(MINTER_ROLE) {
         require(to != address(0), "Invalid recipient address");
-        require(tokenId >= BADGE_ID_START && tokenId <= BADGE_ID_END, "Invalid badge token ID range");
+        require(tokenId >= BADGE_ID_START && tokenId <= BADGE_ID_END, INVALID_PARAMETER);
         require(!tokenExists[tokenId], "Token ID already exists");
         require(bytes(tokenUri).length > 0, "URI cannot be empty");
-        require(bytes(achievementType).length > 0, "Achievement type cannot be empty");
+        require(bytes(achievementType).length > 0, EMPTY_STRING);
         require(impactScore > 0 && impactScore <= 1000, "Invalid impact score");
-        require(mintedPerType[CONSERVATION_BADGE] < maxSupplyPerType[CONSERVATION_BADGE], "Max supply reached");
+        require(mintedPerType[CONSERVATION_BADGE] < maxSupplyPerType[CONSERVATION_BADGE], MAX_REACHED);
         
         conservationData[tokenId] = ConservationData({
             species: achievementType,
@@ -163,12 +164,12 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
         string memory campaign
     ) external onlyRole(MINTER_ROLE) {
         require(to != address(0), "Invalid recipient address");
-        require(tokenId >= DONOR_ID_START && tokenId <= DONOR_ID_END, "Invalid donor token ID range");
+        require(tokenId >= DONOR_ID_START && tokenId <= DONOR_ID_END, INVALID_PARAMETER);
         require(!tokenExists[tokenId], "Token ID already exists");
-        require(donationAmount > 0, "Donation amount must be greater than 0");
+        require(donationAmount > 0, ZERO_AMOUNT);
         require(bytes(tokenUri).length > 0, "URI cannot be empty");
-        require(bytes(campaign).length > 0, "Campaign cannot be empty");
-        require(mintedPerType[DONOR_RECOGNITION] < maxSupplyPerType[DONOR_RECOGNITION], "Max supply reached");
+        require(bytes(campaign).length > 0, EMPTY_STRING);
+        require(mintedPerType[DONOR_RECOGNITION] < maxSupplyPerType[DONOR_RECOGNITION], MAX_REACHED);
         
         // Calculate impact score based on donation amount
         uint256 impactScore = calculateDonationImpact(donationAmount);
@@ -225,13 +226,13 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
         string memory tokenUri
     ) external onlyRole(DAO_ROLE) {
         require(to != address(0), "Invalid recipient address");
-        require(tokenId >= IMPACT_ID_START && tokenId <= IMPACT_ID_END, "Invalid impact token ID range");
+        require(tokenId >= IMPACT_ID_START && tokenId <= IMPACT_ID_END, INVALID_PARAMETER);
         require(!tokenExists[tokenId], "Token ID already exists");
-        require(bytes(project).length > 0, "Project cannot be empty");
-        require(bytes(location).length > 0, "Location cannot be empty");
+        require(bytes(project).length > 0, EMPTY_STRING);
+        require(bytes(location).length > 0, EMPTY_STRING);
         require(bytes(tokenUri).length > 0, "URI cannot be empty");
         require(impactScore > 0 && impactScore <= 1000, "Invalid impact score");
-        require(mintedPerType[IMPACT_CERTIFICATE] < maxSupplyPerType[IMPACT_CERTIFICATE], "Max supply reached");
+        require(mintedPerType[IMPACT_CERTIFICATE] < maxSupplyPerType[IMPACT_CERTIFICATE], MAX_REACHED);
         
         conservationData[tokenId] = ConservationData({
             species: project,
@@ -255,8 +256,8 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
      * @dev Set maximum supply for a token type
      */
     function setMaxSupply(uint256 tokenType, uint256 maxSupply) external onlyRole(DAO_ROLE) {
-        require(tokenType >= ADOPTION_CERTIFICATE && tokenType <= IMPACT_CERTIFICATE, "Invalid token type");
-        require(maxSupply >= mintedPerType[tokenType], "Max supply less than already minted");
+        require(tokenType >= ADOPTION_CERTIFICATE && tokenType <= IMPACT_CERTIFICATE, INVALID_PARAMETER);
+        require(maxSupply >= mintedPerType[tokenType], INVALID_PARAMETER);
         
         maxSupplyPerType[tokenType] = maxSupply;
         emit MaxSupplySet(tokenType, maxSupply);
@@ -266,8 +267,8 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
      * @dev Update token URI
      */
     function updateTokenURI(uint256 tokenId, string memory newUri) external onlyRole(DAO_ROLE) {
-        require(tokenExists[tokenId], "Token does not exist");
-        require(bytes(newUri).length > 0, "URI cannot be empty");
+        require(tokenExists[tokenId], DOES_NOT_EXIST);
+        require(bytes(newUri).length > 0, EMPTY_STRING);
         
         tokenURIs[tokenId] = newUri;
         emit TokenURIUpdated(tokenId, newUri);
