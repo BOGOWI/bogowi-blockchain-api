@@ -131,15 +131,12 @@ contract RoleManager is AccessControl, Pausable {
      */
     function getRegisteredContracts() 
         external 
-        view 
+        pure
         returns (address[] memory addresses, string[] memory names) 
     {
-        // First, count registered contracts
-        uint256 count = 0;
-        address[] memory tempAddresses = new address[](100); // Assuming max 100 contracts
-        
-        // This is inefficient but necessary without additional storage
+        // This is a placeholder implementation
         // In production, consider maintaining a separate array of registered addresses
+        // for efficient enumeration
         
         // For now, return empty arrays
         // TODO: Implement proper enumeration if needed
