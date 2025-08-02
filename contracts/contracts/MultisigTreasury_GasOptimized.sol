@@ -16,6 +16,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 contract MultisigTreasury_GasOptimized is ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
 
     struct Transaction {
         address to;
@@ -500,7 +501,7 @@ contract MultisigTreasury_GasOptimized is ReentrancyGuard, Pausable {
         external 
         view 
         returns (
-            address[] memory signers,
+            address[] memory signerAddresses,
             PaginationInfo memory pagination
         ) 
     {
@@ -518,9 +519,9 @@ contract MultisigTreasury_GasOptimized is ReentrancyGuard, Pausable {
             end = totalCount;
         }
         
-        signers = new address[](end - start);
+        signerAddresses = new address[](end - start);
         for (uint256 i = 0; i < end - start; i++) {
-            signers[i] = allSigners[start + i];
+            signerAddresses[i] = allSigners[start + i];
         }
         
         pagination = PaginationInfo({

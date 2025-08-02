@@ -62,6 +62,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
     event Deposit(address indexed sender, uint256 amount);
     event TokensReceived(address indexed token, address indexed from, uint256 amount);
     event EmergencyWithdraw(address indexed token, address indexed to, uint256 amount);
+    event FunctionRestrictionsToggled(bool enabled);
     event AutoExecuteToggled(bool enabled);
     event FunctionAllowanceSet(address indexed target, bytes4 indexed selector, bool allowed);
     event EmergencyApprovalGranted(address indexed signer);
@@ -486,6 +487,7 @@ contract MultisigTreasury is ReentrancyGuard, Pausable {
     
     function toggleFunctionRestrictions() external onlyMultisig {
         restrictFunctionCalls = !restrictFunctionCalls;
+        emit FunctionRestrictionsToggled(restrictFunctionCalls);
     }
     
     function getEmergencyApprovalCount() external view returns (uint256) {

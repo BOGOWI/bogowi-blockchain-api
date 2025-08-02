@@ -5,7 +5,11 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract BOGORewardDistributor is Pausable, ReentrancyGuard {
+/**
+ * @title BOGORewardDistributor_ZeroValidated
+ * @dev Reward distributor with comprehensive zero address validation
+ */
+contract BOGORewardDistributor_ZeroValidated is Pausable, ReentrancyGuard {
     IERC20 public immutable bogoToken;
     address public immutable treasury;
     
@@ -28,11 +32,11 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     // Referral tracking
     mapping(address => address) public referredBy;
     mapping(address => uint256) public referralCount;
-    mapping(address => uint256) public referralDepth; // Track depth in referral chain
-    uint256 public constant MAX_REFERRAL_DEPTH = 10; // Maximum depth to prevent long chains
+    mapping(address => uint256) public referralDepth;
+    uint256 public constant MAX_REFERRAL_DEPTH = 10;
     
     // Daily limits
-    uint256 public constant DAILY_GLOBAL_LIMIT = 500000 * 10**18; // 500k BOGO
+    uint256 public constant DAILY_GLOBAL_LIMIT = 500000 * 10**18;
     uint256 public dailyDistributed;
     uint256 public lastResetTime;
     
@@ -41,21 +45,38 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     event ReferralClaimed(address indexed referrer, address indexed referred, uint256 amount);
     event TemplateUpdated(string templateId);
     event WhitelistUpdated(address indexed wallet, bool status);
-    event AuthorizedBackendSet(address indexed backend, bool authorized);
-    event DailyLimitReset(uint256 timestamp, uint256 previousDistributed);
+    event BackendAuthorized(address indexed backend, bool authorized);
+    event TreasurySweep(address indexed token, address indexed to, uint256 amount);
+    
+    // Custom errors for gas optimization
+    error InvalidAddress();
+    error InvalidTreasuryAddress();
+    error InvalidTokenAddress();
+    error NotAuthorizedBackend();
+    error NotTreasury();
+    error InvalidAmount();
+    error InvalidRecipient();
+    error TransferFailed();
     
     modifier onlyAuthorized() {
-        require(authorizedBackends[msg.sender], "Not authorized backend");
+        if (!authorizedBackends[msg.sender]) revert NotAuthorizedBackend();
         _;
     }
     
     modifier onlyTreasury() {
-        require(msg.sender == treasury, "Only treasury can call this function");
+        if (msg.sender != treasury) revert NotTreasury();
+        _;
+    }
+    
+    modifier notZeroAddress(address addr) {
+        if (addr == address(0)) revert InvalidAddress();
         _;
     }
     
     constructor(address _bogoToken, address _treasury) {
-        require(_treasury != address(0), "Invalid treasury address");
+        if (_bogoToken == address(0)) revert InvalidTokenAddress();
+        if (_treasury == address(0)) revert InvalidTreasuryAddress();
+        
         bogoToken = IERC20(_bogoToken);
         treasury = _treasury;
         lastResetTime = block.timestamp;
@@ -63,7 +84,7 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     }
     
     function _initializeTemplates() private {
-        // Onboarding rewards
+        // Initialize all reward templates
         templates["welcome_bonus"] = RewardTemplate({
             id: "welcome_bonus",
             fixedAmount: 10 * 10**18,
@@ -84,13 +105,12 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
             active: true
         });
         
-        // Engagement rewards
         templates["referral_bonus"] = RewardTemplate({
             id: "referral_bonus",
             fixedAmount: 20 * 10**18,
             maxAmount: 0,
             cooldownPeriod: 0,
-            maxClaimsPerWallet: 0, // unlimited
+            maxClaimsPerWallet: 0,
             requiresWhitelist: false,
             active: true
         });
@@ -110,7 +130,7 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
             fixedAmount: 15 * 10**18,
             maxAmount: 0,
             cooldownPeriod: 30 days,
-            maxClaimsPerWallet: 0, // unlimited with cooldown
+            maxClaimsPerWallet: 0,
             requiresWhitelist: false,
             active: true
         });
@@ -156,7 +176,6 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
             active: true
         });
         
-        // Custom reward
         templates["custom_reward"] = RewardTemplate({
             id: "custom_reward",
             fixedAmount: 0,
@@ -170,10 +189,8 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     
     function _resetDailyLimit() private {
         if (block.timestamp >= lastResetTime + 1 days) {
-            uint256 previousDistributed = dailyDistributed;
             dailyDistributed = 0;
             lastResetTime = block.timestamp;
-            emit DailyLimitReset(block.timestamp, previousDistributed);
         }
     }
     
@@ -209,31 +226,51 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         dailyDistributed += template.fixedAmount;
         
         // Transfer tokens
-        require(bogoToken.transfer(msg.sender, template.fixedAmount), "Transfer failed");
+        if (!bogoToken.transfer(msg.sender, template.fixedAmount)) revert TransferFailed();
         
         emit RewardClaimed(msg.sender, templateId, template.fixedAmount);
     }
     
+    /**
+     * @dev Claim custom reward with zero address validation
+     * @param recipient The recipient address (must not be zero)
+     * @param amount The reward amount (must be greater than zero)
+     * @param reason The reason for the reward
+     */
     function claimCustomReward(address recipient, uint256 amount, string memory reason) 
-        external onlyAuthorized nonReentrant whenNotPaused {
+        external 
+        onlyAuthorized 
+        nonReentrant 
+        whenNotPaused
+        notZeroAddress(recipient)
+    {
+        if (amount == 0) revert InvalidAmount();
         _resetDailyLimit();
         
         RewardTemplate memory template = templates["custom_reward"];
         require(template.active, "Custom rewards not active");
-        require(amount > 0 && amount <= template.maxAmount, "Invalid amount");
+        require(amount <= template.maxAmount, "Amount exceeds maximum");
         require(dailyDistributed + amount <= DAILY_GLOBAL_LIMIT, "Daily limit exceeded");
         
         dailyDistributed += amount;
         
-        require(bogoToken.transfer(recipient, amount), "Transfer failed");
+        if (!bogoToken.transfer(recipient, amount)) revert TransferFailed();
         
         emit RewardClaimed(recipient, reason, amount);
     }
     
-    function claimReferralBonus(address referrer) external nonReentrant whenNotPaused {
+    /**
+     * @dev Claim referral bonus with zero address validation
+     * @param referrer The referrer address (must not be zero)
+     */
+    function claimReferralBonus(address referrer) 
+        external 
+        nonReentrant 
+        whenNotPaused
+        notZeroAddress(referrer)
+    {
         require(referredBy[msg.sender] == address(0), "Already referred");
         require(referrer != msg.sender, "Cannot refer yourself");
-        require(referrer != address(0), "Invalid referrer");
         
         // Check for circular referrals
         require(!_hasCircularReferral(msg.sender, referrer), "Circular referral detected");
@@ -256,27 +293,48 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         dailyDistributed += template.fixedAmount;
         
         // Transfer to referrer
-        require(bogoToken.transfer(referrer, template.fixedAmount), "Transfer failed");
+        if (!bogoToken.transfer(referrer, template.fixedAmount)) revert TransferFailed();
         
         emit ReferralClaimed(referrer, msg.sender, template.fixedAmount);
     }
     
-    // Admin functions
+    /**
+     * @dev Add addresses to whitelist with zero address validation
+     * @param wallets Array of wallet addresses to whitelist
+     */
     function addToWhitelist(address[] memory wallets) external onlyTreasury {
         for (uint i = 0; i < wallets.length; i++) {
+            if (wallets[i] == address(0)) revert InvalidAddress();
             founderWhitelist[wallets[i]] = true;
             emit WhitelistUpdated(wallets[i], true);
         }
     }
     
-    function removeFromWhitelist(address wallet) external onlyTreasury {
+    /**
+     * @dev Remove address from whitelist with zero address validation
+     * @param wallet The wallet address to remove from whitelist
+     */
+    function removeFromWhitelist(address wallet) 
+        external 
+        onlyTreasury
+        notZeroAddress(wallet)
+    {
         founderWhitelist[wallet] = false;
         emit WhitelistUpdated(wallet, false);
     }
     
-    function setAuthorizedBackend(address backend, bool authorized) external onlyTreasury {
+    /**
+     * @dev Set authorized backend with zero address validation
+     * @param backend The backend address
+     * @param authorized Whether the backend is authorized
+     */
+    function setAuthorizedBackend(address backend, bool authorized) 
+        external 
+        onlyTreasury
+        notZeroAddress(backend)
+    {
         authorizedBackends[backend] = authorized;
-        emit AuthorizedBackendSet(backend, authorized);
+        emit BackendAuthorized(backend, authorized);
     }
     
     function updateTemplate(string memory templateId, RewardTemplate memory newTemplate) 
@@ -295,6 +353,8 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
     
     // View functions
     function canClaim(address wallet, string memory templateId) external view returns (bool, string memory) {
+        if (wallet == address(0)) return (false, "Invalid wallet address");
+        
         RewardTemplate memory template = templates[templateId];
         
         if (!template.active) return (false, "Template not active");
@@ -323,10 +383,19 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         return DAILY_GLOBAL_LIMIT - dailyDistributed;
     }
     
-    // Treasury sweep function - for token migration during contract upgrades
-    function treasurySweep(address token, address to, uint256 amount) external onlyTreasury nonReentrant {
-        require(to != address(0), "Invalid recipient");
-        require(amount > 0, "Invalid amount");
+    /**
+     * @dev Treasury sweep with zero address validation
+     * @param token The token address (0 for ETH)
+     * @param to The recipient address (must not be zero)
+     * @param amount The amount to sweep
+     */
+    function treasurySweep(address token, address to, uint256 amount) 
+        external 
+        onlyTreasury 
+        nonReentrant
+        notZeroAddress(to)
+    {
+        if (amount == 0) revert InvalidAmount();
         
         if (token == address(0)) {
             // Withdraw ETH
@@ -340,23 +409,13 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         emit TreasurySweep(token, to, amount);
     }
     
-    // Event for treasury sweep operations
-    event TreasurySweep(address indexed token, address indexed to, uint256 amount);
-    
-    /**
-     * @dev Check if adding a referral would create a circular reference
-     * @param newUser The user being referred
-     * @param referrer The proposed referrer
-     * @return bool True if circular reference detected
-     */
     function _hasCircularReferral(address newUser, address referrer) private view returns (bool) {
         address current = referrer;
         uint256 depth = 0;
         
-        // Traverse up the referral chain
         while (current != address(0) && depth < MAX_REFERRAL_DEPTH) {
             if (current == newUser) {
-                return true; // Circular reference found
+                return true;
             }
             current = referredBy[current];
             depth++;
@@ -365,12 +424,11 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
         return false;
     }
     
-    /**
-     * @dev Get the referral chain for a user
-     * @param user The user to check
-     * @return chain Array of addresses in the referral chain
-     */
     function getReferralChain(address user) external view returns (address[] memory) {
+        if (user == address(0)) {
+            return new address[](0);
+        }
+        
         address[] memory tempChain = new address[](MAX_REFERRAL_DEPTH);
         address current = user;
         uint256 count = 0;
@@ -383,7 +441,6 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard {
             }
         }
         
-        // Create properly sized array
         address[] memory chain = new address[](count);
         for (uint256 i = 0; i < count; i++) {
             chain[i] = tempChain[i];
