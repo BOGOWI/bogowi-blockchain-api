@@ -10,12 +10,22 @@ import "./StandardErrors.sol";
 
 /**
  * @title ConservationNFT
- * @dev NFT contract for conservation-related assets, controlled by DAO
+ * @author BOGOWI Team
+ * @notice ERC1155 NFT contract for conservation achievements and wildlife adoption certificates
+ * @dev Implements soulbound tokens for permanent recognition and DAO-controlled minting
+ * Features:
+ * - Wildlife adoption certificates with impact tracking
+ * - Conservation achievement badges
+ * - Donor recognition tokens
+ * - Environmental impact certificates
+ * - Soulbound token support for non-transferable achievements
+ * @custom:security-contact security@bogowi.com
  */
 contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ReentrancyGuard, StandardErrors {
     // Role constants
     bytes32 public constant DAO_ROLE = keccak256("DAO_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     
     // Token type categories
     uint256 public constant ADOPTION_CERTIFICATE = 1;
@@ -46,6 +56,14 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     // Conservation data
     mapping(uint256 => ConservationData) public conservationData;
     
+    /**
+     * @dev Conservation-specific data structure
+     * @param species Wildlife species name
+     * @param location Conservation location
+     * @param impactScore Environmental impact score (1-1000)
+     * @param date Unix timestamp of conservation activity
+     * @param verified Whether data has been verified by DAO
+     */
     struct ConservationData {
         string species;
         string location;
@@ -66,6 +84,10 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     event MaxSupplySet(uint256 tokenType, uint256 maxSupply);
     event TokenURIUpdated(uint256 indexed tokenId, string newUri);
 
+    /**
+     * @notice Initializes the ConservationNFT contract
+     * @dev Sets up roles and default max supplies for each token type
+     */
     constructor() ERC1155("") {
         // Grant admin roles to deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -80,7 +102,15 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     }
 
     /**
-     * @dev Mint wildlife adoption certificate
+     * @notice Mints a wildlife adoption certificate NFT
+     * @dev Token IDs must be in range 1000-1999, soulbound by default
+     * @param to Recipient address
+     * @param tokenId Unique ID for the certificate (1000-1999)
+     * @param species Wildlife species being adopted
+     * @param location Geographic location of conservation
+     * @param tokenUri Metadata URI
+     * @param impactScore Environmental impact score (1-1000)
+     * @custom:emits ConservationNFTMinted
      */
     function mintAdoptionCertificate(
         address to,
@@ -118,7 +148,14 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     }
 
     /**
-     * @dev Mint conservation achievement badge
+     * @notice Mints a conservation achievement badge
+     * @dev Token IDs must be in range 2000-2999, soulbound by default
+     * @param to Recipient address
+     * @param tokenId Unique ID for the badge (2000-2999)
+     * @param impactScore Environmental impact score (1-1000)
+     * @param tokenUri Metadata URI
+     * @param achievementType Type of conservation achievement
+     * @custom:emits ConservationNFTMinted
      */
     function mintConservationBadge(
         address to,
@@ -154,7 +191,14 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     }
 
     /**
-     * @dev Mint donor recognition NFT
+     * @notice Mints a donor recognition NFT
+     * @dev Token IDs must be in range 3000-3999, tracks donation amount
+     * @param to Recipient address
+     * @param tokenId Unique ID for the recognition (3000-3999)
+     * @param donationAmount Donation amount in wei
+     * @param tokenUri Metadata URI
+     * @param campaign Conservation campaign name
+     * @custom:emits ConservationNFTMinted
      */
     function mintDonorNFT(
         address to,
@@ -194,7 +238,12 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     }
 
     /**
-     * @dev Override to prevent transfers of soulbound tokens
+     * @dev Internal transfer function with soulbound enforcement
+     * @notice Overrides ERC1155 to prevent transfers of soulbound tokens
+     * @param from Sender address
+     * @param to Recipient address
+     * @param ids Array of token IDs
+     * @param amounts Array of amounts
      */
     function _update(
         address from,
@@ -210,12 +259,25 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
         super._update(from, to, ids, amounts);
     }
 
+    /**
+     * @notice Returns the metadata URI for a token
+     * @param tokenId ID of the token
+     * @return Metadata URI string
+     */
     function uri(uint256 tokenId) public view override returns (string memory) {
         return tokenURIs[tokenId];
     }
 
     /**
-     * @dev Mint impact certificate for verified conservation outcomes
+     * @notice Mints an environmental impact certificate
+     * @dev Token IDs must be in range 4000-4999, requires DAO_ROLE
+     * @param to Recipient address
+     * @param tokenId Unique ID for the certificate (4000-4999)
+     * @param project Conservation project name
+     * @param location Project location
+     * @param impactScore Environmental impact score (1-1000)
+     * @param tokenUri Metadata URI
+     * @custom:emits ConservationNFTMinted
      */
     function mintImpactCertificate(
         address to,
@@ -253,7 +315,11 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     }
     
     /**
-     * @dev Set maximum supply for a token type
+     * @notice Sets maximum supply for a token type
+     * @dev Only DAO_ROLE can update max supplies
+     * @param tokenType Type of token (1-4)
+     * @param maxSupply New maximum supply
+     * @custom:emits MaxSupplySet
      */
     function setMaxSupply(uint256 tokenType, uint256 maxSupply) external onlyRole(DAO_ROLE) {
         require(tokenType >= ADOPTION_CERTIFICATE && tokenType <= IMPACT_CERTIFICATE, INVALID_PARAMETER);
@@ -264,7 +330,11 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     }
     
     /**
-     * @dev Update token URI
+     * @notice Updates the metadata URI for a token
+     * @dev Only DAO_ROLE can update URIs
+     * @param tokenId ID of token to update
+     * @param newUri New metadata URI
+     * @custom:emits TokenURIUpdated
      */
     function updateTokenURI(uint256 tokenId, string memory newUri) external onlyRole(DAO_ROLE) {
         require(tokenExists[tokenId], DOES_NOT_EXIST);
@@ -275,7 +345,9 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     }
     
     /**
-     * @dev Calculate impact score based on donation amount
+     * @dev Calculates impact score based on donation amount
+     * @param amount Donation amount in wei
+     * @return Impact score (50-1000)
      */
     function calculateDonationImpact(uint256 amount) internal pure returns (uint256) {
         if (amount >= 10 ether) return 1000;
@@ -287,7 +359,9 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
     }
     
     /**
-     * @dev Get token type from token ID
+     * @notice Returns the token type based on token ID
+     * @param tokenId ID of the token
+     * @return Token type (1-4)
      */
     function getTokenType(uint256 tokenId) public pure returns (uint256) {
         if (tokenId >= ADOPTION_ID_START && tokenId <= ADOPTION_ID_END) return ADOPTION_CERTIFICATE;
@@ -297,14 +371,35 @@ contract ConservationNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, Ree
         revert("Invalid token ID");
     }
     
-    function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    /**
+     * @notice Pauses all token transfers and minting
+     * @dev Emergency function for DEFAULT_ADMIN_ROLE or PAUSER_ROLE
+     */
+    function pause() public {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(PAUSER_ROLE, msg.sender),
+            UNAUTHORIZED
+        );
         _pause();
     }
 
-    function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    /**
+     * @notice Unpauses token transfers and minting
+     */
+    function unpause() public {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(PAUSER_ROLE, msg.sender),
+            UNAUTHORIZED
+        );
         _unpause();
     }
     
+    /**
+     * @notice Checks if contract supports an interface
+     * @dev Combines ERC1155 and AccessControl interfaces
+     * @param interfaceId Interface identifier to check
+     * @return True if interface is supported
+     */
     function supportsInterface(bytes4 interfaceId)
         public
         view

@@ -27,6 +27,7 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BUSINESS_ROLE = keccak256("BUSINESS_ROLE");
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     
     // Token type categories
     uint256 public constant EVENT_TICKET = 1;
@@ -353,11 +354,19 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
         emit TreasuryAddressUpdated(oldTreasury, newTreasuryAddress);
     }
 
-    function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function pause() public {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(PAUSER_ROLE, msg.sender),
+            UNAUTHORIZED
+        );
         _pause();
     }
 
-    function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function unpause() public {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(PAUSER_ROLE, msg.sender),
+            UNAUTHORIZED
+        );
         _unpause();
     }
 
