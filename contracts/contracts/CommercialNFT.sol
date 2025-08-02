@@ -11,7 +11,16 @@ import "./StandardErrors.sol";
 
 /**
  * @title CommercialNFT
- * @dev NFT contract for commercial assets, controlled by BOGOWI business
+ * @author BOGOWI Team
+ * @notice ERC1155 NFT contract for commercial assets including tickets, collectibles, merchandise, and gaming items
+ * @dev Implements role-based minting, royalties (ERC2981), and supply tracking
+ * Features:
+ * - Event ticket management with redemption tracking
+ * - Limited edition collectibles with royalty support
+ * - Batch minting for promotional merchandise
+ * - Gaming asset integration
+ * - Treasury-controlled fund management
+ * @custom:security-contact security@bogowi.com
  */
 contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC2981, ReentrancyGuard, StandardErrors {
     // Role constants
@@ -263,7 +272,11 @@ contract CommercialNFT is ERC1155, AccessControl, Pausable, ERC1155Supply, ERC29
     }
 
     /**
-     * @dev Update token URI (for dynamic metadata)
+     * @notice Updates the metadata URI for a token
+     * @dev Only BUSINESS_ROLE can update URIs
+     * @param tokenId ID of token to update
+     * @param newUri New metadata URI
+     * @custom:emits TokenURIUpdated
      */
     function updateTokenURI(uint256 tokenId, string memory newUri) external onlyRole(BUSINESS_ROLE) {
         require(tokenExists[tokenId], DOES_NOT_EXIST);

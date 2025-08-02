@@ -10,10 +10,34 @@ import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./StandardErrors.sol";
 
+/**
+ * @title MultisigTreasury
+ * @author BOGOWI Team
+ * @notice Multi-signature treasury contract for secure fund management
+ * @dev Implements time-locked transactions, emergency withdrawals, and role management
+ * Features:
+ * - Multi-signature transaction approval
+ * - Time-locked execution with expiry
+ * - Emergency withdrawal mechanism
+ * - ERC20/ERC721/ERC1155 token support
+ * - Function call restrictions
+ * - Auto-execution option
+ * @custom:security-contact security@bogowi.com
+ */
 contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    /**
+     * @dev Transaction structure for queued operations
+     * @param to Target address for the transaction
+     * @param value ETH value to send with transaction
+     * @param data Encoded function call data
+     * @param description Human-readable description
+     * @param executed Whether transaction has been executed
+     * @param confirmations Number of signer confirmations
+     * @param timestamp When transaction was submitted
+     */
     struct Transaction {
         address to;
         uint256 value;
@@ -24,6 +48,11 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         uint256 timestamp;
     }
 
+    /**
+     * @dev Signer information structure
+     * @param isSigner Whether address is an active signer
+     * @param addedAt Timestamp when signer was added
+     */
     struct Signer {
         bool isSigner;
         uint256 addedAt;
@@ -97,6 +126,12 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         _;
     }
 
+    /**
+     * @notice Initializes the multisig treasury with signers and threshold
+     * @dev Validates all parameters and sets up initial signer set
+     * @param _signers Array of initial signer addresses
+     * @param _threshold Number of confirmations required for execution
+     */
     constructor(address[] memory _signers, uint256 _threshold) {
         require(_signers.length > 0, INVALID_PARAMETER);
         require(_signers.length <= MAX_SIGNERS, EXCEEDS_LIMIT);
@@ -118,10 +153,24 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         threshold = _threshold;
     }
 
+    /**
+     * @notice Receives ETH deposits
+     * @dev Emits Deposit event for tracking
+     */
     receive() external payable {
         emit Deposit(msg.sender, msg.value);
     }
 
+    /**
+     * @notice Submits a new transaction for multisig approval
+     * @dev Auto-confirms for the submitter, requires signer role
+     * @param _to Target address for the transaction
+     * @param _value ETH amount to send (can be 0 for contract calls)
+     * @param _data Encoded function call data (empty for simple transfers)
+     * @param _description Human-readable description of the transaction
+     * @return txId The ID of the newly created transaction
+     * @custom:emits TransactionSubmitted, TransactionConfirmed
+     */
     function submitTransaction(
         address _to,
         uint256 _value,
@@ -150,6 +199,13 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         return txId;
     }
 
+    /**
+     * @notice Confirms a pending transaction
+     * @dev Auto-executes if threshold is reached and delay has passed
+     * @param _txId ID of the transaction to confirm
+     * @custom:emits TransactionConfirmed
+     * @custom:security May trigger auto-execution if threshold met
+     */
     function confirmTransaction(uint256 _txId) 
         public 
         onlySigner 
@@ -173,6 +229,12 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         }
     }
 
+    /**
+     * @notice Revokes a previously given confirmation
+     * @dev Can only revoke own confirmations on unexecuted transactions
+     * @param _txId ID of the transaction to revoke confirmation for
+     * @custom:emits ConfirmationRevoked
+     */
     function revokeConfirmation(uint256 _txId)
         external
         onlySigner
@@ -187,6 +249,13 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         emit ConfirmationRevoked(_txId, msg.sender);
     }
 
+    /**
+     * @notice Executes a confirmed transaction
+     * @dev Requires threshold confirmations and execution delay
+     * @param _txId ID of the transaction to execute
+     * @custom:emits TransactionExecuted
+     * @custom:security Enforces execution delay and gas limits
+     */
     function executeTransaction(uint256 _txId)
         public
         onlySigner
@@ -223,6 +292,12 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         emit TransactionExecuted(_txId, msg.sender);
     }
 
+    /**
+     * @notice Cancels an expired transaction
+     * @dev Can only cancel after TRANSACTION_EXPIRY period
+     * @param _txId ID of the expired transaction to cancel
+     * @custom:emits TransactionCancelled
+     */
     function cancelExpiredTransaction(uint256 _txId)
         external
         onlySigner
@@ -238,8 +313,12 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         emit TransactionCancelled(_txId);
     }
 
-    // Signer Management Functions (only callable by multisig itself)
-    
+    /**
+     * @notice Adds a new signer to the multisig
+     * @dev Can only be called by the multisig itself through a transaction
+     * @param _signer Address to add as a new signer
+     * @custom:emits SignerAdded
+     */
     function addSigner(address _signer) external onlyMultisig {
         require(_signer != address(0), ZERO_ADDRESS);
         require(!signers[_signer].isSigner, ALREADY_EXISTS);
@@ -255,6 +334,12 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         emit SignerAdded(_signer);
     }
 
+    /**
+     * @notice Removes an existing signer from the multisig
+     * @dev Ensures threshold remains valid after removal
+     * @param _signer Address to remove from signers
+     * @custom:emits SignerRemoved
+     */
     function removeSigner(address _signer) external onlyMultisig {
         require(signers[_signer].isSigner, NOT_SIGNER);
         require(signerCount - 1 >= threshold, CONDITIONS_NOT_MET);
@@ -273,6 +358,12 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         emit SignerRemoved(_signer);
     }
 
+    /**
+     * @notice Changes the confirmation threshold
+     * @dev New threshold must be valid for current signer count
+     * @param _threshold New number of confirmations required
+     * @custom:emits ThresholdChanged
+     */
     function changeThreshold(uint256 _threshold) external onlyMultisig {
         require(_threshold > 0 && _threshold <= signerCount, INVALID_PARAMETER);
         
@@ -282,8 +373,13 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         emit ThresholdChanged(oldThreshold, _threshold);
     }
 
-    // Token Management Functions
-    
+    /**
+     * @notice Grants a role in an external AccessControl contract
+     * @dev Used to manage roles in other BOGOWI contracts
+     * @param _contract Address of the AccessControl contract
+     * @param _role Role identifier to grant
+     * @param _account Address to grant the role to
+     */
     function grantRole(
         address _contract,
         bytes32 _role,
@@ -292,6 +388,13 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         IAccessControl(_contract).grantRole(_role, _account);
     }
 
+    /**
+     * @notice Revokes a role in an external AccessControl contract
+     * @dev Used to manage roles in other BOGOWI contracts
+     * @param _contract Address of the AccessControl contract
+     * @param _role Role identifier to revoke
+     * @param _account Address to revoke the role from
+     */
     function revokeRole(
         address _contract,
         bytes32 _role,
@@ -300,6 +403,13 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         IAccessControl(_contract).revokeRole(_role, _account);
     }
 
+    /**
+     * @notice Transfers ERC20 tokens from treasury
+     * @dev Uses SafeERC20 for secure transfers
+     * @param _token ERC20 token contract address
+     * @param _to Recipient address
+     * @param _amount Amount of tokens to transfer
+     */
     function transferERC20(
         address _token,
         address _to,
@@ -308,6 +418,12 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         IERC20(_token).safeTransfer(_to, _amount);
     }
 
+    /**
+     * @notice Transfers an ERC721 NFT from treasury
+     * @param _token ERC721 token contract address
+     * @param _to Recipient address
+     * @param _tokenId ID of the NFT to transfer
+     */
     function transferERC721(
         address _token,
         address _to,
@@ -316,6 +432,14 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         IERC721(_token).transferFrom(address(this), _to, _tokenId);
     }
 
+    /**
+     * @notice Transfers ERC1155 tokens from treasury
+     * @param _token ERC1155 token contract address
+     * @param _to Recipient address
+     * @param _id Token ID to transfer
+     * @param _amount Amount of tokens to transfer
+     * @param _data Additional data for the transfer
+     */
     function transferERC1155(
         address _token,
         address _to,
@@ -326,16 +450,31 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         IERC1155(_token).safeTransferFrom(address(this), _to, _id, _amount, _data);
     }
 
-    // Emergency Functions
-    
+    /**
+     * @notice Pauses all treasury operations
+     * @dev Emergency function, affects submissions and confirmations
+     * @custom:security Only for emergency situations
+     */
     function pause() external onlyMultisig {
         _pause();
     }
 
+    /**
+     * @notice Unpauses treasury operations
+     * @dev Resumes normal operations after emergency
+     */
     function unpause() external onlyMultisig {
         _unpause();
     }
 
+    /**
+     * @notice Emergency ETH withdrawal during pause
+     * @dev Requires threshold approvals, max 50% of balance
+     * @param _to Recipient address for emergency withdrawal
+     * @param _amount Amount of ETH to withdraw (max 50% of balance)
+     * @custom:emits EmergencyApprovalGranted, EmergencyWithdraw
+     * @custom:security Critical function with special approval process
+     */
     function emergencyWithdrawETH(address payable _to, uint256 _amount) 
         external 
         whenPaused 
@@ -372,12 +511,25 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         }
     }
 
-    // View Functions
-    
+    /**
+     * @notice Returns all current signers
+     * @return Array of signer addresses
+     */
     function getSigners() external view returns (address[] memory) {
         return signerSet.values();
     }
 
+    /**
+     * @notice Returns detailed transaction information
+     * @param _txId ID of the transaction to query
+     * @return to Target address
+     * @return value ETH value
+     * @return data Encoded function data
+     * @return description Transaction description
+     * @return executed Execution status
+     * @return confirmationCount Number of confirmations
+     * @return timestamp Submission timestamp
+     */
     function getTransaction(uint256 _txId) 
         external 
         view 
@@ -403,14 +555,29 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         );
     }
 
+    /**
+     * @notice Returns the number of confirmations for a transaction
+     * @param _txId ID of the transaction
+     * @return Number of confirmations
+     */
     function getConfirmationCount(uint256 _txId) external view returns (uint256) {
         return transactions[_txId].confirmations;
     }
 
+    /**
+     * @notice Checks if a signer has confirmed a transaction
+     * @param _txId ID of the transaction
+     * @param _signer Address of the signer to check
+     * @return True if the signer has confirmed
+     */
     function hasConfirmed(uint256 _txId, address _signer) external view returns (bool) {
         return confirmations[_txId][_signer];
     }
 
+    /**
+     * @notice Returns all pending (unexecuted, non-expired) transactions
+     * @return Array of pending transaction IDs
+     */
     function getPendingTransactions() external view returns (uint256[] memory) {
         uint256 pendingCount = 0;
         
@@ -436,12 +603,22 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         return pendingTxs;
     }
 
+    /**
+     * @notice Checks if a transaction has expired
+     * @param _txId ID of the transaction
+     * @return True if transaction has expired
+     */
     function isTransactionExpired(uint256 _txId) external view returns (bool) {
         return block.timestamp > transactions[_txId].timestamp + TRANSACTION_EXPIRY;
     }
 
-    // Token receipt functions
-    
+    /**
+     * @notice Handles receipt of ERC721 tokens
+     * @dev Required for receiving NFTs
+     * @param from Address sending the NFT
+     * @param tokenId ID of the received NFT
+     * @return ERC721 receiver interface selector
+     */
     function onERC721Received(
         address,
         address from,
@@ -452,6 +629,12 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         return this.onERC721Received.selector;
     }
 
+    /**
+     * @notice Handles receipt of single ERC1155 token
+     * @param from Address sending the token
+     * @param value Amount received
+     * @return ERC1155 receiver interface selector
+     */
     function onERC1155Received(
         address,
         address from,
@@ -463,6 +646,11 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         return this.onERC1155Received.selector;
     }
 
+    /**
+     * @notice Handles receipt of multiple ERC1155 tokens
+     * @param from Address sending the tokens
+     * @return ERC1155 batch receiver interface selector
+     */
     function onERC1155BatchReceived(
         address,
         address from,
@@ -474,27 +662,52 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
         return this.onERC1155BatchReceived.selector;
     }
     
-    // New view functions for enhanced functionality
-    
+    /**
+     * @notice Toggles automatic execution of transactions
+     * @dev When enabled, transactions auto-execute when threshold is met
+     * @custom:emits AutoExecuteToggled
+     */
     function toggleAutoExecute() external onlyMultisig {
         autoExecuteEnabled = !autoExecuteEnabled;
         emit AutoExecuteToggled(autoExecuteEnabled);
     }
     
+    /**
+     * @notice Sets whether a function selector is allowed for a target
+     * @dev Used when function call restrictions are enabled
+     * @param _target Contract address
+     * @param _selector Function selector (4 bytes)
+     * @param _allowed Whether the function is allowed
+     * @custom:emits FunctionAllowanceSet
+     */
     function setFunctionAllowance(address _target, bytes4 _selector, bool _allowed) external onlyMultisig {
         allowedFunctions[_target][_selector] = _allowed;
         emit FunctionAllowanceSet(_target, _selector, _allowed);
     }
     
+    /**
+     * @notice Toggles function call restrictions
+     * @dev When enabled, only allowed function selectors can be called
+     * @custom:emits FunctionRestrictionsToggled
+     */
     function toggleFunctionRestrictions() external onlyMultisig {
         restrictFunctionCalls = !restrictFunctionCalls;
         emit FunctionRestrictionsToggled(restrictFunctionCalls);
     }
     
+    /**
+     * @notice Returns current emergency approval count
+     * @return Number of signers who approved emergency withdrawal
+     */
     function getEmergencyApprovalCount() external view returns (uint256) {
         return emergencyApprovalCount;
     }
     
+    /**
+     * @notice Checks if a signer has approved emergency withdrawal
+     * @param _signer Address to check
+     * @return True if signer has approved emergency withdrawal
+     */
     function hasEmergencyApproval(address _signer) external view returns (bool) {
         return emergencyApprovals[_signer];
     }
