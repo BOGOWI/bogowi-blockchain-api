@@ -60,10 +60,6 @@ function transfer(address to, uint256 amount) external {
 | `grantRole(bytes32 role, address account)` | `account` | Unrevokable permission |
 | `revokeRole(bytes32 role, address account)` | `account` | Transaction failure |
 
-#### Token Registration
-| Function | Parameters to Validate | Risk if Not Validated |
-|----------|----------------------|----------------------|
-| `queueRegisterFlavoredToken(string flavor, address tokenAddress)` | `tokenAddress` | Invalid configuration |
 
 ### BOGORewardDistributor
 

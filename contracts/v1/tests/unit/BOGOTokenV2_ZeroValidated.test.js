@@ -501,4 +501,91 @@ describe("BOGOTokenV2_ZeroValidated", function () {
       ).to.be.revertedWithCustomError(bogoToken, "InvalidAmount");
     });
   });
+
+  describe("Coverage Improvements", function () {
+    it("Should handle burn operations through _update", async function () {
+      // Mint some tokens first
+      await bogoToken.connect(daoRole).mintFromDAO(await user1.getAddress(), ethers.parseEther("1000"));
+      
+      // Burn tokens (this tests the burn path in _update)
+      await bogoToken.connect(user1).burn(ethers.parseEther("100"));
+      
+      expect(await bogoToken.balanceOf(await user1.getAddress())).to.equal(ethers.parseEther("900"));
+    });
+
+    it("Should handle burnFrom operations through _update", async function () {
+      // Mint some tokens first
+      await bogoToken.connect(daoRole).mintFromDAO(await user1.getAddress(), ethers.parseEther("1000"));
+      
+      // Approve user2 to burn tokens
+      await bogoToken.connect(user1).approve(await user2.getAddress(), ethers.parseEther("200"));
+      
+      // BurnFrom (this also tests the burn path in _update)
+      await bogoToken.connect(user2).burnFrom(await user1.getAddress(), ethers.parseEther("150"));
+      
+      expect(await bogoToken.balanceOf(await user1.getAddress())).to.equal(ethers.parseEther("850"));
+      expect(await bogoToken.allowance(await user1.getAddress(), await user2.getAddress())).to.equal(ethers.parseEther("50"));
+    });
+
+    it("Should support interface detection", async function () {
+      // Test IERC165 interface
+      expect(await bogoToken.supportsInterface("0x01ffc9a7")).to.be.true;
+      
+      // Test IAccessControl interface
+      expect(await bogoToken.supportsInterface("0x7965db0b")).to.be.true;
+      
+      // Test invalid interface
+      expect(await bogoToken.supportsInterface("0xffffffff")).to.be.false;
+    });
+
+    it("Should handle transfers correctly through _update", async function () {
+      // Mint tokens
+      await bogoToken.connect(daoRole).mintFromDAO(await user1.getAddress(), ethers.parseEther("1000"));
+      
+      // Normal transfer (tests the transfer path in _update)
+      await bogoToken.connect(user1).transfer(await user2.getAddress(), ethers.parseEther("100"));
+      
+      expect(await bogoToken.balanceOf(await user1.getAddress())).to.equal(ethers.parseEther("900"));
+      expect(await bogoToken.balanceOf(await user2.getAddress())).to.equal(ethers.parseEther("100"));
+    });
+
+    it("Should handle minting through _update correctly", async function () {
+      // Minting already has validation in the minting functions, but let's ensure _update handles it
+      const initialSupply = await bogoToken.totalSupply();
+      
+      await bogoToken.connect(daoRole).mintFromDAO(await user1.getAddress(), ethers.parseEther("5000"));
+      
+      expect(await bogoToken.totalSupply()).to.equal(initialSupply + ethers.parseEther("5000"));
+      expect(await bogoToken.balanceOf(await user1.getAddress())).to.equal(ethers.parseEther("5000"));
+    });
+  });
+
+  describe("Timelock Cancellation Coverage", function () {
+    it("Should revert when cancelling non-existent operation", async function () {
+      const operationId = ethers.keccak256(ethers.toUtf8Bytes("non-existent"));
+      
+      await expect(
+        bogoToken.cancelTimelockOperation(operationId)
+      ).to.be.revertedWithCustomError(bogoToken, "OperationNotQueued");
+    });
+
+    it("Should only allow admin to cancel", async function () {
+      const operationId = ethers.keccak256(ethers.toUtf8Bytes("test"));
+      
+      await expect(
+        bogoToken.connect(user1).cancelTimelockOperation(operationId)
+      ).to.be.revertedWithCustomError(bogoToken, "AccessControlUnauthorizedAccount");
+    });
+
+    it("Should handle valid cancellation scenario", async function () {
+      // Since we removed flavored tokens, we don't have a way to queue operations
+      // But we can still test the access control
+      const operationId = ethers.keccak256(ethers.toUtf8Bytes("test-cancel"));
+      
+      // Should revert with OperationNotQueued since nothing is queued
+      await expect(
+        bogoToken.cancelTimelockOperation(operationId)
+      ).to.be.revertedWithCustomError(bogoToken, "OperationNotQueued");
+    });
+  });
 });

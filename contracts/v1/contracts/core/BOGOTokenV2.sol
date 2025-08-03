@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./StandardErrors.sol";
+import "../utils/StandardErrors.sol";
 
 /**
  * @title BOGOTokenV2
@@ -199,19 +199,6 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard, Standar
         super._update(from, to, value);
     }
 
-    /**
-     * @notice Checks if an address is a contract
-     * @dev Uses extcodesize opcode for verification
-     * @param account Address to check
-     * @return bool True if address contains contract code
-     */
-    function _isContract(address account) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
 
     /**
      * @notice Query if a contract implements an interface

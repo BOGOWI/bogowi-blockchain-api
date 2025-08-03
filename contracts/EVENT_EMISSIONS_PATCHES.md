@@ -82,7 +82,6 @@ function unpause() external onlyTreasury {
 #### BOGOTokenV2
 - ✅ Minting functions (emit AllocationMinted)
 - ✅ Timelock operations (emit TimelockQueued/Executed/Cancelled)
-- ✅ Flavored token registration (emit FlavoredTokenRegistered)
 - ✅ Pause/Unpause (inherited from Pausable)
 - ✅ Burns (ERC20 Transfer event to 0x0)
 

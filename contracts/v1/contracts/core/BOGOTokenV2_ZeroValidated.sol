@@ -250,18 +250,6 @@ contract BOGOTokenV2_ZeroValidated is ERC20, AccessControl, Pausable, Reentrancy
         _unpause();
     }
 
-    /**
-     * @dev Check if an address is a contract
-     * @param account The address to check
-     * @return bool True if the address is a contract
-     */
-    function _isContract(address account) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
 
     // Required by AccessControl
     function supportsInterface(bytes4 interfaceId)

@@ -79,11 +79,6 @@ describe("Zero Address Validation Tests", function () {
             ).to.not.be.reverted;
         });
 
-        it("Should revert queueRegisterFlavoredToken with zero address", async function () {
-            await expect(
-                bogoToken.queueRegisterFlavoredToken("test", ZERO_ADDRESS)
-            ).to.be.revertedWith("ZERO_ADDRESS");
-        });
 
         it("Should allow zero amount in minting functions (OpenZeppelin allows)", async function () {
             // OpenZeppelin's _mint allows zero amounts

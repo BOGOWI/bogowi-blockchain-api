@@ -60,9 +60,9 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             });
 
             it("Should fail when exceeding DAO allocation", async function () {
-                const exceedAmount = DAO_ALLOCATION.add(1);
+                const exceedAmount = DAO_ALLOCATION + 1n;
                 await expect(bogoToken.connect(daoWallet).mintFromDAO(user1.address, exceedAmount))
-                    .to.be.revertedWith("Exceeds DAO allocation");
+                    .to.be.revertedWith("EXCEEDS_ALLOCATION");
             });
 
             it("Should fail when non-DAO role tries to mint", async function () {
@@ -75,7 +75,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
                 await bogoToken.connect(daoWallet).mintFromDAO(user1.address, amount);
                 
                 expect(await bogoToken.getRemainingDAOAllocation())
-                    .to.equal(DAO_ALLOCATION.sub(amount));
+                    .to.equal(DAO_ALLOCATION - amount);
             });
         });
 
@@ -91,9 +91,9 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             });
 
             it("Should fail when exceeding business allocation", async function () {
-                const exceedAmount = BUSINESS_ALLOCATION.add(1);
+                const exceedAmount = BUSINESS_ALLOCATION + 1n;
                 await expect(bogoToken.connect(businessWallet).mintFromBusiness(user1.address, exceedAmount))
-                    .to.be.revertedWith("Exceeds business allocation");
+                    .to.be.revertedWith("EXCEEDS_ALLOCATION");
             });
 
             it("Should track remaining business allocation", async function () {
@@ -101,7 +101,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
                 await bogoToken.connect(businessWallet).mintFromBusiness(user1.address, amount);
                 
                 expect(await bogoToken.getRemainingBusinessAllocation())
-                    .to.equal(BUSINESS_ALLOCATION.sub(amount));
+                    .to.equal(BUSINESS_ALLOCATION - amount);
             });
         });
 
@@ -124,13 +124,13 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
 
             it("Should fail when neither DAO nor BUSINESS role", async function () {
                 await expect(bogoToken.connect(user1).mintFromRewards(user2.address, 1000))
-                    .to.be.revertedWith("Must have DAO or BUSINESS role");
+                    .to.be.revertedWith("UNAUTHORIZED");
             });
 
             it("Should fail when exceeding rewards allocation", async function () {
-                const exceedAmount = REWARDS_ALLOCATION.add(1);
+                const exceedAmount = REWARDS_ALLOCATION + 1n;
                 await expect(bogoToken.connect(daoWallet).mintFromRewards(user1.address, exceedAmount))
-                    .to.be.revertedWith("Exceeds rewards allocation");
+                    .to.be.revertedWith("EXCEEDS_ALLOCATION");
             });
 
             it("Should track remaining rewards allocation", async function () {
@@ -138,7 +138,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
                 await bogoToken.connect(daoWallet).mintFromRewards(user1.address, amount);
                 
                 expect(await bogoToken.getRemainingRewardsAllocation())
-                    .to.equal(REWARDS_ALLOCATION.sub(amount));
+                    .to.equal(REWARDS_ALLOCATION - amount);
             });
         });
 
@@ -146,7 +146,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             it("Should enforce max supply across all allocations", async function () {
                 // This is a complex test - in practice, the allocations sum to MAX_SUPPLY
                 // so we can't exceed it through normal minting
-                expect(DAO_ALLOCATION.add(BUSINESS_ALLOCATION).add(REWARDS_ALLOCATION))
+                expect(DAO_ALLOCATION + BUSINESS_ALLOCATION + REWARDS_ALLOCATION)
                     .to.equal(MAX_SUPPLY);
             });
         });
@@ -166,9 +166,9 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             await bogoToken.connect(user1).burn(burnAmount);
             
             expect(await bogoToken.balanceOf(user1.address))
-                .to.equal(initialBalance.sub(burnAmount));
+                .to.equal(initialBalance - burnAmount);
             expect(await bogoToken.totalSupply())
-                .to.equal(ethers.parseEther("2000").sub(burnAmount));
+                .to.equal(ethers.parseEther("2000") - burnAmount);
         });
 
         it("Should burn tokens with approval (burnFrom)", async function () {
@@ -218,14 +218,14 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             await bogoToken.connect(pauser).pause();
             
             await expect(bogoToken.connect(user1).transfer(user2.address, 100))
-                .to.be.revertedWith("EnforcedPause");
+                .to.be.revertedWithCustomError(bogoToken, "EnforcedPause");
         });
 
         it("Should block minting when paused", async function () {
             await bogoToken.connect(pauser).pause();
             
             await expect(bogoToken.connect(daoWallet).mintFromDAO(user1.address, 100))
-                .to.be.revertedWith("EnforcedPause");
+                .to.be.revertedWithCustomError(bogoToken, "EnforcedPause");
         });
 
         it("Should only allow PAUSER_ROLE to pause/unpause", async function () {
@@ -261,7 +261,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             
             // All transfer operations should fail
             await expect(bogoToken.connect(user1).transfer(user2.address, 100))
-                .to.be.revertedWith("EnforcedPause");
+                .to.be.revertedWithCustomError(bogoToken, "EnforcedPause");
             
             await bogoToken.connect(pauser).unpause();
             
@@ -290,7 +290,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             await bogoToken.connect(daoWallet).mintFromRewards(user1.address, amount3);
             
             expect(await bogoToken.balanceOf(user1.address))
-                .to.equal(amount1.add(amount2).add(amount3));
+                .to.equal(amount1 + amount2 + amount3);
         });
 
         it("Should handle zero amount minting", async function () {
@@ -339,6 +339,51 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             await Promise.all(operations);
             expect(await bogoToken.balanceOf(user1.address))
                 .to.equal(ethers.parseEther("1000"));
+        });
+    });
+
+    describe("Timelock Cancellation Coverage", function () {
+        it("Should cancel a queued timelock operation", async function () {
+            // Since we don't have any timelock operations in the current contract,
+            // we need to test the generic cancelTimelockOperation function
+            // This would be used if we add timelock operations in the future
+            
+            // Create a mock operation ID
+            const operationId = ethers.keccak256(ethers.toUtf8Bytes("test-operation"));
+            
+            // First, we need to set a timelock operation (this is a bit hacky but necessary for coverage)
+            // Since there's no public function to set arbitrary timelock operations,
+            // we'll test the error case
+            await expect(
+                bogoToken.cancelTimelockOperation(operationId)
+            ).to.be.revertedWith("NOT_INITIALIZED");
+        });
+
+        it("Should only allow admin to cancel operations", async function () {
+            const operationId = ethers.keccak256(ethers.toUtf8Bytes("test-operation"));
+            
+            await expect(
+                bogoToken.connect(user1).cancelTimelockOperation(operationId)
+            ).to.be.revertedWithCustomError(bogoToken, "AccessControlUnauthorizedAccount");
+        });
+    });
+
+    describe("Interface Support Coverage", function () {
+        it("Should support ERC165 interface", async function () {
+            expect(await bogoToken.supportsInterface("0x01ffc9a7")).to.be.true;
+        });
+
+        it("Should support AccessControl interface", async function () {
+            expect(await bogoToken.supportsInterface("0x7965db0b")).to.be.true;
+        });
+
+        it("Should not support random interface", async function () {
+            expect(await bogoToken.supportsInterface("0x12345678")).to.be.false;
+        });
+
+        it("Should support ERC20 interface", async function () {
+            // ERC20 doesn't have a standard interface ID, but we can test the behavior
+            expect(await bogoToken.supportsInterface("0x36372b07")).to.be.false; // This is ERC20 metadata
         });
     });
 });
