@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../utils/StandardErrors.sol";
 
 /**
- * @title BOGOTokenV2
+ * @title BOGOToken
  * @author BOGOWI Team
  * @notice Enhanced BOGO token with role-based access control, supply management, and timelock governance
  * @dev Implements ERC20 with additional features:
@@ -18,7 +18,7 @@ import "../utils/StandardErrors.sol";
  * - Burn functionality for deflationary mechanics
  * @custom:security-contact security@bogowi.com
  */
-contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard, StandardErrors {
+contract BOGOToken is ERC20, AccessControl, Pausable, ReentrancyGuard, StandardErrors {
     // Role definitions
     bytes32 public constant DAO_ROLE = keccak256("DAO_ROLE");
     bytes32 public constant BUSINESS_ROLE = keccak256("BUSINESS_ROLE");
@@ -27,9 +27,9 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard, Standar
 
     // Supply and allocation constants
     uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
-    uint256 public constant DAO_ALLOCATION = 200_000_000 * 10**18; // 200M for DAO
-    uint256 public constant BUSINESS_ALLOCATION = 300_000_000 * 10**18; // 300M for business
-    uint256 public constant REWARDS_ALLOCATION = 500_000_000 * 10**18; // 500M for rewards
+    uint256 public constant DAO_ALLOCATION = 50_000_000 * 10**18; // 50M for DAO (5% of total)
+    uint256 public constant BUSINESS_ALLOCATION = 900_000_000 * 10**18; // 900M for business (90% of total)
+    uint256 public constant REWARDS_ALLOCATION = 50_000_000 * 10**18; // 50M for rewards (5% of total)
 
     // Allocation tracking
     uint256 public daoMinted;

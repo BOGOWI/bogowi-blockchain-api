@@ -8,10 +8,10 @@ import "../base/RoleManaged.sol";
 import "../interfaces/IRoleManager.sol";
 
 /**
- * @title BOGOTokenV2_RoleManaged
+ * @title BOGOToken_RoleManaged
  * @dev Enhanced BOGO token with centralized role management, supply management, and timelock governance
  */
-contract BOGOTokenV2_RoleManaged is ERC20, RoleManaged, Pausable, ReentrancyGuard {
+contract BOGOToken_RoleManaged is ERC20, RoleManaged, Pausable, ReentrancyGuard {
     // Supply constants
     uint256 public constant MAX_SUPPLY = 21_000_000 * 10**18; // 21 million tokens
     uint256 public constant DAO_ALLOCATION = 11_550_000 * 10**18; // 55% (11.55M)
