@@ -141,20 +141,6 @@ contract BOGOTokenV2_ZeroValidated is ERC20, AccessControl, Pausable, Reentrancy
     }
 
     /**
-     * @dev Cancel a queued timelock operation
-     * @param operationId The operation identifier to cancel
-     */
-    function cancelTimelockOperation(bytes32 operationId) 
-        external 
-        onlyRole(DEFAULT_ADMIN_ROLE) 
-    {
-        if (timelockOperations[operationId] == 0) revert OperationNotQueued();
-        
-        delete timelockOperations[operationId];
-        emit TimelockCancelled(operationId);
-    }
-
-    /**
      * @dev Burn tokens from a specific account with zero address validation
      * @param account The account to burn from (must not be zero)
      * @param amount The amount to burn (must be greater than zero)

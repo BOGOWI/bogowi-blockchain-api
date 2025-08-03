@@ -342,32 +342,6 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
         });
     });
 
-    describe("Timelock Cancellation Coverage", function () {
-        it("Should cancel a queued timelock operation", async function () {
-            // Since we don't have any timelock operations in the current contract,
-            // we need to test the generic cancelTimelockOperation function
-            // This would be used if we add timelock operations in the future
-            
-            // Create a mock operation ID
-            const operationId = ethers.keccak256(ethers.toUtf8Bytes("test-operation"));
-            
-            // First, we need to set a timelock operation (this is a bit hacky but necessary for coverage)
-            // Since there's no public function to set arbitrary timelock operations,
-            // we'll test the error case
-            await expect(
-                bogoToken.cancelTimelockOperation(operationId)
-            ).to.be.revertedWith("NOT_INITIALIZED");
-        });
-
-        it("Should only allow admin to cancel operations", async function () {
-            const operationId = ethers.keccak256(ethers.toUtf8Bytes("test-operation"));
-            
-            await expect(
-                bogoToken.connect(user1).cancelTimelockOperation(operationId)
-            ).to.be.revertedWithCustomError(bogoToken, "AccessControlUnauthorizedAccount");
-        });
-    });
-
     describe("Interface Support Coverage", function () {
         it("Should support ERC165 interface", async function () {
             expect(await bogoToken.supportsInterface("0x01ffc9a7")).to.be.true;

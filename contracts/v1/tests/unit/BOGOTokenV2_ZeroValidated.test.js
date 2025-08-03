@@ -560,32 +560,4 @@ describe("BOGOTokenV2_ZeroValidated", function () {
     });
   });
 
-  describe("Timelock Cancellation Coverage", function () {
-    it("Should revert when cancelling non-existent operation", async function () {
-      const operationId = ethers.keccak256(ethers.toUtf8Bytes("non-existent"));
-      
-      await expect(
-        bogoToken.cancelTimelockOperation(operationId)
-      ).to.be.revertedWithCustomError(bogoToken, "OperationNotQueued");
-    });
-
-    it("Should only allow admin to cancel", async function () {
-      const operationId = ethers.keccak256(ethers.toUtf8Bytes("test"));
-      
-      await expect(
-        bogoToken.connect(user1).cancelTimelockOperation(operationId)
-      ).to.be.revertedWithCustomError(bogoToken, "AccessControlUnauthorizedAccount");
-    });
-
-    it("Should handle valid cancellation scenario", async function () {
-      // Since we removed flavored tokens, we don't have a way to queue operations
-      // But we can still test the access control
-      const operationId = ethers.keccak256(ethers.toUtf8Bytes("test-cancel"));
-      
-      // Should revert with OperationNotQueued since nothing is queued
-      await expect(
-        bogoToken.cancelTimelockOperation(operationId)
-      ).to.be.revertedWithCustomError(bogoToken, "OperationNotQueued");
-    });
-  });
 });

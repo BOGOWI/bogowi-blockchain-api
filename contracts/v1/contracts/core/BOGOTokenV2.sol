@@ -111,19 +111,6 @@ contract BOGOTokenV2 is ERC20, AccessControl, Pausable, ReentrancyGuard, Standar
     }
 
     /**
-     * @notice Cancels a queued timelock operation
-     * @dev Requires DEFAULT_ADMIN_ROLE
-     * @param operationId Keccak256 hash of the operation to cancel
-     * @custom:emits TimelockCancelled
-     */
-    function cancelTimelockOperation(bytes32 operationId) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(timelockOperations[operationId] != 0, NOT_INITIALIZED);
-        
-        delete timelockOperations[operationId];
-        emit TimelockCancelled(operationId);
-    }
-
-    /**
      * @notice Returns the remaining unminted DAO allocation
      * @return Remaining DAO allocation in tokens (with 18 decimals)
      */
