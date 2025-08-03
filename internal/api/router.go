@@ -93,19 +93,9 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 	token.GET("/balance/:address", handler.GetTokenBalance)
 	token.POST("/transfer", handler.TransferBOGOTokens)
 
-	// NFT endpoints
-	nft := api.Group("/nft")
-	nft.GET("/balance/:address/:tokenId", handler.GetNFTBalance)
-	nft.POST("/mint-ticket", handler.MintEventTicket)
-	nft.POST("/mint-collectible", handler.MintConservationNFT)
-
-	// Rewards endpoints (existing)
+	// Rewards endpoints
 	rewards := api.Group("/rewards")
-	rewards.GET("/info/:address", handler.GetRewardInfo)
-	rewards.GET("/achievement/:address/:achievementId", handler.GetAchievementProgress)
-	rewards.POST("/claim", handler.ClaimReward)
-
-	// New reward system endpoints
+	
 	// Initialize auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.FirebaseProjectID)
 
@@ -121,11 +111,6 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 
 	// Backend-only endpoint
 	rewards.POST("/claim-custom", handler.ClaimCustomRewardV2)
-
-	// DAO endpoints
-	dao := api.Group("/dao")
-	dao.GET("/info", handler.GetDAOInfo)
-	dao.GET("/pending-transactions", handler.GetPendingTransactions)
 
 	return router
 }
