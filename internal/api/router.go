@@ -95,7 +95,7 @@ func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 
 	// Rewards endpoints
 	rewards := api.Group("/rewards")
-	
+
 	// Initialize auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg.FirebaseProjectID)
 
