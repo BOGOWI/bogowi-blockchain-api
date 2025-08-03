@@ -7,7 +7,7 @@ describe("MigrationHelper", function () {
     let oldContract, newContract;
     let mockToken;
     
-    const MIGRATION_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MIGRATION_ROLE"));
+    const MIGRATION_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MIGRATION_ROLE"));
     const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
     const MAX_BATCH_SIZE = 100;
 
@@ -17,94 +17,94 @@ describe("MigrationHelper", function () {
         // Deploy MigrationHelper
         const MigrationHelper = await ethers.getContractFactory("MigrationHelper");
         migrationHelper = await MigrationHelper.deploy();
-        await migrationHelper.deployed();
+        await migrationHelper.waitForDeployment();
 
         // Grant migrator role
-        await migrationHelper.grantRole(MIGRATION_ROLE, migrator.address);
+        await migrationHelper.grantRole(MIGRATION_ROLE, await migrator.getAddress());
 
         // Deploy mock contracts
-        const MockContract = await ethers.getContractFactory("MockERC20");
-        oldContract = await MockContract.deploy("Old", "OLD", ethers.utils.parseEther("1000000"));
-        newContract = await MockContract.deploy("New", "NEW", ethers.utils.parseEther("1000000"));
-        mockToken = await MockContract.deploy("Token", "TKN", ethers.utils.parseEther("1000000"));
+        const MockContract = await ethers.getContractFactory("contracts/test/MockERC20.sol:MockERC20");
+        oldContract = await MockContract.deploy("Old", "OLD", ethers.parseEther("1000000"));
+        newContract = await MockContract.deploy("New", "NEW", ethers.parseEther("1000000"));
+        mockToken = await MockContract.deploy("Token", "TKN", ethers.parseEther("1000000"));
         
-        await oldContract.deployed();
-        await newContract.deployed();
-        await mockToken.deployed();
+        await oldContract.waitForDeployment();
+        await newContract.waitForDeployment();
+        await mockToken.waitForDeployment();
 
         // Fund migration helper for testing
         await owner.sendTransaction({
-            to: migrationHelper.address,
-            value: ethers.utils.parseEther("1")
+            to: await migrationHelper.getAddress(),
+            value: ethers.parseEther("1")
         });
-        await mockToken.transfer(migrationHelper.address, ethers.utils.parseEther("1000"));
+        await mockToken.transfer(await migrationHelper.getAddress(), ethers.parseEther("1000"));
     });
 
     describe("Deployment", function () {
         it("Should set correct roles", async function () {
-            expect(await migrationHelper.hasRole(DEFAULT_ADMIN_ROLE, owner.address)).to.be.true;
-            expect(await migrationHelper.hasRole(MIGRATION_ROLE, owner.address)).to.be.true;
-            expect(await migrationHelper.hasRole(MIGRATION_ROLE, migrator.address)).to.be.true;
+            expect(await migrationHelper.hasRole(DEFAULT_ADMIN_ROLE, await owner.getAddress())).to.be.true;
+            expect(await migrationHelper.hasRole(MIGRATION_ROLE, await owner.getAddress())).to.be.true;
+            expect(await migrationHelper.hasRole(MIGRATION_ROLE, await migrator.getAddress())).to.be.true;
         });
     });
 
     describe("Single User Migration", function () {
         it("Should mark user as migrated", async function () {
-            await expect(migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address))
+            await expect(migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress()))
                 .to.emit(migrationHelper, "UserMigrated")
-                .withArgs(user1.address, oldContract.address, migrator.address);
+                .withArgs(await user1.getAddress(), await oldContract.getAddress(), await migrator.getAddress());
 
-            expect(await migrationHelper.isMigrated(oldContract.address, user1.address)).to.be.true;
-            expect(await migrationHelper.migrationCount(oldContract.address)).to.equal(1);
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user1.getAddress())).to.be.true;
+            expect(await migrationHelper.migrationCount(await oldContract.getAddress())).to.equal(1);
         });
 
         it("Should revert if user already migrated", async function () {
-            await migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address);
+            await migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress());
             
             await expect(
-                migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address)
+                migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress())
             ).to.be.revertedWithCustomError(migrationHelper, "AlreadyMigrated");
         });
 
         it("Should track migrations per contract", async function () {
-            await migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address);
-            await migrationHelper.connect(migrator).markMigrated(oldContract.address, user2.address);
-            await migrationHelper.connect(migrator).markMigrated(newContract.address, user1.address);
+            await migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress());
+            await migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user2.getAddress());
+            await migrationHelper.connect(migrator).markMigrated(await newContract.getAddress(), await user1.getAddress());
 
-            expect(await migrationHelper.migrationCount(oldContract.address)).to.equal(2);
-            expect(await migrationHelper.migrationCount(newContract.address)).to.equal(1);
+            expect(await migrationHelper.migrationCount(await oldContract.getAddress())).to.equal(2);
+            expect(await migrationHelper.migrationCount(await newContract.getAddress())).to.equal(1);
         });
 
         it("Should only allow authorized migrators", async function () {
             await expect(
-                migrationHelper.connect(user1).markMigrated(oldContract.address, user2.address)
+                migrationHelper.connect(user1).markMigrated(await oldContract.getAddress(), await user2.getAddress())
             ).to.be.reverted;
         });
     });
 
     describe("Batch Migration", function () {
         it("Should batch mark users as migrated", async function () {
-            const users = [user1.address, user2.address, user3.address];
+            const users = [await user1.getAddress(), await user2.getAddress(), await user3.getAddress()];
             
-            await expect(migrationHelper.connect(migrator).batchMarkMigrated(oldContract.address, users))
+            await expect(migrationHelper.connect(migrator).batchMarkMigrated(await oldContract.getAddress(), users))
                 .to.emit(migrationHelper, "BatchMigrationCompleted")
-                .withArgs(oldContract.address, 3);
+                .withArgs(await oldContract.getAddress(), 3);
 
-            expect(await migrationHelper.isMigrated(oldContract.address, user1.address)).to.be.true;
-            expect(await migrationHelper.isMigrated(oldContract.address, user2.address)).to.be.true;
-            expect(await migrationHelper.isMigrated(oldContract.address, user3.address)).to.be.true;
-            expect(await migrationHelper.migrationCount(oldContract.address)).to.equal(3);
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user1.getAddress())).to.be.true;
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user2.getAddress())).to.be.true;
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user3.getAddress())).to.be.true;
+            expect(await migrationHelper.migrationCount(await oldContract.getAddress())).to.equal(3);
         });
 
         it("Should skip already migrated users in batch", async function () {
-            await migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address);
+            await migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress());
             
-            const users = [user1.address, user2.address, user3.address];
-            await expect(migrationHelper.connect(migrator).batchMarkMigrated(oldContract.address, users))
+            const users = [await user1.getAddress(), await user2.getAddress(), await user3.getAddress()];
+            await expect(migrationHelper.connect(migrator).batchMarkMigrated(await oldContract.getAddress(), users))
                 .to.emit(migrationHelper, "BatchMigrationCompleted")
-                .withArgs(oldContract.address, 2); // Only 2 new migrations
+                .withArgs(await oldContract.getAddress(), 2); // Only 2 new migrations
 
-            expect(await migrationHelper.migrationCount(oldContract.address)).to.equal(3);
+            expect(await migrationHelper.migrationCount(await oldContract.getAddress())).to.equal(3);
         });
 
         it("Should enforce batch size limit", async function () {
@@ -115,53 +115,53 @@ describe("MigrationHelper", function () {
             }
 
             await expect(
-                migrationHelper.connect(migrator).batchMarkMigrated(oldContract.address, users)
+                migrationHelper.connect(migrator).batchMarkMigrated(await oldContract.getAddress(), users)
             ).to.be.revertedWithCustomError(migrationHelper, "BatchSizeTooLarge");
         });
 
         it("Should handle empty batch", async function () {
-            await expect(migrationHelper.connect(migrator).batchMarkMigrated(oldContract.address, []))
+            await expect(migrationHelper.connect(migrator).batchMarkMigrated(await oldContract.getAddress(), []))
                 .to.emit(migrationHelper, "BatchMigrationCompleted")
-                .withArgs(oldContract.address, 0);
+                .withArgs(await oldContract.getAddress(), 0);
         });
     });
 
     describe("Token Recovery", function () {
         it("Should recover ETH", async function () {
-            const balanceBefore = await ethers.provider.getBalance(user1.address);
+            const balanceBefore = await ethers.provider.getBalance(await user1.getAddress());
             
-            await expect(migrationHelper.recoverTokens(ethers.constants.AddressZero, user1.address, ethers.utils.parseEther("0.5")))
+            await expect(migrationHelper.recoverTokens(ethers.ZeroAddress, await user1.getAddress(), ethers.parseEther("0.5")))
                 .to.emit(migrationHelper, "TokensRecovered")
-                .withArgs(ethers.constants.AddressZero, user1.address, ethers.utils.parseEther("0.5"));
+                .withArgs(ethers.ZeroAddress, await user1.getAddress(), ethers.parseEther("0.5"));
 
-            const balanceAfter = await ethers.provider.getBalance(user1.address);
-            expect(balanceAfter.sub(balanceBefore)).to.equal(ethers.utils.parseEther("0.5"));
+            const balanceAfter = await ethers.provider.getBalance(await user1.getAddress());
+            expect(balanceAfter - balanceBefore).to.equal(ethers.parseEther("0.5"));
         });
 
         it("Should recover ERC20 tokens", async function () {
-            const balanceBefore = await mockToken.balanceOf(user1.address);
+            const balanceBefore = await mockToken.balanceOf(await user1.getAddress());
             
-            await expect(migrationHelper.recoverTokens(mockToken.address, user1.address, ethers.utils.parseEther("100")))
+            await expect(migrationHelper.recoverTokens(await mockToken.getAddress(), await user1.getAddress(), ethers.parseEther("100")))
                 .to.emit(migrationHelper, "TokensRecovered")
-                .withArgs(mockToken.address, user1.address, ethers.utils.parseEther("100"));
+                .withArgs(await mockToken.getAddress(), await user1.getAddress(), ethers.parseEther("100"));
 
-            const balanceAfter = await mockToken.balanceOf(user1.address);
-            expect(balanceAfter.sub(balanceBefore)).to.equal(ethers.utils.parseEther("100"));
+            const balanceAfter = await mockToken.balanceOf(await user1.getAddress());
+            expect(balanceAfter - balanceBefore).to.equal(ethers.parseEther("100"));
         });
 
         it("Should only allow admin to recover tokens", async function () {
             await expect(
-                migrationHelper.connect(user1).recoverTokens(mockToken.address, user1.address, ethers.utils.parseEther("100"))
+                migrationHelper.connect(user1).recoverTokens(await mockToken.getAddress(), await user1.getAddress(), ethers.parseEther("100"))
             ).to.be.reverted;
         });
 
         it("Should validate recovery parameters", async function () {
             await expect(
-                migrationHelper.recoverTokens(mockToken.address, ethers.constants.AddressZero, ethers.utils.parseEther("100"))
+                migrationHelper.recoverTokens(await mockToken.getAddress(), ethers.ZeroAddress, ethers.parseEther("100"))
             ).to.be.revertedWith("Invalid recipient");
 
             await expect(
-                migrationHelper.recoverTokens(mockToken.address, user1.address, 0)
+                migrationHelper.recoverTokens(await mockToken.getAddress(), await user1.getAddress(), 0)
             ).to.be.revertedWith("Invalid amount");
         });
     });
@@ -172,14 +172,14 @@ describe("MigrationHelper", function () {
             expect(await migrationHelper.paused()).to.be.true;
 
             await expect(
-                migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address)
-            ).to.be.revertedWith("Pausable: paused");
+                migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress())
+            ).to.be.revertedWithCustomError(migrationHelper, "EnforcedPause");
 
             await migrationHelper.unpause();
             expect(await migrationHelper.paused()).to.be.false;
 
             await expect(
-                migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address)
+                migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress())
             ).to.not.be.reverted;
         });
 
@@ -200,17 +200,17 @@ describe("MigrationHelper", function () {
         it("Should manage migration role", async function () {
             const newMigrator = user3;
             
-            expect(await migrationHelper.hasRole(MIGRATION_ROLE, newMigrator.address)).to.be.false;
+            expect(await migrationHelper.hasRole(MIGRATION_ROLE, await newMigrator.getAddress())).to.be.false;
             
-            await migrationHelper.grantRole(MIGRATION_ROLE, newMigrator.address);
-            expect(await migrationHelper.hasRole(MIGRATION_ROLE, newMigrator.address)).to.be.true;
+            await migrationHelper.grantRole(MIGRATION_ROLE, await newMigrator.getAddress());
+            expect(await migrationHelper.hasRole(MIGRATION_ROLE, await newMigrator.getAddress())).to.be.true;
             
             await expect(
-                migrationHelper.connect(newMigrator).markMigrated(oldContract.address, user1.address)
+                migrationHelper.connect(newMigrator).markMigrated(await oldContract.getAddress(), await user1.getAddress())
             ).to.not.be.reverted;
             
-            await migrationHelper.revokeRole(MIGRATION_ROLE, newMigrator.address);
-            expect(await migrationHelper.hasRole(MIGRATION_ROLE, newMigrator.address)).to.be.false;
+            await migrationHelper.revokeRole(MIGRATION_ROLE, await newMigrator.getAddress());
+            expect(await migrationHelper.hasRole(MIGRATION_ROLE, await newMigrator.getAddress())).to.be.false;
         });
     });
 
@@ -222,53 +222,53 @@ describe("MigrationHelper", function () {
                 users.push(wallet.address);
             }
 
-            const tx = await migrationHelper.connect(migrator).batchMarkMigrated(oldContract.address, users);
+            const tx = await migrationHelper.connect(migrator).batchMarkMigrated(await oldContract.getAddress(), users);
             const receipt = await tx.wait();
             
-            const gasPerUser = receipt.gasUsed.div(50);
+            const gasPerUser = receipt.gasUsed / 50n;
             console.log(`Gas per user in batch: ${gasPerUser}`);
             
             // Should be efficient - less than 50k gas per user
-            expect(gasPerUser.toNumber()).to.be.lessThan(50000);
+            expect(Number(gasPerUser)).to.be.lessThan(50000);
         });
     });
 
     describe("Integration Scenarios", function () {
         it("Should support complete migration flow", async function () {
             // 1. Mark individual high-value users
-            await migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address);
+            await migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress());
             
             // 2. Batch migrate regular users
-            const regularUsers = [user2.address, user3.address];
-            await migrationHelper.connect(migrator).batchMarkMigrated(oldContract.address, regularUsers);
+            const regularUsers = [await user2.getAddress(), await user3.getAddress()];
+            await migrationHelper.connect(migrator).batchMarkMigrated(await oldContract.getAddress(), regularUsers);
             
             // 3. Verify all migrations
-            expect(await migrationHelper.isMigrated(oldContract.address, user1.address)).to.be.true;
-            expect(await migrationHelper.isMigrated(oldContract.address, user2.address)).to.be.true;
-            expect(await migrationHelper.isMigrated(oldContract.address, user3.address)).to.be.true;
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user1.getAddress())).to.be.true;
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user2.getAddress())).to.be.true;
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user3.getAddress())).to.be.true;
             
             // 4. Check total count
-            expect(await migrationHelper.migrationCount(oldContract.address)).to.equal(3);
+            expect(await migrationHelper.migrationCount(await oldContract.getAddress())).to.equal(3);
             
             // 5. Attempt duplicate migration (should be safe)
             await expect(
-                migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address)
+                migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress())
             ).to.be.revertedWithCustomError(migrationHelper, "AlreadyMigrated");
         });
 
         it("Should handle multi-contract migration", async function () {
             // Migrate user1 from multiple old contracts
-            await migrationHelper.connect(migrator).markMigrated(oldContract.address, user1.address);
-            await migrationHelper.connect(migrator).markMigrated(newContract.address, user1.address);
+            await migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user1.getAddress());
+            await migrationHelper.connect(migrator).markMigrated(await newContract.getAddress(), await user1.getAddress());
             
-            expect(await migrationHelper.isMigrated(oldContract.address, user1.address)).to.be.true;
-            expect(await migrationHelper.isMigrated(newContract.address, user1.address)).to.be.true;
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user1.getAddress())).to.be.true;
+            expect(await migrationHelper.isMigrated(await newContract.getAddress(), await user1.getAddress())).to.be.true;
             
             // User2 only migrated from one contract
-            await migrationHelper.connect(migrator).markMigrated(oldContract.address, user2.address);
+            await migrationHelper.connect(migrator).markMigrated(await oldContract.getAddress(), await user2.getAddress());
             
-            expect(await migrationHelper.isMigrated(oldContract.address, user2.address)).to.be.true;
-            expect(await migrationHelper.isMigrated(newContract.address, user2.address)).to.be.false;
+            expect(await migrationHelper.isMigrated(await oldContract.getAddress(), await user2.getAddress())).to.be.true;
+            expect(await migrationHelper.isMigrated(await newContract.getAddress(), await user2.getAddress())).to.be.false;
         });
     });
 });

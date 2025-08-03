@@ -8,10 +8,10 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
     let DAO_ROLE, BUSINESS_ROLE, MINTER_ROLE, PAUSER_ROLE;
 
     // Constants from contract
-    const MAX_SUPPLY = ethers.utils.parseEther("1000000000"); // 1 billion
-    const DAO_ALLOCATION = ethers.utils.parseEther("200000000"); // 200M
-    const BUSINESS_ALLOCATION = ethers.utils.parseEther("300000000"); // 300M
-    const REWARDS_ALLOCATION = ethers.utils.parseEther("500000000"); // 500M
+    const MAX_SUPPLY = ethers.parseEther("1000000000"); // 1 billion
+    const DAO_ALLOCATION = ethers.parseEther("200000000"); // 200M
+    const BUSINESS_ALLOCATION = ethers.parseEther("300000000"); // 300M
+    const REWARDS_ALLOCATION = ethers.parseEther("500000000"); // 500M
     const TIMELOCK_DURATION = 2 * 24 * 60 * 60; // 2 days
 
     beforeEach(async function () {
@@ -19,7 +19,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
 
         const BOGOTokenV2 = await ethers.getContractFactory("BOGOTokenV2");
         bogoToken = await BOGOTokenV2.deploy();
-        await bogoToken.deployed();
+        await bogoToken.waitForDeployment();
 
         // Get role constants
         DAO_ROLE = await bogoToken.DAO_ROLE();
@@ -50,7 +50,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
     describe("Allocation Minting", function () {
         describe("DAO Allocation", function () {
             it("Should mint from DAO allocation", async function () {
-                const amount = ethers.utils.parseEther("1000");
+                const amount = ethers.parseEther("1000");
                 await expect(bogoToken.connect(daoWallet).mintFromDAO(user1.address, amount))
                     .to.emit(bogoToken, "AllocationMinted")
                     .withArgs("DAO", amount, user1.address);
@@ -71,7 +71,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             });
 
             it("Should track remaining DAO allocation", async function () {
-                const amount = ethers.utils.parseEther("50000000"); // 50M
+                const amount = ethers.parseEther("50000000"); // 50M
                 await bogoToken.connect(daoWallet).mintFromDAO(user1.address, amount);
                 
                 expect(await bogoToken.getRemainingDAOAllocation())
@@ -81,7 +81,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
 
         describe("Business Allocation", function () {
             it("Should mint from business allocation", async function () {
-                const amount = ethers.utils.parseEther("5000");
+                const amount = ethers.parseEther("5000");
                 await expect(bogoToken.connect(businessWallet).mintFromBusiness(user1.address, amount))
                     .to.emit(bogoToken, "AllocationMinted")
                     .withArgs("Business", amount, user1.address);
@@ -97,7 +97,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             });
 
             it("Should track remaining business allocation", async function () {
-                const amount = ethers.utils.parseEther("100000000"); // 100M
+                const amount = ethers.parseEther("100000000"); // 100M
                 await bogoToken.connect(businessWallet).mintFromBusiness(user1.address, amount);
                 
                 expect(await bogoToken.getRemainingBusinessAllocation())
@@ -107,7 +107,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
 
         describe("Rewards Allocation", function () {
             it("Should mint from rewards allocation with DAO role", async function () {
-                const amount = ethers.utils.parseEther("10000");
+                const amount = ethers.parseEther("10000");
                 await expect(bogoToken.connect(daoWallet).mintFromRewards(user1.address, amount))
                     .to.emit(bogoToken, "AllocationMinted")
                     .withArgs("Rewards", amount, user1.address);
@@ -116,7 +116,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             });
 
             it("Should mint from rewards allocation with BUSINESS role", async function () {
-                const amount = ethers.utils.parseEther("20000");
+                const amount = ethers.parseEther("20000");
                 await expect(bogoToken.connect(businessWallet).mintFromRewards(user1.address, amount))
                     .to.emit(bogoToken, "AllocationMinted")
                     .withArgs("Rewards", amount, user1.address);
@@ -134,7 +134,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             });
 
             it("Should track remaining rewards allocation", async function () {
-                const amount = ethers.utils.parseEther("250000000"); // 250M
+                const amount = ethers.parseEther("250000000"); // 250M
                 await bogoToken.connect(daoWallet).mintFromRewards(user1.address, amount);
                 
                 expect(await bogoToken.getRemainingRewardsAllocation())
@@ -155,12 +155,12 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
     describe("Burn Functions", function () {
         beforeEach(async function () {
             // Mint some tokens for testing
-            await bogoToken.connect(daoWallet).mintFromDAO(user1.address, ethers.utils.parseEther("1000"));
-            await bogoToken.connect(daoWallet).mintFromDAO(user2.address, ethers.utils.parseEther("1000"));
+            await bogoToken.connect(daoWallet).mintFromDAO(user1.address, ethers.parseEther("1000"));
+            await bogoToken.connect(daoWallet).mintFromDAO(user2.address, ethers.parseEther("1000"));
         });
 
         it("Should burn own tokens", async function () {
-            const burnAmount = ethers.utils.parseEther("100");
+            const burnAmount = ethers.parseEther("100");
             const initialBalance = await bogoToken.balanceOf(user1.address);
             
             await bogoToken.connect(user1).burn(burnAmount);
@@ -168,11 +168,11 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             expect(await bogoToken.balanceOf(user1.address))
                 .to.equal(initialBalance.sub(burnAmount));
             expect(await bogoToken.totalSupply())
-                .to.equal(ethers.utils.parseEther("2000").sub(burnAmount));
+                .to.equal(ethers.parseEther("2000").sub(burnAmount));
         });
 
         it("Should burn tokens with approval (burnFrom)", async function () {
-            const burnAmount = ethers.utils.parseEther("200");
+            const burnAmount = ethers.parseEther("200");
             
             // User1 approves user2 to burn tokens
             await bogoToken.connect(user1).approve(user2.address, burnAmount);
@@ -181,7 +181,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             await bogoToken.connect(user2).burnFrom(user1.address, burnAmount);
             
             expect(await bogoToken.balanceOf(user1.address))
-                .to.equal(ethers.utils.parseEther("800"));
+                .to.equal(ethers.parseEther("800"));
             expect(await bogoToken.allowance(user1.address, user2.address))
                 .to.equal(0);
         });
@@ -201,7 +201,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
 
     describe("Pause Functionality", function () {
         beforeEach(async function () {
-            await bogoToken.connect(daoWallet).mintFromDAO(user1.address, ethers.utils.parseEther("1000"));
+            await bogoToken.connect(daoWallet).mintFromDAO(user1.address, ethers.parseEther("1000"));
         });
 
         it("Should pause and unpause", async function () {
@@ -244,7 +244,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             // Deploy a mock contract to use as flavored token
             const MockToken = await ethers.getContractFactory("BOGOTokenV2");
             mockFlavoredToken = await MockToken.deploy();
-            await mockFlavoredToken.deployed();
+            await mockFlavoredToken.waitForDeployment();
         });
 
         describe("Queue Registration", function () {
@@ -254,8 +254,8 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
                 await expect(bogoToken.queueRegisterFlavoredToken(flavor, mockFlavoredToken.address))
                     .to.emit(bogoToken, "TimelockQueued");
                 
-                const operationId = ethers.utils.keccak256(
-                    ethers.utils.solidityPack(
+                const operationId = ethers.keccak256(
+                    ethers.solidityPack(
                         ["string", "string", "address"],
                         ["registerFlavoredToken", flavor, mockFlavoredToken.address]
                     )
@@ -266,7 +266,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             });
 
             it("Should fail with zero address", async function () {
-                await expect(bogoToken.queueRegisterFlavoredToken("Ocean", ethers.constants.AddressZero))
+                await expect(bogoToken.queueRegisterFlavoredToken("Ocean", ethers.ZeroAddress))
                     .to.be.revertedWith("Invalid token address");
             });
 
@@ -288,8 +288,8 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             beforeEach(async function () {
                 await bogoToken.queueRegisterFlavoredToken(flavor, mockFlavoredToken.address);
                 
-                operationId = ethers.utils.keccak256(
-                    ethers.utils.solidityPack(
+                operationId = ethers.keccak256(
+                    ethers.solidityPack(
                         ["string", "string", "address"],
                         ["registerFlavoredToken", flavor, mockFlavoredToken.address]
                     )
@@ -326,7 +326,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
                 // Deploy another mock token for second registration
                 const MockToken2 = await ethers.getContractFactory("BOGOTokenV2");
                 const mockToken2 = await MockToken2.deploy();
-                await mockToken2.deployed();
+                await mockToken2.waitForDeployment();
                 
                 // Register same flavor with different address
                 await bogoToken.queueRegisterFlavoredToken(flavor, mockToken2.address);
@@ -353,8 +353,8 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             beforeEach(async function () {
                 await bogoToken.queueRegisterFlavoredToken(flavor, mockFlavoredToken.address);
                 
-                operationId = ethers.utils.keccak256(
-                    ethers.utils.solidityPack(
+                operationId = ethers.keccak256(
+                    ethers.solidityPack(
                         ["string", "string", "address"],
                         ["registerFlavoredToken", flavor, mockFlavoredToken.address]
                     )
@@ -397,25 +397,25 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
             });
 
             it("Should retrieve flavored token by hash", async function () {
-                const flavorHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("Ocean"));
+                const flavorHash = ethers.keccak256(ethers.toUtf8Bytes("Ocean"));
                 expect(await bogoToken.getFlavoredTokenByHash(flavorHash))
                     .to.equal(mockFlavoredToken.address);
             });
 
             it("Should return zero address for non-existent flavor", async function () {
                 expect(await bogoToken.flavoredTokens("NonExistent"))
-                    .to.equal(ethers.constants.AddressZero);
+                    .to.equal(ethers.ZeroAddress);
                 
-                const hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("NonExistent"));
+                const hash = ethers.keccak256(ethers.toUtf8Bytes("NonExistent"));
                 expect(await bogoToken.getFlavoredTokenByHash(hash))
-                    .to.equal(ethers.constants.AddressZero);
+                    .to.equal(ethers.ZeroAddress);
             });
         });
     });
 
     describe("Transfer Restrictions", function () {
         beforeEach(async function () {
-            await bogoToken.connect(daoWallet).mintFromDAO(user1.address, ethers.utils.parseEther("1000"));
+            await bogoToken.connect(daoWallet).mintFromDAO(user1.address, ethers.parseEther("1000"));
         });
 
         it("Should allow transfers when not paused", async function () {
@@ -450,15 +450,15 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
         it("Should handle reentrancy protection in minting", async function () {
             // All minting functions have nonReentrant modifier
             // This is tested implicitly through successful minting
-            const amount = ethers.utils.parseEther("1000");
+            const amount = ethers.parseEther("1000");
             await bogoToken.connect(daoWallet).mintFromDAO(user1.address, amount);
             expect(await bogoToken.balanceOf(user1.address)).to.equal(amount);
         });
 
         it("Should handle multiple allocations to same address", async function () {
-            const amount1 = ethers.utils.parseEther("1000");
-            const amount2 = ethers.utils.parseEther("2000");
-            const amount3 = ethers.utils.parseEther("3000");
+            const amount1 = ethers.parseEther("1000");
+            const amount2 = ethers.parseEther("2000");
+            const amount3 = ethers.parseEther("3000");
             
             await bogoToken.connect(daoWallet).mintFromDAO(user1.address, amount1);
             await bogoToken.connect(businessWallet).mintFromBusiness(user1.address, amount2);
@@ -475,7 +475,7 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
 
         it("Should prevent minting to zero address", async function () {
             // ERC20 _mint will revert with zero address
-            await expect(bogoToken.connect(daoWallet).mintFromDAO(ethers.constants.AddressZero, 1000))
+            await expect(bogoToken.connect(daoWallet).mintFromDAO(ethers.ZeroAddress, 1000))
                 .to.be.reverted;
         });
     });
@@ -506,14 +506,14 @@ describe("BOGOTokenV2 - Full Coverage Tests", function () {
                 operations.push(
                     bogoToken.connect(daoWallet).mintFromDAO(
                         user1.address, 
-                        ethers.utils.parseEther("100")
+                        ethers.parseEther("100")
                     )
                 );
             }
             
             await Promise.all(operations);
             expect(await bogoToken.balanceOf(user1.address))
-                .to.equal(ethers.utils.parseEther("1000"));
+                .to.equal(ethers.parseEther("1000"));
         });
     });
 });

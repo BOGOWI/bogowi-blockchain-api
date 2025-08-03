@@ -24,7 +24,7 @@ describe("CommercialNFT", function () {
         
         const CommercialNFT = await ethers.getContractFactory("CommercialNFT");
         commercialNFT = await CommercialNFT.deploy(treasury.address);
-        await commercialNFT.deployed();
+        await commercialNFT.waitForDeployment();
         
         // Get role constants
         DEFAULT_ADMIN_ROLE = await commercialNFT.DEFAULT_ADMIN_ROLE();
@@ -56,13 +56,13 @@ describe("CommercialNFT", function () {
             // Mint a token and check royalty info
             await commercialNFT.mintGamingAsset(user1.address, GAMING_ID, 1, 100, "uri", 0);
             const [receiver, royaltyAmount] = await commercialNFT.royaltyInfo(GAMING_ID, 10000);
-            expect(receiver).to.equal(commercialNFT.address);
+            expect(receiver).to.equal(await commercialNFT.getAddress());
             expect(royaltyAmount).to.equal(500); // 5% of 10000
         });
         
         it("Should fail deployment with zero treasury address", async function () {
             const CommercialNFT = await ethers.getContractFactory("CommercialNFT");
-            await expect(CommercialNFT.deploy(ethers.constants.AddressZero))
+            await expect(CommercialNFT.deploy(ethers.ZeroAddress))
                 .to.be.revertedWith("Invalid treasury address");
         });
     });
@@ -78,15 +78,15 @@ describe("CommercialNFT", function () {
         
         it("Should mint event ticket successfully", async function () {
             await expect(commercialNFT.connect(minter).mintEventTicket(
-                user1.address,
+                await user1.getAddress(),
                 TICKET_ID,
                 eventDate,
                 expiryDate,
                 "Madison Square Garden",
                 "ipfs://ticket-uri",
-                ethers.utils.parseEther("0.1")
+                ethers.parseEther("0.1")
             )).to.emit(commercialNFT, "CommercialNFTMinted")
-                .withArgs(user1.address, TICKET_ID, EVENT_TICKET, ethers.utils.parseEther("0.1"));
+                .withArgs(user1.address, TICKET_ID, EVENT_TICKET, ethers.parseEther("0.1"));
             
             expect(await commercialNFT.balanceOf(user1.address, TICKET_ID)).to.equal(1);
             
@@ -97,7 +97,7 @@ describe("CommercialNFT", function () {
         
         it("Should fail with invalid ticket ID range", async function () {
             await expect(commercialNFT.connect(minter).mintEventTicket(
-                user1.address,
+                await user1.getAddress(),
                 5000, // Invalid ID
                 eventDate,
                 expiryDate,
@@ -214,10 +214,10 @@ describe("CommercialNFT", function () {
                 10,
                 100,
                 "ipfs://collectible-uri",
-                ethers.utils.parseEther("1"),
+                ethers.parseEther("1"),
                 750 // 7.5% royalty
             )).to.emit(commercialNFT, "CommercialNFTMinted")
-                .withArgs(user1.address, COLLECTIBLE_ID, COLLECTIBLE, ethers.utils.parseEther("1"));
+                .withArgs(user1.address, COLLECTIBLE_ID, COLLECTIBLE, ethers.parseEther("1"));
             
             expect(await commercialNFT.balanceOf(user1.address, COLLECTIBLE_ID)).to.equal(10);
             expect(await commercialNFT["totalSupply(uint256)"](COLLECTIBLE_ID)).to.equal(10);
@@ -230,7 +230,7 @@ describe("CommercialNFT", function () {
         
         it("Should enforce max supply", async function () {
             await commercialNFT.connect(minter).mintCollectible(
-                user1.address,
+                await user1.getAddress(),
                 COLLECTIBLE_ID,
                 90,
                 100,
@@ -308,7 +308,7 @@ describe("CommercialNFT", function () {
         });
         
         it("Should fail with invalid recipient address", async function () {
-            const recipients = [user1.address, ethers.constants.AddressZero];
+            const recipients = [user1.address, ethers.ZeroAddress];
             
             await expect(commercialNFT.connect(business).batchMintPromo(
                 recipients,
@@ -353,9 +353,9 @@ describe("CommercialNFT", function () {
                 50,
                 1000,
                 "ipfs://gaming-uri",
-                ethers.utils.parseEther("0.05")
+                ethers.parseEther("0.05")
             )).to.emit(commercialNFT, "CommercialNFTMinted")
-                .withArgs(user1.address, GAMING_ID, GAMING_ASSET, ethers.utils.parseEther("0.05"));
+                .withArgs(user1.address, GAMING_ID, GAMING_ASSET, ethers.parseEther("0.05"));
             
             expect(await commercialNFT.balanceOf(user1.address, GAMING_ID)).to.equal(50);
             
@@ -379,7 +379,7 @@ describe("CommercialNFT", function () {
     describe("Token Burning", function () {
         beforeEach(async function () {
             await commercialNFT.connect(minter).mintGamingAsset(
-                user1.address,
+                await user1.getAddress(),
                 GAMING_ID,
                 10,
                 100,
@@ -441,8 +441,8 @@ describe("CommercialNFT", function () {
             await commercialNFT.pause();
             
             await expect(commercialNFT.connect(user1).safeTransferFrom(
-                user1.address,
-                user2.address,
+                await user1.getAddress(),
+                await user2.getAddress(),
                 GAMING_ID,
                 5,
                 "0x"
@@ -490,8 +490,8 @@ describe("CommercialNFT", function () {
         beforeEach(async function () {
             // Send some ETH to the contract
             await owner.sendTransaction({
-                to: commercialNFT.address,
-                value: ethers.utils.parseEther("5")
+                to: await commercialNFT.getAddress(),
+                value: ethers.parseEther("5")
             });
         });
         
@@ -500,12 +500,12 @@ describe("CommercialNFT", function () {
             
             await expect(commercialNFT.connect(treasury).withdraw())
                 .to.emit(commercialNFT, "FundsWithdrawn")
-                .withArgs(treasury.address, ethers.utils.parseEther("5"));
+                .withArgs(await treasury.getAddress(), ethers.parseEther("5"));
             
             const finalBalance = await treasury.getBalance();
             expect(finalBalance.sub(initialBalance)).to.be.closeTo(
-                ethers.utils.parseEther("5"),
-                ethers.utils.parseEther("0.01") // Account for gas
+                ethers.parseEther("5"),
+                ethers.parseEther("0.01") // Account for gas
             );
         });
         
@@ -522,13 +522,13 @@ describe("CommercialNFT", function () {
         });
         
         it("Should update treasury address", async function () {
-            await expect(commercialNFT.setTreasuryAddress(user3.address))
+            await expect(commercialNFT.setTreasuryAddress(await user3.getAddress()))
                 .to.emit(commercialNFT, "TreasuryAddressUpdated")
-                .withArgs(treasury.address, user3.address);
+                .withArgs(await treasury.getAddress(), await user3.getAddress());
             
-            expect(await commercialNFT.treasuryAddress()).to.equal(user3.address);
-            expect(await commercialNFT.hasRole(TREASURY_ROLE, user3.address)).to.be.true;
-            expect(await commercialNFT.hasRole(TREASURY_ROLE, treasury.address)).to.be.false;
+            expect(await commercialNFT.treasuryAddress()).to.equal(await user3.getAddress());
+            expect(await commercialNFT.hasRole(TREASURY_ROLE, await user3.getAddress())).to.be.true;
+            expect(await commercialNFT.hasRole(TREASURY_ROLE, await treasury.getAddress())).to.be.false;
             
             // New treasury should be able to withdraw
             await expect(commercialNFT.connect(user3).withdraw())
@@ -536,31 +536,31 @@ describe("CommercialNFT", function () {
         });
         
         it("Should fail setting zero treasury address", async function () {
-            await expect(commercialNFT.setTreasuryAddress(ethers.constants.AddressZero))
+            await expect(commercialNFT.setTreasuryAddress(ethers.ZeroAddress))
                 .to.be.revertedWith("Invalid treasury address");
         });
         
         it("Should only allow admin to update treasury", async function () {
-            await expect(commercialNFT.connect(user1).setTreasuryAddress(user3.address))
+            await expect(commercialNFT.connect(user1).setTreasuryAddress(await user3.getAddress()))
                 .to.be.reverted;
         });
     });
     
     describe("Access Control", function () {
         it("Should grant and revoke roles correctly", async function () {
-            expect(await commercialNFT.hasRole(MINTER_ROLE, user1.address)).to.be.false;
+            expect(await commercialNFT.hasRole(MINTER_ROLE, await user1.getAddress())).to.be.false;
             
-            await commercialNFT.grantRole(MINTER_ROLE, user1.address);
-            expect(await commercialNFT.hasRole(MINTER_ROLE, user1.address)).to.be.true;
+            await commercialNFT.grantRole(MINTER_ROLE, await user1.getAddress());
+            expect(await commercialNFT.hasRole(MINTER_ROLE, await user1.getAddress())).to.be.true;
             
-            await commercialNFT.revokeRole(MINTER_ROLE, user1.address);
-            expect(await commercialNFT.hasRole(MINTER_ROLE, user1.address)).to.be.false;
+            await commercialNFT.revokeRole(MINTER_ROLE, await user1.getAddress());
+            expect(await commercialNFT.hasRole(MINTER_ROLE, await user1.getAddress())).to.be.false;
         });
         
         it("Should enforce role requirements", async function () {
             // Try minting without MINTER_ROLE
             await expect(commercialNFT.connect(user1).mintGamingAsset(
-                user2.address,
+                await user2.getAddress(),
                 GAMING_ID,
                 1,
                 100,
@@ -621,16 +621,16 @@ describe("CommercialNFT", function () {
                 1000 // 10% royalty
             );
             
-            const [receiver, royaltyAmount] = await commercialNFT.royaltyInfo(COLLECTIBLE_ID, ethers.utils.parseEther("1"));
+            const [receiver, royaltyAmount] = await commercialNFT.royaltyInfo(COLLECTIBLE_ID, ethers.parseEther("1"));
             expect(receiver).to.equal(commercialNFT.address);
-            expect(royaltyAmount).to.equal(ethers.utils.parseEther("0.1")); // 10%
+            expect(royaltyAmount).to.equal(ethers.parseEther("0.1")); // 10%
         });
     });
     
     describe("Edge Cases and Error Handling", function () {
         it("Should handle zero address checks", async function () {
             await expect(commercialNFT.connect(minter).mintEventTicket(
-                ethers.constants.AddressZero,
+                ethers.ZeroAddress,
                 TICKET_ID,
                 Math.floor(Date.now() / 1000) + 86400,
                 Math.floor(Date.now() / 1000) + 172800,
@@ -673,8 +673,8 @@ describe("CommercialNFT", function () {
             
             // Send ETH to the contract first
             await owner.sendTransaction({
-                to: commercialNFT.address,
-                value: ethers.utils.parseEther("1")
+                to: await commercialNFT.getAddress(),
+                value: ethers.parseEther("1")
             });
             
             // Normal withdrawal should work
@@ -683,15 +683,15 @@ describe("CommercialNFT", function () {
         });
         
         it("Should accept ETH via receive function", async function () {
-            const initialBalance = await ethers.provider.getBalance(commercialNFT.address);
+            const initialBalance = await ethers.provider.getBalance(await commercialNFT.getAddress());
             
             await owner.sendTransaction({
                 to: commercialNFT.address,
-                value: ethers.utils.parseEther("1")
+                value: ethers.parseEther("1")
             });
             
-            const finalBalance = await ethers.provider.getBalance(commercialNFT.address);
-            expect(finalBalance.sub(initialBalance)).to.equal(ethers.utils.parseEther("1"));
+            const finalBalance = await ethers.provider.getBalance(await commercialNFT.getAddress());
+            expect(finalBalance.sub(initialBalance)).to.equal(ethers.parseEther("1"));
         });
     });
 });

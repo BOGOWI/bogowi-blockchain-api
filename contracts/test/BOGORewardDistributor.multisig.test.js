@@ -18,7 +18,7 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
     // Deploy BOGO Token
     const BOGOToken = await ethers.getContractFactory("BOGOTokenV2");
     bogoToken = await BOGOToken.deploy();
-    await bogoToken.deployed();
+    await bogoToken.waitForDeployment();
 
     // Deploy MultisigTreasury with 3 signers and threshold of 2
     const MultisigTreasury = await ethers.getContractFactory("MultisigTreasury");
@@ -26,37 +26,38 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       [signer1.address, signer2.address, signer3.address],
       2
     );
-    await treasury.deployed();
+    await treasury.waitForDeployment();
 
-    // Deploy BOGORewardDistributor with treasury as controller
+    // Deploy BOGORewardDistributor with treasury as controller and test mode enabled
     const BOGORewardDistributor = await ethers.getContractFactory("BOGORewardDistributor");
     rewardDistributor = await BOGORewardDistributor.deploy(
-      bogoToken.address,
-      treasury.address
+      bogoToken.target,
+      treasury.target,
+      true
     );
-    await rewardDistributor.deployed();
+    await rewardDistributor.waitForDeployment();
 
     // Grant DAO role to owner for minting
     const DAO_ROLE = await bogoToken.DAO_ROLE();
     await bogoToken.grantRole(DAO_ROLE, owner.address);
     
     // Fund the reward distributor using rewards allocation
-    await bogoToken.mintFromRewards(rewardDistributor.address, ethers.utils.parseEther("1000000"));
+    await bogoToken.mintFromRewards(rewardDistributor.target, ethers.parseEther("1000000"));
   });
 
   describe("Access Control", function () {
     it("Should have treasury as the controller", async function () {
-      expect(await rewardDistributor.treasury()).to.equal(treasury.address);
+      expect(await rewardDistributor.treasury()).to.equal(treasury.target);
     });
 
     it("Should reject direct calls to admin functions", async function () {
       await expect(
         rewardDistributor.connect(owner).pause()
-      ).to.be.revertedWith("Only treasury can call this function");
+      ).to.be.revertedWith("NOT_BACKEND");
 
       await expect(
         rewardDistributor.connect(signer1).pause()
-      ).to.be.revertedWith("Only treasury can call this function");
+      ).to.be.revertedWith("NOT_BACKEND");
     });
 
     it("Should not have an owner() function", async function () {
@@ -75,7 +76,7 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       // Create pause transaction
       const pauseData = rewardDistributor.interface.encodeFunctionData("pause");
       await treasury.connect(signer1).submitTransaction(
-        rewardDistributor.address,
+        rewardDistributor.target,
         0,
         pauseData,
         "Pause reward distributor"
@@ -97,7 +98,7 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       // Create unpause transaction
       const unpauseData = rewardDistributor.interface.encodeFunctionData("unpause");
       await treasury.connect(signer1).submitTransaction(
-        rewardDistributor.address,
+        rewardDistributor.target,
         0,
         unpauseData,
         "Unpause reward distributor"
@@ -127,7 +128,7 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       );
       
       await treasury.connect(signer1).submitTransaction(
-        rewardDistributor.address,
+        rewardDistributor.target,
         0,
         whitelistData,
         "Add users to founder whitelist"
@@ -142,8 +143,8 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       await treasury.connect(signer1).executeTransaction(0);
 
       // Check if users are whitelisted
-      expect(await rewardDistributor.founderWhitelist(user1.address)).to.be.true;
-      expect(await rewardDistributor.founderWhitelist(user2.address)).to.be.true;
+        expect(await rewardDistributor.founderWhitelist(user1.address)).to.be.true;
+        expect(await rewardDistributor.founderWhitelist(user2.address)).to.be.true;
     });
 
     it("Should allow treasury to set authorized backend through multisig", async function () {
@@ -156,7 +157,7 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       );
       
       await treasury.connect(signer2).submitTransaction(
-        rewardDistributor.address,
+        rewardDistributor.target,
         0,
         backendData,
         "Authorize backend address"
@@ -177,7 +178,7 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
     it("Should allow treasury to update reward template through multisig", async function () {
       const newTemplate = {
         id: "test_reward",
-        fixedAmount: ethers.utils.parseEther("50"),
+        fixedAmount: ethers.parseEther("50"),
         maxAmount: 0,
         cooldownPeriod: 3600, // 1 hour
         maxClaimsPerWallet: 5,
@@ -192,7 +193,7 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       );
       
       await treasury.connect(signer1).submitTransaction(
-        rewardDistributor.address,
+        rewardDistributor.target,
         0,
         updateData,
         "Update test reward template"
@@ -208,7 +209,7 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
 
       // Verify template was updated
       const template = await rewardDistributor.templates("test_reward");
-      expect(template.fixedAmount).to.equal(ethers.utils.parseEther("50"));
+      expect(template.fixedAmount).to.equal(ethers.parseEther("50"));
       expect(template.cooldownPeriod).to.equal(3600);
       expect(template.maxClaimsPerWallet).to.equal(5);
       expect(template.active).to.be.true;
@@ -218,22 +219,22 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
   describe("Normal Operations", function () {
     it("Should allow users to claim rewards normally", async function () {
       // User claims welcome bonus
-      const balanceBefore = await bogoToken.balanceOf(user1.address);
-      await rewardDistributor.connect(user1).claimReward("welcome_bonus");
-      const balanceAfter = await bogoToken.balanceOf(user1.address);
+        const balanceBefore = await bogoToken.balanceOf(user1.address);
+        await rewardDistributor.connect(user1).claimReward("welcome_bonus");
+        const balanceAfter = await bogoToken.balanceOf(user1.address);
       
-      expect(balanceAfter.sub(balanceBefore)).to.equal(ethers.utils.parseEther("10"));
+      expect(balanceAfter - balanceBefore).to.equal(ethers.parseEther("10"));
     });
 
     it("Should allow authorized backends to distribute custom rewards", async function () {
       // First authorize the backend through multisig
       const backendData = rewardDistributor.interface.encodeFunctionData(
-        "setAuthorizedBackend",
-        [signer1.address, true]
-      );
+            "setAuthorizedBackend",
+            [signer1.address, true]
+        );
       
       await treasury.connect(signer2).submitTransaction(
-        rewardDistributor.address,
+        rewardDistributor.target,
         0,
         backendData,
         "Authorize backend"
@@ -246,13 +247,13 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       await treasury.connect(signer1).executeTransaction(0);
 
       // Now backend can distribute custom rewards
-      await rewardDistributor.connect(signer1).claimCustomReward(
-        user2.address,
-        ethers.utils.parseEther("25"),
-        "Achievement reward"
-      );
+        await rewardDistributor.connect(signer1).claimCustomReward(
+            user2.address,
+            ethers.parseEther("25"),
+            "Achievement reward"
+        );
 
-      expect(await bogoToken.balanceOf(user2.address)).to.equal(ethers.utils.parseEther("25"));
+        expect(await bogoToken.balanceOf(user2.address)).to.equal(ethers.parseEther("25"));
     });
   });
 
@@ -260,8 +261,8 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
     it("Should not allow initialization with zero treasury address", async function () {
       const BOGORewardDistributor = await ethers.getContractFactory("BOGORewardDistributor");
       await expect(
-        BOGORewardDistributor.deploy(bogoToken.address, ethers.constants.AddressZero)
-      ).to.be.revertedWith("Invalid treasury address");
+            BOGORewardDistributor.deploy(bogoToken.target, ethers.ZeroAddress, true)
+        ).to.be.revertedWith("ZERO_ADDRESS");
     });
 
     it("Should maintain all existing security features", async function () {
@@ -273,8 +274,8 @@ describe("BOGORewardDistributor - Multisig Integration", function () {
       
       // Cannot claim same one-time reward twice
       await expect(
-        rewardDistributor.connect(user1).claimReward("welcome_bonus")
-      ).to.be.revertedWith("Max claims reached");
+            rewardDistributor.connect(user1).claimReward("welcome_bonus")
+        ).to.be.revertedWith("MAX_REACHED");
     });
   });
 });

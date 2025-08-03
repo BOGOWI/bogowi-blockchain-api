@@ -14,11 +14,11 @@ describe("EmergencyPauseController Basic", function () {
             [guardian1.address, guardian2.address, guardian3.address],
             manager.address
         );
-        await emergencyPause.deployed();
+        await emergencyPause.waitForDeployment();
     });
 
     it("Should deploy successfully", async function () {
-        expect(emergencyPause.address).to.not.equal(ethers.constants.AddressZero);
+        expect(emergencyPause.address).to.not.equal(ethers.ZeroAddress);
         expect(await emergencyPause.requiredConfirmations()).to.equal(2);
         expect(await emergencyPause.MAX_PAUSE_DURATION()).to.equal(72 * 60 * 60);
     });

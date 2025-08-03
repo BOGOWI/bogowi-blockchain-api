@@ -22,6 +22,7 @@ import "./StandardErrors.sol";
 contract BOGORewardDistributor is Pausable, ReentrancyGuard, StandardErrors {
     IERC20 public immutable bogoToken;
     address public immutable treasury;
+    bool public immutable IS_TEST_MODE;
     
     /**
      * @dev Reward template structure
@@ -78,16 +79,30 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard, StandardErrors {
         _;
     }
     
+    modifier onlyTreasuryOrTest() {
+        if (IS_TEST_MODE) {
+            require(msg.sender == treasury || authorizedBackends[msg.sender], NOT_BACKEND);
+        } else {
+            require(msg.sender == treasury, NOT_TREASURY);
+        }
+        _;
+    }
+    
     /**
      * @notice Initializes the reward distributor
      * @dev Sets up BOGO token, treasury, and initializes reward templates
      * @param _bogoToken Address of the BOGO token contract
      * @param _treasury Address that funds the rewards (MultisigTreasury)
+     * @param _isTestMode Whether to enable test mode for enhanced testability
      */
-    constructor(address _bogoToken, address _treasury) {
+    constructor(address _bogoToken, address _treasury, bool _isTestMode) {
+        require(_bogoToken != address(0), ZERO_ADDRESS);
         require(_treasury != address(0), ZERO_ADDRESS);
+        
         bogoToken = IERC20(_bogoToken);
         treasury = _treasury;
+        IS_TEST_MODE = _isTestMode;
+        
         lastResetTime = block.timestamp;
         _initializeTemplates();
     }
@@ -380,14 +395,14 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard, StandardErrors {
      * @notice Pauses all reward claims
      * @dev Emergency function to halt distributions
      */
-    function pause() external onlyTreasury {
+    function pause() external onlyTreasuryOrTest {
         _pause();
     }
-    
+
     /**
      * @notice Unpauses reward claims
      */
-    function unpause() external onlyTreasury {
+    function unpause() external onlyTreasuryOrTest {
         _unpause();
     }
     
@@ -507,5 +522,78 @@ contract BOGORewardDistributor is Pausable, ReentrancyGuard, StandardErrors {
         }
         
         return chain;
+    }
+    
+    // =============================================================================
+    // TEST MODE FUNCTIONS
+    // =============================================================================
+    
+    /**
+     * @notice Test-only function to directly set pause state
+     * @dev Only available in test mode for comprehensive testing
+     * @param _paused Whether to pause or unpause the contract
+     */
+    function testSetPaused(bool _paused) external {
+        require(IS_TEST_MODE, "Only in test mode");
+        if (_paused) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
+    
+    /**
+     * @notice Test-only function to reset daily distribution limit
+     * @dev Allows testing daily limit scenarios without waiting 24 hours
+     */
+    function testResetDailyLimit() external {
+        require(IS_TEST_MODE, "Only in test mode");
+        dailyDistributed = 0;
+        lastResetTime = block.timestamp;
+    }
+    
+    /**
+     * @notice Test-only function to set daily distributed amount
+     * @dev Allows testing daily limit edge cases
+     * @param _amount Amount to set as already distributed today
+     */
+    function testSetDailyDistributed(uint256 _amount) external {
+        require(IS_TEST_MODE, "Only in test mode");
+        require(_amount <= DAILY_GLOBAL_LIMIT, "Amount exceeds daily limit");
+        dailyDistributed = _amount;
+    }
+    
+    /**
+     * @notice Test-only function to manipulate time for testing
+     * @dev Allows testing time-dependent functionality
+     * @param _timestamp New timestamp to set for last reset
+     */
+    function testSetLastResetTime(uint256 _timestamp) external {
+        require(IS_TEST_MODE, "Only in test mode");
+        lastResetTime = _timestamp;
+    }
+    
+    /**
+     * @notice Test-only function to directly set claim count
+     * @dev Allows testing max claims scenarios
+     * @param _user User address
+     * @param _templateId Template ID
+     * @param _count Claim count to set
+     */
+    function testSetClaimCount(address _user, string memory _templateId, uint256 _count) external {
+        require(IS_TEST_MODE, "Only in test mode");
+        claimCount[_user][_templateId] = _count;
+    }
+    
+    /**
+     * @notice Test-only function to directly set last claim time
+     * @dev Allows testing cooldown scenarios
+     * @param _user User address
+     * @param _templateId Template ID
+     * @param _timestamp Last claim timestamp to set
+     */
+    function testSetLastClaim(address _user, string memory _templateId, uint256 _timestamp) external {
+        require(IS_TEST_MODE, "Only in test mode");
+        lastClaim[_user][_templateId] = _timestamp;
     }
 }

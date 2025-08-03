@@ -10,24 +10,47 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
     let users;
 
     beforeEach(async function () {
-        [treasury, backend, user1, user2, user3, user4, user5, ...users] = await ethers.getSigners();
+        [owner, signer1, signer2, signer3, backend, user1, user2, user3, user4, user5, ...users] = await ethers.getSigners();
 
         // Deploy BOGO token
         const BOGOToken = await ethers.getContractFactory("BOGOTokenV2");
         bogoToken = await BOGOToken.deploy();
-        await bogoToken.deployed();
+        await bogoToken.waitForDeployment();
 
-        // Deploy reward distributor
+        // Deploy MultisigTreasury
+        const MultisigTreasury = await ethers.getContractFactory("MultisigTreasury");
+        treasury = await MultisigTreasury.deploy(
+            [signer1.address, signer2.address, signer3.address],
+            2
+        );
+        await treasury.waitForDeployment();
+
+        // Deploy reward distributor with test mode enabled
         const BOGORewardDistributor = await ethers.getContractFactory("BOGORewardDistributor");
-        rewardDistributor = await BOGORewardDistributor.deploy(bogoToken.address, treasury.address);
-        await rewardDistributor.deployed();
+        rewardDistributor = await BOGORewardDistributor.deploy(bogoToken.target, treasury.target, true);
+        await rewardDistributor.waitForDeployment();
 
-        // Setup
-        await rewardDistributor.connect(treasury).setAuthorizedBackend(backend.address, true);
+        // Setup authorized backend through multisig
+        const backendData = rewardDistributor.interface.encodeFunctionData(
+            "setAuthorizedBackend",
+            [backend.address, true]
+        );
+        const tx = await treasury.connect(signer1).submitTransaction(
+            rewardDistributor.target,
+            0,
+            backendData,
+            "Authorize backend"
+        );
+        const receipt = await tx.wait();
+        const txId = receipt.logs[0].args.txId;
+        await treasury.connect(signer2).confirmTransaction(txId);
+        await ethers.provider.send("evm_increaseTime", [3600]);
+        await ethers.provider.send("evm_mine");
+        await treasury.connect(signer1).executeTransaction(txId);
         
-        // Grant DAO role to treasury and mint tokens for rewards
-        await bogoToken.grantRole(await bogoToken.DAO_ROLE(), treasury.address);
-        await bogoToken.connect(treasury).mintFromRewards(rewardDistributor.address, ethers.utils.parseEther("1000000"));
+        // Grant DAO role to owner and mint tokens for rewards
+        await bogoToken.grantRole(await bogoToken.DAO_ROLE(), owner.address);
+        await bogoToken.mintFromRewards(rewardDistributor.target, ethers.parseEther("1000000"));
     });
 
     describe("Circular Referral Detection", function () {
@@ -39,7 +62,7 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
             // User2 tries to refer User1 (circular)
             await expect(
                 rewardDistributor.connect(user1).claimReferralBonus(user2.address)
-            ).to.be.revertedWith("Circular referral detected");
+            ).to.be.revertedWith("CIRCULAR_REFERENCE");
         });
 
         it("Should prevent 3-way circular referral (A→B→C→A)", async function () {
@@ -50,7 +73,7 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
             // User3 tries to refer User1 (would create circle)
             await expect(
                 rewardDistributor.connect(user1).claimReferralBonus(user3.address)
-            ).to.be.revertedWith("Circular referral detected");
+            ).to.be.revertedWith("CIRCULAR_REFERENCE");
         });
 
         it("Should prevent complex circular referral (A→B→C→D→A)", async function () {
@@ -62,7 +85,7 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
             // User4 tries to refer User1 (would create circle)
             await expect(
                 rewardDistributor.connect(user1).claimReferralBonus(user4.address)
-            ).to.be.revertedWith("Circular referral detected");
+            ).to.be.revertedWith("CIRCULAR_REFERENCE");
         });
 
         it("Should allow valid non-circular referrals", async function () {
@@ -99,21 +122,22 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
 
         it("Should prevent referrals beyond maximum depth", async function () {
             const MAX_DEPTH = await rewardDistributor.MAX_REFERRAL_DEPTH();
+            const allUsers = [user2, user3, user4, user5, ...users];
             
             // Create a chain up to MAX_DEPTH
             let prevUser = user1;
-            for (let i = 0; i < MAX_DEPTH; i++) {
-                const currentUser = users[i];
+            for (let i = 0; i < Number(MAX_DEPTH); i++) {
+                const currentUser = allUsers[i];
                 await rewardDistributor.connect(currentUser).claimReferralBonus(prevUser.address);
                 expect(await rewardDistributor.referralDepth(currentUser.address)).to.equal(i + 1);
                 prevUser = currentUser;
             }
 
             // Try to add one more level (should fail)
-            const extraUser = users[MAX_DEPTH];
+            const extraUser = allUsers[Number(MAX_DEPTH)];
             await expect(
                 rewardDistributor.connect(extraUser).claimReferralBonus(prevUser.address)
-            ).to.be.revertedWith("Max referral depth exceeded");
+            ).to.be.revertedWith("EXCEEDS_LIMIT");
         });
     });
 
@@ -159,13 +183,13 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
         it("Should prevent self-referral", async function () {
             await expect(
                 rewardDistributor.connect(user1).claimReferralBonus(user1.address)
-            ).to.be.revertedWith("Cannot refer yourself");
+            ).to.be.revertedWith("SELF_REFERENCE");
         });
 
         it("Should prevent referring zero address", async function () {
             await expect(
-                rewardDistributor.connect(user1).claimReferralBonus(ethers.constants.AddressZero)
-            ).to.be.revertedWith("Invalid referrer");
+                rewardDistributor.connect(user1).claimReferralBonus(ethers.ZeroAddress)
+            ).to.be.revertedWith("ZERO_ADDRESS");
         });
 
         it("Should prevent double referral", async function () {
@@ -173,17 +197,18 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
             
             await expect(
                 rewardDistributor.connect(user2).claimReferralBonus(user3.address)
-            ).to.be.revertedWith("Already referred");
+            ).to.be.revertedWith("ALREADY_EXISTS");
         });
 
         it("Should handle circular detection at maximum depth", async function () {
             // Create a long chain close to MAX_DEPTH
             const MAX_DEPTH = await rewardDistributor.MAX_REFERRAL_DEPTH();
+            const allUsers = [user2, user3, user4, user5, ...users];
             let prevUser = user1;
             
             // Create chain of MAX_DEPTH - 1 users
-            for (let i = 0; i < MAX_DEPTH - 1; i++) {
-                const currentUser = users[i];
+            for (let i = 0; i < Number(MAX_DEPTH) - 1; i++) {
+                const currentUser = allUsers[i];
                 await rewardDistributor.connect(currentUser).claimReferralBonus(prevUser.address);
                 prevUser = currentUser;
             }
@@ -191,24 +216,24 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
             // Last user in chain tries to refer the first user (should detect circle)
             await expect(
                 rewardDistributor.connect(user1).claimReferralBonus(prevUser.address)
-            ).to.be.revertedWith("Circular referral detected");
+            ).to.be.revertedWith("CIRCULAR_REFERENCE");
         });
     });
 
     describe("Referral Rewards with Circular Prevention", function () {
         it("Should correctly distribute rewards in valid referral chains", async function () {
-            const referralBonus = ethers.utils.parseEther("20"); // From template
+            const referralBonus = ethers.parseEther("20"); // From template
             
             const initialBalance1 = await bogoToken.balanceOf(user1.address);
             const initialBalance2 = await bogoToken.balanceOf(user2.address);
 
             // User2 refers User1
             await rewardDistributor.connect(user2).claimReferralBonus(user1.address);
-            expect(await bogoToken.balanceOf(user1.address)).to.equal(initialBalance1.add(referralBonus));
+            expect(await bogoToken.balanceOf(user1.address)).to.equal(initialBalance1 + referralBonus);
 
             // User3 refers User2
             await rewardDistributor.connect(user3).claimReferralBonus(user2.address);
-            expect(await bogoToken.balanceOf(user2.address)).to.equal(initialBalance2.add(referralBonus));
+            expect(await bogoToken.balanceOf(user2.address)).to.equal(initialBalance2 + referralBonus);
 
             // Verify referral counts
             expect(await rewardDistributor.referralCount(user1.address)).to.equal(1);
@@ -223,7 +248,7 @@ describe("BOGORewardDistributor - Circular Referral Prevention", function () {
             // User1 tries to refer User2 (circular - should fail)
             await expect(
                 rewardDistributor.connect(user1).claimReferralBonus(user2.address)
-            ).to.be.revertedWith("Circular referral detected");
+            ).to.be.revertedWith("CIRCULAR_REFERENCE");
 
             // Referral count should not increase for failed attempt
             expect(await rewardDistributor.referralCount(user2.address)).to.equal(0);

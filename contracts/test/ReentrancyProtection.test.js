@@ -11,23 +11,23 @@ describe("Reentrancy Protection Tests", function () {
         // Deploy contracts
         const BOGOTokenV2 = await ethers.getContractFactory("BOGOTokenV2");
         bogoToken = await BOGOTokenV2.deploy();
-        await bogoToken.deployed();
+        await bogoToken.waitForDeployment();
 
         const BOGORewardDistributor = await ethers.getContractFactory("BOGORewardDistributor");
-        rewardDistributor = await BOGORewardDistributor.deploy(bogoToken.address, treasury.address);
-        await rewardDistributor.deployed();
+        rewardDistributor = await BOGORewardDistributor.deploy(bogoToken.target, treasury.address, true);
+        await rewardDistributor.waitForDeployment();
 
         const CommercialNFT = await ethers.getContractFactory("CommercialNFT");
         commercialNFT = await CommercialNFT.deploy(treasury.address);
-        await commercialNFT.deployed();
+        await commercialNFT.waitForDeployment();
 
         const TokenRescuer = await ethers.getContractFactory("TokenRescuer");
         tokenRescuer = await TokenRescuer.deploy();
-        await tokenRescuer.deployed();
+        await tokenRescuer.waitForDeployment();
 
         // Setup roles and mint tokens
         await bogoToken.grantRole(await bogoToken.DAO_ROLE(), owner.address);
-        await bogoToken.mintFromDAO(rewardDistributor.address, ethers.utils.parseEther("1000000"));
+        await bogoToken.mintFromDAO(rewardDistributor.target, ethers.parseEther("1000000"));
     });
 
     describe("BOGORewardDistributor Reentrancy Protection", function () {
@@ -45,14 +45,14 @@ describe("Reentrancy Protection Tests", function () {
 
         it("Should prevent reentrancy in treasurySweep", async function () {
             // First mint some tokens to the reward distributor
-            await bogoToken.mintFromDAO(rewardDistributor.address, ethers.utils.parseEther("1000"));
+            await bogoToken.mintFromDAO(rewardDistributor.target, ethers.parseEther("1000"));
 
             // treasurySweep with tokens should work normally
             await expect(
                 rewardDistributor.connect(treasury).treasurySweep(
-                    bogoToken.address,
+                    bogoToken.target,
                     user1.address,
-                    ethers.utils.parseEther("500")
+                    ethers.parseEther("500")
                 )
             ).to.not.be.reverted;
 
@@ -66,8 +66,8 @@ describe("Reentrancy Protection Tests", function () {
         beforeEach(async function () {
             // Send ETH to contract for withdrawal tests
             await owner.sendTransaction({
-                to: commercialNFT.address,
-                value: ethers.utils.parseEther("5")
+                to: commercialNFT.target,
+                value: ethers.parseEther("5")
             });
         });
 
@@ -91,7 +91,7 @@ describe("Reentrancy Protection Tests", function () {
             // Test basic rescue call to a valid contract
             // This will fail with "Rescue call failed" but proves the modifier works
             await expect(
-                tokenRescuer.rescue(bogoToken.address, "0x12345678")
+                tokenRescuer.rescue(bogoToken.target, "0x12345678")
             ).to.be.revertedWith("Rescue call failed");
         });
 
@@ -103,8 +103,8 @@ describe("Reentrancy Protection Tests", function () {
             // Test will fail due to no valid target, but verifies modifier is in place
             await expect(
                 tokenRescuer.rescueTokens(
-                    bogoToken.address,
-                    rewardDistributor.address,
+                    bogoToken.target,
+                    rewardDistributor.target,
                     owner.address,
                     100
                 )
@@ -116,7 +116,7 @@ describe("Reentrancy Protection Tests", function () {
         it("Should have reentrancy protection on all minting functions", async function () {
             // Test DAO minting
             await expect(
-                bogoToken.mintFromDAO(user1.address, ethers.utils.parseEther("100"))
+                bogoToken.mintFromDAO(user1.address, ethers.parseEther("100"))
             ).to.not.be.reverted;
 
             // Verify all mint functions have the modifier
@@ -142,12 +142,12 @@ describe("Reentrancy Protection Tests", function () {
                 [owner.address, treasury.address],
                 2
             );
-            await multisigTreasury.deployed();
+            await multisigTreasury.waitForDeployment();
 
             // Send ETH to multisig
             await owner.sendTransaction({
-                to: multisigTreasury.address,
-                value: ethers.utils.parseEther("5")
+                to: multisigTreasury.target,
+                value: ethers.parseEther("5")
             });
         });
 
@@ -177,8 +177,8 @@ describe("Reentrancy Protection Tests", function () {
 
             // Send ETH to commercialNFT
             await owner.sendTransaction({
-                to: commercialNFT.address,
-                value: ethers.utils.parseEther("10")
+                to: commercialNFT.target,
+                value: ethers.parseEther("10")
             });
 
             // Even if a malicious contract is the treasury, reentrancy is prevented

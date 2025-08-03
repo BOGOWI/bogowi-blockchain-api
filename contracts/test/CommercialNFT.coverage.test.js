@@ -32,7 +32,7 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
         
         const CommercialNFT = await ethers.getContractFactory("CommercialNFT");
         commercialNFT = await CommercialNFT.deploy(treasury.address);
-        await commercialNFT.deployed();
+        await commercialNFT.waitForDeployment();
         
         DEFAULT_ADMIN_ROLE = await commercialNFT.DEFAULT_ADMIN_ROLE();
         MINTER_ROLE = await commercialNFT.MINTER_ROLE();
@@ -56,7 +56,7 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
                 expiryDate,
                 "Venue",
                 "ticket-uri",
-                ethers.utils.parseEther("0.1")
+                ethers.parseEther("0.1")
             );
             
             await commercialNFT.connect(minter).mintCollectible(
@@ -65,7 +65,7 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
                 5,
                 50,
                 "collectible-uri",
-                ethers.utils.parseEther("1"),
+                ethers.parseEther("1"),
                 750
             );
             
@@ -75,7 +75,7 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
                 20,
                 200,
                 "gaming-uri",
-                ethers.utils.parseEther("0.05")
+                ethers.parseEther("0.05")
             );
             
             // Verify balances
@@ -163,7 +163,7 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
                 0 // 0% royalty
             );
             
-            const [receiver, royaltyAmount] = await commercialNFT.royaltyInfo(COLLECTIBLE_ID_1, ethers.utils.parseEther("1"));
+            const [receiver, royaltyAmount] = await commercialNFT.royaltyInfo(COLLECTIBLE_ID_1, ethers.parseEther("1"));
             expect(receiver).to.equal(commercialNFT.address);
             expect(royaltyAmount).to.equal(0);
         });
@@ -179,9 +179,9 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
                 1000 // 10% max royalty
             );
             
-            const [receiver, royaltyAmount] = await commercialNFT.royaltyInfo(COLLECTIBLE_ID_1, ethers.utils.parseEther("1"));
+            const [receiver, royaltyAmount] = await commercialNFT.royaltyInfo(COLLECTIBLE_ID_1, ethers.parseEther("1"));
             expect(receiver).to.equal(commercialNFT.address);
-            expect(royaltyAmount).to.equal(ethers.utils.parseEther("0.1"));
+            expect(royaltyAmount).to.equal(ethers.parseEther("0.1"));
         });
         
         it("Should accumulate royalties in contract", async function () {
@@ -198,11 +198,11 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
             // Simulate royalty payment
             await owner.sendTransaction({
                 to: commercialNFT.address,
-                value: ethers.utils.parseEther("0.1")
+                value: ethers.parseEther("0.1")
             });
             
             const contractBalance = await ethers.provider.getBalance(commercialNFT.address);
-            expect(contractBalance).to.equal(ethers.utils.parseEther("0.1"));
+            expect(contractBalance).to.equal(ethers.parseEther("0.1"));
             
             // Treasury can withdraw royalties
             await commercialNFT.connect(treasury).withdraw();
@@ -282,7 +282,7 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
         it("Should handle treasury withdrawal after address change", async function () {
             await owner.sendTransaction({
                 to: commercialNFT.address,
-                value: ethers.utils.parseEther("2")
+                value: ethers.parseEther("2")
             });
             
             // Change treasury
@@ -298,8 +298,8 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
             const balanceAfter = await user1.getBalance();
             
             expect(balanceAfter.sub(balanceBefore)).to.be.closeTo(
-                ethers.utils.parseEther("2"),
-                ethers.utils.parseEther("0.01")
+                ethers.parseEther("2"),
+                ethers.parseEther("0.01")
             );
         });
     });
@@ -444,7 +444,7 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
                 expiryDate,
                 "Madison Square Garden",
                 "ipfs://ticket",
-                ethers.utils.parseEther("0.5")
+                ethers.parseEther("0.5")
             );
             
             // Transfer ticket
@@ -563,7 +563,7 @@ describe("CommercialNFT - Additional Coverage Tests", function () {
             // Send ETH to contract
             await owner.sendTransaction({
                 to: commercialNFT.address,
-                value: ethers.utils.parseEther("10")
+                value: ethers.parseEther("10")
             });
             
             // Deploy attacker contract (would need actual implementation)

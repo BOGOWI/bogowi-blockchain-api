@@ -15,7 +15,7 @@ describe.skip("MultisigTreasury - Full Coverage", function () {
       [signer1.address, signer2.address, signer3.address],
       2
     );
-    await treasury.deployed();
+    await treasury.waitForDeployment();
 
     // Deploy NFT contracts
     const ConservationNFT = await ethers.getContractFactory("ConservationNFT");
@@ -25,7 +25,7 @@ describe.skip("MultisigTreasury - Full Coverage", function () {
       "https://test.com/",
       treasury.address
     );
-    await nft721.deployed();
+    await nft721.waitForDeployment();
 
     const CommercialNFT = await ethers.getContractFactory("CommercialNFT");
     nft1155 = await CommercialNFT.deploy(
@@ -34,7 +34,7 @@ describe.skip("MultisigTreasury - Full Coverage", function () {
       "https://test.com/",
       treasury.address
     );
-    await nft1155.deployed();
+    await nft1155.waitForDeployment();
   });
 
   describe("NFT Receiver Functions", function () {
@@ -173,7 +173,7 @@ describe.skip("MultisigTreasury - Full Coverage", function () {
       const MultisigTreasury = await ethers.getContractFactory("MultisigTreasury");
       await expect(
         MultisigTreasury.deploy(
-          [ethers.constants.AddressZero],
+          [ethers.ZeroAddress],
           1
         )
       ).to.be.revertedWith("Invalid signer");
@@ -285,7 +285,7 @@ describe.skip("MultisigTreasury - Full Coverage", function () {
       // Need to wait for delay even with auto-execute
       const tx2 = await treasury.connect(signer1).submitTransaction(
         owner.address,
-        ethers.utils.parseEther("0.1"),
+        ethers.parseEther("0.1"),
         "0x",
         "Auto-execute test"
       );
@@ -304,7 +304,7 @@ describe.skip("MultisigTreasury - Full Coverage", function () {
       );
       
       const balanceAfter = await ethers.provider.getBalance(owner.address);
-      expect(balanceAfter.sub(balanceBefore)).to.be.gte(ethers.utils.parseEther("0.09")); // Account for gas
+      expect(balanceAfter.sub(balanceBefore)).to.be.gte(ethers.parseEther("0.09")); // Account for gas
     });
   });
 
@@ -386,7 +386,7 @@ describe.skip("MultisigTreasury - Full Coverage", function () {
       // Now need all 3 signers for any transaction
       const tx2 = await treasury.connect(signer1).submitTransaction(
         owner.address,
-        ethers.utils.parseEther("0.1"),
+        ethers.parseEther("0.1"),
         "0x",
         "Need all signers"
       );

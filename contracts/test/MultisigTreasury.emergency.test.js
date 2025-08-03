@@ -14,12 +14,12 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       [signer1.address, signer2.address, signer3.address],
       2
     );
-    await treasury.deployed();
+    await treasury.waitForDeployment();
 
     // Fund the treasury with ETH
     await owner.sendTransaction({
-      to: treasury.address,
-      value: ethers.utils.parseEther("10")
+      to: await treasury.getAddress(),
+      value: ethers.parseEther("10")
     });
   });
 
@@ -29,13 +29,13 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       // First need to create and execute a pause transaction
       const pauseData = treasury.interface.encodeFunctionData("pause");
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         pauseData,
         "Pause for emergency"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events.find(e => e.event === "TransactionSubmitted").args.txId;
+      const txId = receipt.logs.find(e => e.fragment && e.fragment.name === "TransactionSubmitted").args.txId;
       
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -46,13 +46,13 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
     });
 
     it("Should accumulate approvals without resetting after first signer", async function () {
-      const withdrawAmount = ethers.utils.parseEther("2");
+      const withdrawAmount = ethers.parseEther("2");
       
       // First signer approves
       await expect(
         treasury.connect(signer1).emergencyWithdrawETH(recipient.address, withdrawAmount)
       ).to.emit(treasury, "EmergencyApprovalGranted")
-        .withArgs(signer1.address);
+        .withArgs(await signer1.getAddress());
       
       // Verify approval was recorded
       expect(await treasury.emergencyApprovals(signer1.address)).to.be.true;
@@ -62,7 +62,7 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       await expect(
         treasury.connect(signer2).emergencyWithdrawETH(recipient.address, withdrawAmount)
       ).to.emit(treasury, "EmergencyWithdraw")
-        .withArgs(ethers.constants.AddressZero, recipient.address, withdrawAmount);
+        .withArgs(ethers.ZeroAddress, recipient.address, withdrawAmount);
       
       // Verify approvals were reset only after execution
       expect(await treasury.emergencyApprovals(signer1.address)).to.be.false;
@@ -71,7 +71,7 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
     });
 
     it("Should not allow double approval from same signer", async function () {
-      const withdrawAmount = ethers.utils.parseEther("2");
+      const withdrawAmount = ethers.parseEther("2");
       
       // First approval
       await treasury.connect(signer1).emergencyWithdrawETH(recipient.address, withdrawAmount);
@@ -79,11 +79,11 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       // Try to approve again
       await expect(
         treasury.connect(signer1).emergencyWithdrawETH(recipient.address, withdrawAmount)
-      ).to.be.revertedWith("Already approved emergency");
+      ).to.be.revertedWith("ALREADY_PROCESSED");
     });
 
     it("Should require exact threshold approvals", async function () {
-      const withdrawAmount = ethers.utils.parseEther("2");
+      const withdrawAmount = ethers.parseEther("2");
       const recipientBefore = await ethers.provider.getBalance(recipient.address);
       
       // First approval - should not execute
@@ -98,12 +98,12 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       
       // Check funds transferred
       const recipientAfterSecond = await ethers.provider.getBalance(recipient.address);
-      expect(recipientAfterSecond.sub(recipientBefore)).to.equal(withdrawAmount);
+      expect(recipientAfterSecond - recipientBefore).to.equal(withdrawAmount);
     });
 
     it("Should respect current threshold for emergency approvals", async function () {
       // The treasury starts with threshold 2, which is what we'll test
-      const withdrawAmount = ethers.utils.parseEther("2");
+      const withdrawAmount = ethers.parseEther("2");
       
       // Verify initial threshold
       expect(await treasury.threshold()).to.equal(2);
@@ -122,7 +122,7 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       
       // Verify withdrawal happened
       const balanceAfter = await ethers.provider.getBalance(recipient.address);
-      expect(balanceAfter.sub(balanceBefore)).to.equal(withdrawAmount);
+      expect(balanceAfter - balanceBefore).to.equal(withdrawAmount);
       
       // Verify approvals were reset
       expect(await treasury.emergencyApprovalCount()).to.equal(0);
@@ -134,13 +134,13 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       // Pause the contract
       const pauseData = treasury.interface.encodeFunctionData("pause");
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         pauseData,
         "Pause for emergency"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events.find(e => e.event === "TransactionSubmitted").args.txId;
+      const txId = receipt.logs.find(e => e.fragment && e.fragment.name === "TransactionSubmitted").args.txId;
       
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -152,50 +152,50 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       // Create a new treasury instance that starts unpaused
       const MultisigTreasury = await ethers.getContractFactory("MultisigTreasury");
       const unpausedTreasury = await MultisigTreasury.deploy(
-        [signer1.address, signer2.address, signer3.address],
+        [await signer1.getAddress(), await signer2.getAddress(), await signer3.getAddress()],
         2
       );
-      await unpausedTreasury.deployed();
+      await unpausedTreasury.waitForDeployment();
       
       // Fund it
       await owner.sendTransaction({
-        to: unpausedTreasury.address,
-        value: ethers.utils.parseEther("10")
+        to: await unpausedTreasury.getAddress(),
+        value: ethers.parseEther("10")
       });
       
       expect(await unpausedTreasury.paused()).to.be.false;
       
       // Try emergency withdrawal when not paused
       await expect(
-        unpausedTreasury.connect(signer1).emergencyWithdrawETH(recipient.address, ethers.utils.parseEther("1"))
-      ).to.be.revertedWith("ExpectedPause");
+        unpausedTreasury.connect(signer1).emergencyWithdrawETH(recipient.address, ethers.parseEther("1"))
+      ).to.be.revertedWithCustomError(unpausedTreasury, "ExpectedPause");
     });
 
     it("Should enforce 50% balance limit", async function () {
-      const balance = await ethers.provider.getBalance(treasury.address);
-      const tooMuch = balance.div(2).add(1);
+      const balance = await ethers.provider.getBalance(await treasury.getAddress());
+      const tooMuch = balance / 2n + 1n;
       
       await expect(
         treasury.connect(signer1).emergencyWithdrawETH(recipient.address, tooMuch)
-      ).to.be.revertedWith("Amount exceeds 50% of balance");
+      ).to.be.revertedWith("EXCEEDS_LIMIT");
     });
 
     it("Should reject zero address recipient", async function () {
       await expect(
         treasury.connect(signer1).emergencyWithdrawETH(
-          ethers.constants.AddressZero, 
-          ethers.utils.parseEther("1")
+          ethers.ZeroAddress, 
+          ethers.parseEther("1")
         )
-      ).to.be.revertedWith("Invalid recipient");
+      ).to.be.revertedWith("ZERO_ADDRESS");
     });
 
     it("Should only allow signers to approve", async function () {
       await expect(
         treasury.connect(nonSigner).emergencyWithdrawETH(
           recipient.address, 
-          ethers.utils.parseEther("1")
+          ethers.parseEther("1")
         )
-      ).to.be.revertedWith("Not a signer");
+      ).to.be.revertedWith("NOT_SIGNER");
     });
   });
 
@@ -204,13 +204,13 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       // Pause the contract
       const pauseData = treasury.interface.encodeFunctionData("pause");
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         pauseData,
         "Pause for emergency"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events.find(e => e.event === "TransactionSubmitted").args.txId;
+      const txId = receipt.logs.find(e => e.fragment && e.fragment.name === "TransactionSubmitted").args.txId;
       
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -219,21 +219,21 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
     });
 
     it("Should reset all approvals after execution", async function () {
-      const withdrawAmount = ethers.utils.parseEther("2");
+      const withdrawAmount = ethers.parseEther("2");
       
       // Get approvals from multiple signers
       await treasury.connect(signer1).emergencyWithdrawETH(recipient.address, withdrawAmount);
       await treasury.connect(signer2).emergencyWithdrawETH(recipient.address, withdrawAmount);
       
       // All approvals should be reset
-      expect(await treasury.emergencyApprovals(signer1.address)).to.be.false;
-      expect(await treasury.emergencyApprovals(signer2.address)).to.be.false;
-      expect(await treasury.emergencyApprovals(signer3.address)).to.be.false;
+      expect(await treasury.emergencyApprovals(await signer1.getAddress())).to.be.false;
+      expect(await treasury.emergencyApprovals(await signer2.getAddress())).to.be.false;
+      expect(await treasury.emergencyApprovals(await signer3.getAddress())).to.be.false;
       expect(await treasury.emergencyApprovalCount()).to.equal(0);
     });
 
     it("Should allow new emergency withdrawal after previous one completes", async function () {
-      const withdrawAmount = ethers.utils.parseEther("2");
+      const withdrawAmount = ethers.parseEther("2");
       
       // First emergency withdrawal
       await treasury.connect(signer1).emergencyWithdrawETH(recipient.address, withdrawAmount);
@@ -247,7 +247,7 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
     });
 
     it("Should handle pre-existing approvals correctly", async function () {
-      const withdrawAmount = ethers.utils.parseEther("2");
+      const withdrawAmount = ethers.parseEther("2");
       
       // First signer approves
       await treasury.connect(signer1).emergencyWithdrawETH(recipient.address, withdrawAmount);
@@ -263,8 +263,8 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       
       // After completion, all approvals are reset
       expect(await treasury.emergencyApprovalCount()).to.equal(0);
-      expect(await treasury.emergencyApprovals(signer1.address)).to.be.false;
-      expect(await treasury.emergencyApprovals(signer3.address)).to.be.false;
+      expect(await treasury.emergencyApprovals(await signer1.getAddress())).to.be.false;
+      expect(await treasury.emergencyApprovals(await signer3.getAddress())).to.be.false;
     });
   });
 
@@ -273,13 +273,13 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       // Pause the contract
       const pauseData = treasury.interface.encodeFunctionData("pause");
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         pauseData,
         "Pause for emergency"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events.find(e => e.event === "TransactionSubmitted").args.txId;
+      const txId = receipt.logs.find(e => e.fragment && e.fragment.name === "TransactionSubmitted").args.txId;
       
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -288,7 +288,7 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
     });
 
     it("Should emit correct events in order", async function () {
-      const withdrawAmount = ethers.utils.parseEther("2");
+      const withdrawAmount = ethers.parseEther("2");
       
       // First approval
       await expect(
@@ -301,11 +301,11 @@ describe("MultisigTreasury - Emergency Withdrawal Tests", function () {
       
       await expect(tx)
         .to.emit(treasury, "EmergencyApprovalGranted")
-        .withArgs(signer2.address);
+        .withArgs(await signer2.getAddress());
         
       await expect(tx)
         .to.emit(treasury, "EmergencyWithdraw")
-        .withArgs(ethers.constants.AddressZero, recipient.address, withdrawAmount);
+        .withArgs(ethers.ZeroAddress, recipient.address, withdrawAmount);
     });
   });
 });

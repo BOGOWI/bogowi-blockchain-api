@@ -15,7 +15,7 @@ describe("RoleManager", function () {
         // Deploy RoleManager
         const RoleManager = await ethers.getContractFactory("RoleManager");
         roleManager = await RoleManager.deploy();
-        await roleManager.deployed();
+        await roleManager.waitForDeployment();
 
         // Get role constants
         DEFAULT_ADMIN_ROLE = await roleManager.DEFAULT_ADMIN_ROLE();
@@ -29,7 +29,7 @@ describe("RoleManager", function () {
         // Deploy a mock contract for testing
         const MockContract = await ethers.getContractFactory("RoleManager");
         mockContract = await MockContract.deploy();
-        await mockContract.deployed();
+        await mockContract.waitForDeployment();
     });
 
     describe("Deployment", function () {
@@ -49,42 +49,42 @@ describe("RoleManager", function () {
 
     describe("Contract Registration", function () {
         it("Should allow admin to register a contract", async function () {
-            await expect(roleManager.registerContract(mockContract.address, "MockContract"))
+            await expect(roleManager.registerContract(await mockContract.getAddress(), "MockContract"))
                 .to.emit(roleManager, "ContractRegistered")
-                .withArgs(mockContract.address, "MockContract");
+                .withArgs(await mockContract.getAddress(), "MockContract");
 
-            expect(await roleManager.registeredContracts(mockContract.address)).to.be.true;
-            expect(await roleManager.contractNames(mockContract.address)).to.equal("MockContract");
+            expect(await roleManager.registeredContracts(await mockContract.getAddress())).to.be.true;
+            expect(await roleManager.contractNames(await mockContract.getAddress())).to.equal("MockContract");
         });
 
         it("Should not allow non-admin to register a contract", async function () {
             await expect(
-                roleManager.connect(user1).registerContract(mockContract.address, "MockContract")
+                roleManager.connect(user1).registerContract(await mockContract.getAddress(), "MockContract")
             ).to.be.reverted;
         });
 
         it("Should not allow registering zero address", async function () {
             await expect(
-                roleManager.registerContract(ethers.constants.AddressZero, "MockContract")
+                roleManager.registerContract(ethers.ZeroAddress, "MockContract")
             ).to.be.revertedWith("Invalid contract address");
         });
 
         it("Should not allow registering same contract twice", async function () {
-            await roleManager.registerContract(mockContract.address, "MockContract");
+            await roleManager.registerContract(await mockContract.getAddress(), "MockContract");
             await expect(
-                roleManager.registerContract(mockContract.address, "MockContract2")
+                roleManager.registerContract(await mockContract.getAddress(), "MockContract2")
             ).to.be.revertedWith("Contract already registered");
         });
 
         it("Should allow admin to deregister a contract", async function () {
-            await roleManager.registerContract(mockContract.address, "MockContract");
+            await roleManager.registerContract(await mockContract.getAddress(), "MockContract");
             
-            await expect(roleManager.deregisterContract(mockContract.address))
+            await expect(roleManager.deregisterContract(await mockContract.getAddress()))
                 .to.emit(roleManager, "ContractDeregistered")
-                .withArgs(mockContract.address);
+                .withArgs(await mockContract.getAddress());
 
-            expect(await roleManager.registeredContracts(mockContract.address)).to.be.false;
-            expect(await roleManager.contractNames(mockContract.address)).to.equal("");
+            expect(await roleManager.registeredContracts(await mockContract.getAddress())).to.be.false;
+            expect(await roleManager.contractNames(await mockContract.getAddress())).to.equal("");
         });
     });
 
@@ -169,7 +169,7 @@ describe("RoleManager", function () {
 
         it("Should not allow transfer to zero address", async function () {
             await expect(
-                roleManager.transferAdmin(ethers.constants.AddressZero)
+                roleManager.transferAdmin(ethers.ZeroAddress)
             ).to.be.revertedWith("Invalid new admin");
         });
 
@@ -237,7 +237,7 @@ describe("RoleManager", function () {
             const receipt = await tx.wait();
             
             // Check gas usage is reasonable
-            expect(receipt.gasUsed.toNumber()).to.be.lessThan(500000);
+            expect(Number(receipt.gasUsed)).to.be.lessThan(500000);
         });
     });
 });

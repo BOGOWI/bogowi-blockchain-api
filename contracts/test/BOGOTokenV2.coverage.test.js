@@ -12,12 +12,12 @@ describe("BOGOTokenV2 - Coverage Tests", function () {
         // Deploy BOGOTokenV2
         const BOGOTokenV2 = await ethers.getContractFactory("BOGOTokenV2");
         bogoToken = await BOGOTokenV2.deploy();
-        await bogoToken.deployed();
+        await bogoToken.waitForDeployment();
 
         // Deploy a mock contract for testing _isContract
         const MockContract = await ethers.getContractFactory("BOGOTokenV2"); // Any contract will do
         mockContract = await MockContract.deploy();
-        await mockContract.deployed();
+        await mockContract.waitForDeployment();
 
         // EOA address (not a contract)
         nonContract = user1.address;
@@ -31,8 +31,8 @@ describe("BOGOTokenV2 - Coverage Tests", function () {
             ).to.not.be.reverted;
 
             // Verify the operation was queued
-            const operationId = ethers.utils.keccak256(
-                ethers.utils.solidityPack(
+            const operationId = ethers.keccak256(
+                ethers.solidityPack(
                     ["string", "string", "address"],
                     ["registerFlavoredToken", "Ocean", mockContract.address]
                 )
@@ -50,7 +50,7 @@ describe("BOGOTokenV2 - Coverage Tests", function () {
 
         it("Should reject zero address", async function () {
             await expect(
-                bogoToken.queueRegisterFlavoredToken("Ocean", ethers.constants.AddressZero)
+                bogoToken.queueRegisterFlavoredToken("Ocean", ethers.ZeroAddress)
             ).to.be.revertedWith("Invalid token address");
         });
 
@@ -58,7 +58,7 @@ describe("BOGOTokenV2 - Coverage Tests", function () {
             // Deploy a new contract during the test
             const NewContract = await ethers.getContractFactory("BOGOTokenV2");
             const newContract = await NewContract.deploy();
-            await newContract.deployed();
+            await newContract.waitForDeployment();
 
             // Should recognize it as a contract
             await expect(
@@ -70,7 +70,7 @@ describe("BOGOTokenV2 - Coverage Tests", function () {
             // Deploy another contract to test _isContract functionality
             const AnotherContract = await ethers.getContractFactory("BOGOTokenV2");
             const anotherContract = await AnotherContract.deploy();
-            await anotherContract.deployed();
+            await anotherContract.waitForDeployment();
 
             // Should be recognized as a contract
             await expect(
@@ -165,8 +165,8 @@ describe("BOGOTokenV2 - Coverage Tests", function () {
             await bogoToken.queueRegisterFlavoredToken("Ocean", mockContract.address);
 
             // Get operation ID
-            const operationId = ethers.utils.keccak256(
-                ethers.utils.solidityPack(
+            const operationId = ethers.keccak256(
+                ethers.solidityPack(
                     ["string", "string", "address"],
                     ["registerFlavoredToken", "Ocean", mockContract.address]
                 )

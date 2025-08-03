@@ -15,17 +15,17 @@ describe("MultisigTreasury - Coverage Tests", function () {
       [signer1.address, signer2.address, signer3.address],
       2
     );
-    await treasury.deployed();
+    await treasury.waitForDeployment();
 
     // Deploy BOGO token for testing
     const BOGOToken = await ethers.getContractFactory("BOGOTokenV2");
     bogoToken = await BOGOToken.deploy();
-    await bogoToken.deployed();
+    await bogoToken.waitForDeployment();
 
     // Fund treasury
     await owner.sendTransaction({
-      to: treasury.address,
-      value: ethers.utils.parseEther("10")
+      to: await treasury.getAddress(),
+      value: ethers.parseEther("10")
     });
   });
 
@@ -34,17 +34,17 @@ describe("MultisigTreasury - Coverage Tests", function () {
       // Submit
       const tx = await treasury.connect(signer1).submitTransaction(
         recipient.address,
-        ethers.utils.parseEther("1"),
+        ethers.parseEther("1"),
         "0x",
         "Test payment"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       // Check transaction details
       const txData = await treasury.getTransaction(txId);
       expect(txData.to).to.equal(recipient.address);
-      expect(txData.value).to.equal(ethers.utils.parseEther("1"));
+      expect(txData.value).to.equal(ethers.parseEther("1"));
       expect(txData.executed).to.be.false;
 
       // Confirm
@@ -65,19 +65,19 @@ describe("MultisigTreasury - Coverage Tests", function () {
       ).to.emit(treasury, "TransactionExecuted");
       
       const balanceAfter = await ethers.provider.getBalance(recipient.address);
-      expect(balanceAfter.sub(balanceBefore)).to.equal(ethers.utils.parseEther("1"));
+      expect(balanceAfter - balanceBefore).to.equal(ethers.parseEther("1"));
     });
 
     it("Should handle transaction revocation", async function () {
       // Submit and auto-confirm by signer1
       const tx = await treasury.connect(signer1).submitTransaction(
         recipient.address,
-        ethers.utils.parseEther("1"),
+        ethers.parseEther("1"),
         "0x",
         "Test"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       // Revoke
       await expect(
@@ -90,12 +90,12 @@ describe("MultisigTreasury - Coverage Tests", function () {
     it("Should cancel expired transactions", async function () {
       const tx = await treasury.connect(signer1).submitTransaction(
         recipient.address,
-        ethers.utils.parseEther("1"),
+        ethers.parseEther("1"),
         "0x",
         "Will expire"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       // Fast forward past expiry
       await ethers.provider.send("evm_increaseTime", [8 * 24 * 60 * 60]);
@@ -116,13 +116,13 @@ describe("MultisigTreasury - Coverage Tests", function () {
       
       // Submit
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Add new signer"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       // Confirm and execute
       await treasury.connect(signer2).confirmTransaction(txId);
@@ -139,13 +139,13 @@ describe("MultisigTreasury - Coverage Tests", function () {
       const data = treasury.interface.encodeFunctionData("removeSigner", [signer3.address]);
       
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Remove signer3"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -160,13 +160,13 @@ describe("MultisigTreasury - Coverage Tests", function () {
       const data = treasury.interface.encodeFunctionData("changeThreshold", [1]);
       
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Change threshold"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -182,24 +182,24 @@ describe("MultisigTreasury - Coverage Tests", function () {
       // Mint tokens to treasury
       const DAO_ROLE = await bogoToken.DAO_ROLE();
       await bogoToken.grantRole(DAO_ROLE, owner.address);
-      await bogoToken.mintFromRewards(treasury.address, ethers.utils.parseEther("1000"));
+      await bogoToken.mintFromRewards(await treasury.getAddress(), ethers.parseEther("1000"));
     });
 
     it("Should transfer ERC20 tokens via multisig", async function () {
-      const amount = ethers.utils.parseEther("100");
+      const amount = ethers.parseEther("100");
       const data = treasury.interface.encodeFunctionData(
         "transferERC20",
-        [bogoToken.address, recipient.address, amount]
+        [await bogoToken.getAddress(), recipient.address, amount]
       );
 
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Transfer BOGO"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -210,20 +210,20 @@ describe("MultisigTreasury - Coverage Tests", function () {
     });
 
     it("Should handle direct token transfers", async function () {
-      const amount = ethers.utils.parseEther("50");
+      const amount = ethers.parseEther("50");
       const data = bogoToken.interface.encodeFunctionData(
         "transfer",
         [recipient.address, amount]
       );
 
       const tx = await treasury.connect(signer1).submitTransaction(
-        bogoToken.address,
+        await bogoToken.getAddress(),
         0,
         data,
         "Direct transfer"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -240,17 +240,17 @@ describe("MultisigTreasury - Coverage Tests", function () {
       const MINTER_ROLE = await bogoToken.MINTER_ROLE();
       const data = treasury.interface.encodeFunctionData(
         "grantRole",
-        [bogoToken.address, MINTER_ROLE, recipient.address]
+        [await bogoToken.getAddress(), MINTER_ROLE, recipient.address]
       );
 
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Grant minter role"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -269,17 +269,17 @@ describe("MultisigTreasury - Coverage Tests", function () {
       // Then revoke it via multisig
       const data = treasury.interface.encodeFunctionData(
         "revokeRole",
-        [bogoToken.address, MINTER_ROLE, recipient.address]
+        [await bogoToken.getAddress(), MINTER_ROLE, recipient.address]
       );
 
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Revoke minter role"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -296,13 +296,13 @@ describe("MultisigTreasury - Coverage Tests", function () {
       
       const data = treasury.interface.encodeFunctionData("toggleAutoExecute");
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Toggle auto-execute"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -313,28 +313,28 @@ describe("MultisigTreasury - Coverage Tests", function () {
     });
 
     it("Should set function allowance", async function () {
-      const selector = bogoToken.interface.getSighash("transfer");
+      const selector = bogoToken.interface.getFunction("transfer").selector;
       
       const data = treasury.interface.encodeFunctionData(
         "setFunctionAllowance",
-        [bogoToken.address, selector, true]
+        [await bogoToken.getAddress(), selector, true]
       );
 
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Allow transfer"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
       await ethers.provider.send("evm_mine");
       await treasury.connect(signer1).executeTransaction(txId);
 
-      expect(await treasury.allowedFunctions(bogoToken.address, selector)).to.be.true;
+      expect(await treasury.allowedFunctions(await bogoToken.getAddress(), selector)).to.be.true;
     });
 
     it("Should toggle function restrictions", async function () {
@@ -342,13 +342,13 @@ describe("MultisigTreasury - Coverage Tests", function () {
       
       const data = treasury.interface.encodeFunctionData("toggleFunctionRestrictions");
       const tx = await treasury.connect(signer1).submitTransaction(
-        treasury.address,
+        await treasury.getAddress(),
         0,
         data,
         "Toggle restrictions"
       );
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
 
       await treasury.connect(signer2).confirmTransaction(txId);
       await ethers.provider.send("evm_increaseTime", [3600]);
@@ -403,26 +403,26 @@ describe("MultisigTreasury - Coverage Tests", function () {
       // Non-signer submission
       await expect(
         treasury.connect(nonSigner).submitTransaction(recipient.address, 0, "0x", "Test")
-      ).to.be.revertedWith("Not a signer");
+      ).to.be.revertedWith("NOT_SIGNER");
 
       // Invalid recipient
       await expect(
-        treasury.connect(signer1).submitTransaction(ethers.constants.AddressZero, 0, "0x", "Test")
-      ).to.be.revertedWith("Invalid recipient");
+        treasury.connect(signer1).submitTransaction(ethers.ZeroAddress, 0, "0x", "Test")
+      ).to.be.revertedWith("ZERO_ADDRESS");
 
       // Non-existent transaction
       await expect(
         treasury.connect(signer1).confirmTransaction(999)
-      ).to.be.revertedWith("Transaction does not exist");
+      ).to.be.revertedWith("DOES_NOT_EXIST");
 
       // Not confirmed revocation
       const tx = await treasury.connect(signer1).submitTransaction(recipient.address, 0, "0x", "Test");
       const receipt = await tx.wait();
-      const txId = receipt.events[0].args.txId;
+      const txId = receipt.logs[0].args.txId;
       
       await expect(
         treasury.connect(signer2).revokeConfirmation(txId)
-      ).to.be.revertedWith("Not confirmed");
+      ).to.be.revertedWith("NOT_INITIALIZED");
     });
   });
 });

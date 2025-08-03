@@ -12,30 +12,33 @@ describe("EmergencyPauseController", function () {
         [owner, guardian1, guardian2, guardian3, manager, user] = await ethers.getSigners();
 
         // Calculate role hashes
-        GUARDIAN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GUARDIAN_ROLE"));
-        MANAGER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MANAGER_ROLE"));
-        PAUSER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("PAUSER_ROLE"));
-        DEFAULT_ADMIN_ROLE = ethers.constants.HashZero;
+        GUARDIAN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("GUARDIAN_ROLE"));
+        MANAGER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MANAGER_ROLE"));
+        PAUSER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("PAUSER_ROLE"));
+        DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 
         // Deploy EmergencyPauseController
         const EmergencyPauseController = await ethers.getContractFactory("EmergencyPauseController");
         emergencyPause = await EmergencyPauseController.deploy(
-            [guardian1.address, guardian2.address, guardian3.address],
-            manager.address
+            [await guardian1.getAddress(), await guardian2.getAddress(), await guardian3.getAddress()],
+            await manager.getAddress()
         );
+        await emergencyPause.waitForDeployment();
 
         // Deploy mock pausable contracts
         const MockPausable = await ethers.getContractFactory("MockPausable");
         contract1 = await MockPausable.deploy("Contract1");
+        await contract1.waitForDeployment();
         contract2 = await MockPausable.deploy("Contract2");
+        await contract2.waitForDeployment();
 
         // Grant PAUSER_ROLE to EmergencyPauseController
-        await contract1.grantRole(PAUSER_ROLE, emergencyPause.address);
-        await contract2.grantRole(PAUSER_ROLE, emergencyPause.address);
+        await contract1.grantRole(PAUSER_ROLE, await emergencyPause.getAddress());
+        await contract2.grantRole(PAUSER_ROLE, await emergencyPause.getAddress());
 
         // Add contracts to emergency pause controller
-        await emergencyPause.connect(manager).addContract(contract1.address, "Contract1");
-        await emergencyPause.connect(manager).addContract(contract2.address, "Contract2");
+        await emergencyPause.connect(manager).addContract(await contract1.getAddress(), "Contract1");
+        await emergencyPause.connect(manager).addContract(await contract2.getAddress(), "Contract2");
     });
 
     describe("Deployment", function () {
@@ -46,18 +49,18 @@ describe("EmergencyPauseController", function () {
         });
 
         it("Should assign roles correctly", async function () {
-            expect(await emergencyPause.hasRole(GUARDIAN_ROLE, guardian1.address)).to.be.true;
-            expect(await emergencyPause.hasRole(GUARDIAN_ROLE, guardian2.address)).to.be.true;
-            expect(await emergencyPause.hasRole(GUARDIAN_ROLE, guardian3.address)).to.be.true;
-            expect(await emergencyPause.hasRole(MANAGER_ROLE, manager.address)).to.be.true;
-            expect(await emergencyPause.hasRole(DEFAULT_ADMIN_ROLE, owner.address)).to.be.true;
+            expect(await emergencyPause.hasRole(GUARDIAN_ROLE, await guardian1.getAddress())).to.be.true;
+            expect(await emergencyPause.hasRole(GUARDIAN_ROLE, await guardian2.getAddress())).to.be.true;
+            expect(await emergencyPause.hasRole(GUARDIAN_ROLE, await guardian3.getAddress())).to.be.true;
+            expect(await emergencyPause.hasRole(MANAGER_ROLE, await manager.getAddress())).to.be.true;
+            expect(await emergencyPause.hasRole(DEFAULT_ADMIN_ROLE, await owner.getAddress())).to.be.true;
         });
     });
 
     describe("Contract Management", function () {
         it("Should track added contracts", async function () {
-            expect(await emergencyPause.isTrackedContract(contract1.address)).to.be.true;
-            expect(await emergencyPause.isTrackedContract(contract2.address)).to.be.true;
+            expect(await emergencyPause.isTrackedContract(await contract1.getAddress())).to.be.true;
+            expect(await emergencyPause.isTrackedContract(await contract2.getAddress())).to.be.true;
         });
 
         it("Should not allow non-manager to add contracts", async function () {
@@ -65,17 +68,17 @@ describe("EmergencyPauseController", function () {
             const contract3 = await MockPausable.deploy("Contract3");
             
             await expect(
-                emergencyPause.connect(guardian1).addContract(contract3.address, "Contract3")
+                emergencyPause.connect(guardian1).addContract(await contract3.getAddress(), "Contract3")
             ).to.be.reverted;
         });
 
         it("Should allow manager to remove contracts", async function () {
             await expect(
-                emergencyPause.connect(manager).removeContract(contract1.address)
+                emergencyPause.connect(manager).removeContract(await contract1.getAddress())
             ).to.emit(emergencyPause, "ContractRemoved")
-                .withArgs(contract1.address);
+                .withArgs(await contract1.getAddress());
 
-            expect(await emergencyPause.isTrackedContract(contract1.address)).to.be.false;
+            expect(await emergencyPause.isTrackedContract(await contract1.getAddress())).to.be.false;
         });
     });
 
@@ -85,14 +88,14 @@ describe("EmergencyPauseController", function () {
             
             await expect(
                 emergencyPause.connect(guardian1).proposePause(
-                    [contract1.address],
+                    [await contract1.getAddress()],
                     reason
                 )
             ).to.emit(emergencyPause, "PauseProposalCreated")
-                .withArgs(0, guardian1.address, true);
+                .withArgs(0, await guardian1.getAddress(), true);
 
             const proposal = await emergencyPause.proposals(0);
-            expect(proposal.proposer).to.equal(guardian1.address);
+            expect(proposal.proposer).to.equal(await guardian1.getAddress());
             expect(proposal.reason).to.equal(reason);
             expect(proposal.confirmations).to.equal(1);
             expect(proposal.executed).to.be.false;
@@ -102,7 +105,7 @@ describe("EmergencyPauseController", function () {
         it("Should execute pause when reaching required confirmations", async function () {
             // First guardian proposes
             await emergencyPause.connect(guardian1).proposePause(
-                [contract1.address],
+                [await contract1.getAddress()],
                 "Emergency pause needed"
             );
 
@@ -129,7 +132,7 @@ describe("EmergencyPauseController", function () {
         beforeEach(async function () {
             // Pause contracts first
             await emergencyPause.connect(guardian1).proposePause(
-                [contract1.address, contract2.address],
+                [await contract1.getAddress(), await contract2.getAddress()],
                 "Initial pause"
             );
             await emergencyPause.connect(guardian2).confirmProposal(0);
@@ -138,16 +141,16 @@ describe("EmergencyPauseController", function () {
         it("Should create unpause proposal", async function () {
             await expect(
                 emergencyPause.connect(guardian1).proposeUnpause(
-                    [contract1.address],
+                    [await contract1.getAddress()],
                     "Issue resolved"
                 )
             ).to.emit(emergencyPause, "PauseProposalCreated")
-                .withArgs(1, guardian1.address, false);
+                .withArgs(1, await guardian1.getAddress(), false);
         });
 
         it("Should unpause when reaching confirmations", async function () {
             await emergencyPause.connect(guardian1).proposeUnpause(
-                [contract1.address],
+                [await contract1.getAddress()],
                 "Issue resolved"
             );
             
@@ -164,7 +167,7 @@ describe("EmergencyPauseController", function () {
         it("Should automatically expire pauses after MAX_PAUSE_DURATION", async function () {
             // Pause a contract
             await emergencyPause.connect(guardian1).proposePause(
-                [contract1.address],
+                [await contract1.getAddress()],
                 "Time-limited pause"
             );
             await emergencyPause.connect(guardian2).confirmProposal(0);
@@ -178,7 +181,7 @@ describe("EmergencyPauseController", function () {
             await expect(
                 emergencyPause.connect(user).checkAndExpirePauses()
             ).to.emit(emergencyPause, "PauseExpired")
-                .withArgs(contract1.address);
+                .withArgs(await contract1.getAddress());
 
             expect(await contract1.paused()).to.be.false;
         });
@@ -188,7 +191,7 @@ describe("EmergencyPauseController", function () {
         it("Should return contract statuses correctly", async function () {
             // Pause one contract
             await emergencyPause.connect(guardian1).proposePause(
-                [contract1.address],
+                [await contract1.getAddress()],
                 "Pause test"
             );
             await emergencyPause.connect(guardian2).confirmProposal(0);
@@ -196,8 +199,8 @@ describe("EmergencyPauseController", function () {
             const [contracts, paused, names] = await emergencyPause.getContractStatuses();
             
             expect(contracts.length).to.equal(2);
-            expect(contracts[0]).to.equal(contract1.address);
-            expect(contracts[1]).to.equal(contract2.address);
+            expect(contracts[0]).to.equal(await contract1.getAddress());
+            expect(contracts[1]).to.equal(await contract2.getAddress());
             
             expect(paused[0]).to.be.true;
             expect(paused[1]).to.be.false;
@@ -209,13 +212,13 @@ describe("EmergencyPauseController", function () {
         it("Should return pause history", async function () {
             // Create some pause events
             await emergencyPause.connect(guardian1).proposePause(
-                [contract1.address],
+                [await contract1.getAddress()],
                 "First pause"
             );
             await emergencyPause.connect(guardian2).confirmProposal(0);
 
             await emergencyPause.connect(guardian1).proposeUnpause(
-                [contract1.address],
+                [await contract1.getAddress()],
                 "First unpause"
             );
             await emergencyPause.connect(guardian2).confirmProposal(1);
@@ -231,20 +234,20 @@ describe("EmergencyPauseController", function () {
         it("Should prevent non-guardians from creating proposals", async function () {
             await expect(
                 emergencyPause.connect(user).proposePause(
-                    [contract1.address],
+                    [await contract1.getAddress()],
                     "Unauthorized pause"
                 )
             ).to.be.reverted;
         });
 
         it("Should allow admin to grant new guardian role", async function () {
-            await emergencyPause.grantRole(GUARDIAN_ROLE, user.address);
-            expect(await emergencyPause.hasRole(GUARDIAN_ROLE, user.address)).to.be.true;
+            await emergencyPause.grantRole(GUARDIAN_ROLE, await user.getAddress());
+            expect(await emergencyPause.hasRole(GUARDIAN_ROLE, await user.getAddress())).to.be.true;
 
             // New guardian should be able to create proposals
             await expect(
                 emergencyPause.connect(user).proposePause(
-                    [contract1.address],
+                    [await contract1.getAddress()],
                     "New guardian pause"
                 )
             ).to.emit(emergencyPause, "PauseProposalCreated");
@@ -266,7 +269,7 @@ describe("EmergencyPauseController", function () {
 
             await expect(
                 emergencyPause.connect(guardian1).proposePause(
-                    [contract1.address],
+                    [await contract1.getAddress()],
                     "Single guardian pause"
                 )
             ).to.emit(emergencyPause, "EmergencyPauseExecuted");

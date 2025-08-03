@@ -711,4 +711,84 @@ contract MultisigTreasury is ReentrancyGuard, Pausable, StandardErrors {
     function hasEmergencyApproval(address _signer) external view returns (bool) {
         return emergencyApprovals[_signer];
     }
+    
+    /**
+     * @notice Replaces an existing signer with a new one
+     * @dev Maintains signer count and transfers emergency approvals
+     * @param _oldSigner Address of signer to replace
+     * @param _newSigner Address of new signer
+     * @custom:emits SignerRemoved, SignerAdded
+     */
+    function replaceSigner(address _oldSigner, address _newSigner) external onlyMultisig {
+        require(signers[_oldSigner].isSigner, NOT_SIGNER);
+        require(!signers[_newSigner].isSigner, ALREADY_EXISTS);
+        require(_newSigner != address(0), ZERO_ADDRESS);
+        
+        // Remove old signer
+        signers[_oldSigner].isSigner = false;
+        signerSet.remove(_oldSigner);
+        
+        // Add new signer
+        signers[_newSigner] = Signer({
+            isSigner: true,
+            addedAt: block.timestamp
+        });
+        signerSet.add(_newSigner);
+        
+        // Handle emergency approvals transfer
+        if (emergencyApprovals[_oldSigner]) {
+            emergencyApprovals[_oldSigner] = false;
+            emergencyApprovals[_newSigner] = true;
+            emit EmergencyApprovalRevoked(_oldSigner);
+            emit EmergencyApprovalGranted(_newSigner);
+        }
+        
+        emit SignerRemoved(_oldSigner);
+        emit SignerAdded(_newSigner);
+    }
+    
+    /**
+     * @notice Returns the count of pending transactions
+     * @return Number of pending (unexecuted, non-expired) transactions
+     */
+    function getPendingCount() external view returns (uint256) {
+        uint256 pendingCount = 0;
+        
+        for (uint256 i = 0; i < transactionCount; i++) {
+            if (!transactions[i].executed && 
+                block.timestamp <= transactions[i].timestamp + TRANSACTION_EXPIRY) {
+                pendingCount++;
+            }
+        }
+        
+        return pendingCount;
+    }
+    
+    /**
+     * @notice Returns addresses of signers who confirmed a transaction
+     * @param _txId ID of the transaction
+     * @return Array of signer addresses who confirmed
+     */
+    function getConfirmations(uint256 _txId) external view returns (address[] memory) {
+        require(_txId < transactionCount, DOES_NOT_EXIST);
+        
+        address[] memory signerAddresses = signerSet.values();
+        address[] memory confirmed = new address[](signerAddresses.length);
+        uint256 count = 0;
+        
+        // Count confirmations first
+        for (uint256 i = 0; i < signerAddresses.length; i++) {
+            if (confirmations[_txId][signerAddresses[i]]) {
+                confirmed[count++] = signerAddresses[i];
+            }
+        }
+        
+        // Resize array to actual count
+        address[] memory result = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = confirmed[i];
+        }
+        
+        return result;
+    }
 }

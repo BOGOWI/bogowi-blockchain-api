@@ -136,8 +136,8 @@ contract BOGOTokenV2_ZeroValidated is ERC20, AccessControl, Pausable, Reentrancy
         if (!hasRole(DAO_ROLE, msg.sender) && !hasRole(BUSINESS_ROLE, msg.sender)) {
             revert InsufficientRole();
         }
-        if (rewardsMinted + amount > REWARDS_ALLOCATION) revert ExceedsAllocation();
         if (totalSupply() + amount > MAX_SUPPLY) revert ExceedsMaxSupply();
+        if (rewardsMinted + amount > REWARDS_ALLOCATION) revert ExceedsAllocation();
         
         rewardsMinted += amount;
         _mint(to, amount);
