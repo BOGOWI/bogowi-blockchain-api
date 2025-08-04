@@ -25,15 +25,15 @@ async function main() {
   const BUSINESS_ROLE = await roleManager.BUSINESS_ROLE();
   const DAO_ROLE = await roleManager.DAO_ROLE();
   const PAUSER_ROLE = await roleManager.PAUSER_ROLE();
-  const OPERATOR_ROLE = await roleManager.OPERATOR_ROLE();
-  const DISTRIBUTOR_ROLE = await roleManager.DISTRIBUTOR_ROLE();
+  const TREASURY_ROLE = await roleManager.TREASURY_ROLE();
+  const DISTRIBUTOR_BACKEND_ROLE = await roleManager.DISTRIBUTOR_BACKEND_ROLE();
 
   console.log("📋 Role IDs:");
   console.log("BUSINESS_ROLE:", BUSINESS_ROLE);
   console.log("DAO_ROLE:", DAO_ROLE);
   console.log("PAUSER_ROLE:", PAUSER_ROLE);
-  console.log("OPERATOR_ROLE:", OPERATOR_ROLE);
-  console.log("DISTRIBUTOR_ROLE:", DISTRIBUTOR_ROLE);
+  console.log("TREASURY_ROLE:", TREASURY_ROLE);
+  console.log("DISTRIBUTOR_BACKEND_ROLE:", DISTRIBUTOR_BACKEND_ROLE);
 
   // Setup roles for BOGOToken
   console.log("\n🪙 Setting up BOGOToken roles...");
@@ -53,17 +53,17 @@ async function main() {
   // Setup roles for RewardDistributor
   console.log("\n🎁 Setting up RewardDistributor roles...");
   
-  // Grant DISTRIBUTOR_ROLE to deployer (for testing)
-  console.log("Granting DISTRIBUTOR_ROLE to deployer...");
-  tx = await roleManager.grantRole(DISTRIBUTOR_ROLE, deployer.address);
+  // Grant DISTRIBUTOR_BACKEND_ROLE to deployer (for testing)
+  console.log("Granting DISTRIBUTOR_BACKEND_ROLE to deployer...");
+  tx = await roleManager.grantRole(DISTRIBUTOR_BACKEND_ROLE, deployer.address);
   await tx.wait();
-  console.log("✅ DISTRIBUTOR_ROLE granted to deployer");
+  console.log("✅ DISTRIBUTOR_BACKEND_ROLE granted to deployer");
 
-  // Grant OPERATOR_ROLE to deployer
-  console.log("Granting OPERATOR_ROLE to deployer...");
-  tx = await roleManager.grantRole(OPERATOR_ROLE, deployer.address);
+  // Grant TREASURY_ROLE to deployer (needed for setRewardPool)
+  console.log("Granting TREASURY_ROLE to deployer...");
+  tx = await roleManager.grantRole(TREASURY_ROLE, deployer.address);
   await tx.wait();
-  console.log("✅ OPERATOR_ROLE granted to deployer");
+  console.log("✅ TREASURY_ROLE granted to deployer");
 
   // Grant PAUSER_ROLE to admin
   console.log("\n🛑 Setting up emergency roles...");
@@ -74,21 +74,15 @@ async function main() {
 
   // Backend wallet setup (if provided)
   const backendAddress = process.env.BACKEND_WALLET_ADDRESS;
-  if (backendAddress && backendAddress !== "YOUR_BACKEND_WALLET_ADDRESS") {
+  if (backendAddress && backendAddress !== "YOUR_BACKEND_WALLET_ADDRESS" && backendAddress !== "") {
     console.log("\n🔧 Setting up backend wallet roles...");
     console.log("Backend wallet:", backendAddress);
     
-    // Grant DISTRIBUTOR_ROLE to backend
-    console.log("Granting DISTRIBUTOR_ROLE to backend...");
-    tx = await roleManager.grantRole(DISTRIBUTOR_ROLE, backendAddress);
+    // Grant DISTRIBUTOR_BACKEND_ROLE to backend
+    console.log("Granting DISTRIBUTOR_BACKEND_ROLE to backend...");
+    tx = await roleManager.grantRole(DISTRIBUTOR_BACKEND_ROLE, backendAddress);
     await tx.wait();
-    console.log("✅ DISTRIBUTOR_ROLE granted to backend");
-
-    // Grant OPERATOR_ROLE to backend
-    console.log("Granting OPERATOR_ROLE to backend...");
-    tx = await roleManager.grantRole(OPERATOR_ROLE, backendAddress);
-    await tx.wait();
-    console.log("✅ OPERATOR_ROLE granted to backend");
+    console.log("✅ DISTRIBUTOR_BACKEND_ROLE granted to backend");
   }
 
   // Verify roles
@@ -97,14 +91,13 @@ async function main() {
   const roles = [
     { role: BUSINESS_ROLE, name: "BUSINESS", address: deployer.address },
     { role: BUSINESS_ROLE, name: "BUSINESS", address: deployment.contracts.BOGORewardDistributor },
-    { role: DISTRIBUTOR_ROLE, name: "DISTRIBUTOR", address: deployer.address },
-    { role: OPERATOR_ROLE, name: "OPERATOR", address: deployer.address },
+    { role: DISTRIBUTOR_BACKEND_ROLE, name: "DISTRIBUTOR_BACKEND", address: deployer.address },
+    { role: TREASURY_ROLE, name: "TREASURY", address: deployer.address },
     { role: PAUSER_ROLE, name: "PAUSER", address: deployment.adminAddress }
   ];
 
   if (backendAddress && backendAddress !== "YOUR_BACKEND_WALLET_ADDRESS") {
-    roles.push({ role: DISTRIBUTOR_ROLE, name: "DISTRIBUTOR", address: backendAddress });
-    roles.push({ role: OPERATOR_ROLE, name: "OPERATOR", address: backendAddress });
+    roles.push({ role: DISTRIBUTOR_BACKEND_ROLE, name: "DISTRIBUTOR_BACKEND", address: backendAddress });
   }
 
   for (const { role, name, address } of roles) {

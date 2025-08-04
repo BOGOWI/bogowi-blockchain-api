@@ -32,8 +32,8 @@ type Server struct {
 
 // NewServer creates a new server instance
 func NewServer(cfg *config.Config) (*Server, error) {
-	// Initialize SDK
-	bogoSDK, err := sdk.NewBOGOWISDK(cfg)
+	// Initialize SDK with testnet configuration (v1 default)
+	bogoSDK, err := sdk.NewBOGOWISDK(&cfg.Testnet, cfg.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize SDK: %w", err)
 	}

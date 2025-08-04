@@ -2,8 +2,10 @@ package sdk
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"errors"
 	"math/big"
+	"strings"
 	"testing"
 
 	"bogowi-blockchain-go/internal/config"
@@ -11,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -87,44 +90,33 @@ func (m *MockBoundContract) Transact(opts *bind.TransactOpts, method string, par
 
 func TestNewBOGOWISDK(t *testing.T) {
 	// Test creating new SDK instance
-	cfg := &config.Config{
-		RPCUrl:     "https://columbus.camino.network/ext/bc/C/rpc",
-		ChainID:    501,
-		PrivateKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-		Contracts:  config.ContractAddresses{},
+	networkCfg := &config.NetworkConfig{
+		RPCUrl:    "https://columbus.camino.network/ext/bc/C/rpc",
+		ChainID:   501,
+		Contracts: config.ContractAddresses{},
 	}
+	privateKey := "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
-	sdk, err := NewBOGOWISDK(cfg)
+	sdk, err := NewBOGOWISDK(networkCfg, privateKey)
 	assert.NoError(t, err)
 	assert.NotNil(t, sdk)
 }
 
 func TestSDKWithInvalidPrivateKey(t *testing.T) {
 	// Test creating SDK with invalid private key
-	cfg := &config.Config{
-		RPCUrl:     "https://columbus.camino.network/ext/bc/C/rpc",
-		ChainID:    501,
-		PrivateKey: "invalid",
-		Contracts:  config.ContractAddresses{},
+	networkCfg := &config.NetworkConfig{
+		RPCUrl:    "https://columbus.camino.network/ext/bc/C/rpc",
+		ChainID:   501,
+		Contracts: config.ContractAddresses{},
 	}
 
-	sdk, err := NewBOGOWISDK(cfg)
+	sdk, err := NewBOGOWISDK(networkCfg, "invalid")
 	assert.Error(t, err)
 	assert.Nil(t, sdk)
 }
 
 func TestGetTokenBalance(t *testing.T) {
-	cfg := &config.Config{
-		PrivateKey: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-		RPCUrl:     "http://localhost:8545",
-		ChainID:    1,
-		Contracts: config.ContractAddresses{
-			BOGOTokenV2: "0x1234567890123456789012345678901234567890",
-		},
-	}
-
 	sdk := &BOGOWISDK{
-		config: cfg,
 		contracts: &ContractInstances{
 			BOGOTokenV2: &Contract{
 				Instance: nil, // Will be set in test
@@ -415,10 +407,14 @@ func TestGetPublicKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var privKey *ecdsa.PrivateKey
+			if !tt.wantError {
+				key, _ := crypto.HexToECDSA(strings.TrimPrefix(tt.privateKey, "0x"))
+				privKey = key
+			}
+			
 			sdk := &BOGOWISDK{
-				config: &config.Config{
-					PrivateKey: tt.privateKey,
-				},
+				privateKey: privKey,
 			}
 
 			pubKey, err := sdk.GetPublicKey()

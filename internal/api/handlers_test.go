@@ -20,7 +20,16 @@ func TestHealthHandler(t *testing.T) {
 	cfg := &config.Config{
 		Environment: "test",
 		APIPort:     "3001",
-		Contracts:   config.ContractAddresses{},
+		Testnet: config.NetworkConfig{
+			RPCUrl:    "https://columbus.camino.network/ext/bc/C/rpc",
+			ChainID:   501,
+			Contracts: config.ContractAddresses{},
+		},
+		Mainnet: config.NetworkConfig{
+			RPCUrl:    "https://api.camino.network/ext/bc/C/rpc",
+			ChainID:   500,
+			Contracts: config.ContractAddresses{},
+		},
 	}
 
 	// Create test handler

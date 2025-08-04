@@ -10,7 +10,7 @@ import (
 func (h *Handler) GetHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "ok",
-		"contracts": h.Config.Contracts,
+		"contracts": h.Config.Testnet.Contracts,
 	})
 }
 

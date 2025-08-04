@@ -156,12 +156,27 @@ func setupTestRouter() (*gin.Engine, *MockSDK, *config.Config) {
 	cfg := &config.Config{
 		Environment: "test",
 		APIPort:     "3001",
-		Contracts: config.ContractAddresses{
-			BOGOTokenV2:       "0x123",
-			ConservationNFT:   "0x456",
-			CommercialNFT:     "0x789",
-			RewardDistributor: "0xabc",
-			MultisigTreasury:  "0xdef",
+		Testnet: config.NetworkConfig{
+			RPCUrl:  "https://columbus.camino.network/ext/bc/C/rpc",
+			ChainID: 501,
+			Contracts: config.ContractAddresses{
+				BOGOTokenV2:       "0x123",
+				ConservationNFT:   "0x456",
+				CommercialNFT:     "0x789",
+				RewardDistributor: "0xabc",
+				MultisigTreasury:  "0xdef",
+			},
+		},
+		Mainnet: config.NetworkConfig{
+			RPCUrl:  "https://api.camino.network/ext/bc/C/rpc",
+			ChainID: 500,
+			Contracts: config.ContractAddresses{
+				BOGOTokenV2:       "0x123",
+				ConservationNFT:   "0x456",
+				CommercialNFT:     "0x789",
+				RewardDistributor: "0xabc",
+				MultisigTreasury:  "0xdef",
+			},
 		},
 	}
 
@@ -195,7 +210,7 @@ func TestGetHealth(t *testing.T) {
 
 	contracts, ok := response["contracts"].(map[string]interface{})
 	require.True(t, ok)
-	assert.Equal(t, cfg.Contracts.BOGOTokenV2, contracts["bogo_token_v2"])
+	assert.Equal(t, cfg.Testnet.Contracts.BOGOTokenV2, contracts["bogo_token_v2"])
 }
 
 func TestGetGasPrice(t *testing.T) {

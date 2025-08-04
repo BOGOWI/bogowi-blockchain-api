@@ -16,13 +16,12 @@ type Config struct {
 	Environment string `json:"environment"`
 	APIPort     string `json:"api_port"`
 
-	// Blockchain
-	RPCUrl     string `json:"rpc_url"`
-	ChainID    int64  `json:"chain_id"`
+	// Private Key (same for both networks)
 	PrivateKey string `json:"private_key"`
 
-	// Contract Addresses
-	Contracts ContractAddresses `json:"contracts"`
+	// Network-specific configurations
+	Testnet NetworkConfig `json:"testnet"`
+	Mainnet NetworkConfig `json:"mainnet"`
 
 	// Auth
 	SwaggerUsername   string `json:"swagger_username"`
@@ -31,12 +30,24 @@ type Config struct {
 	BackendSecret     string `json:"backend_secret"`
 }
 
+// NetworkConfig holds network-specific configuration
+type NetworkConfig struct {
+	RPCUrl    string            `json:"rpc_url"`
+	ChainID   int64             `json:"chain_id"`
+	Contracts ContractAddresses `json:"contracts"`
+}
+
 // ContractAddresses holds all smart contract addresses
 type ContractAddresses struct {
+	// V1 Contracts
+	RoleManager       string `json:"role_manager"`
+	BOGOToken         string `json:"bogo_token"`
+	RewardDistributor string `json:"reward_distributor"`
+	
+	// Legacy contracts (to be removed after migration)
 	BOGOTokenV2       string `json:"bogo_token_v2"`
 	ConservationNFT   string `json:"conservation_nft"`
 	CommercialNFT     string `json:"commercial_nft"`
-	RewardDistributor string `json:"reward_distributor"`
 	MultisigTreasury  string `json:"multisig_treasury"`
 }
 
@@ -50,8 +61,18 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Environment: getEnv("NODE_ENV", "development"),
 		APIPort:     getEnv("API_PORT", "3001"),
-		RPCUrl:      getEnv("RPC_URL", "https://columbus.camino.network/ext/bc/C/rpc"),
-		ChainID:     501,
+		
+		// Configure testnet
+		Testnet: NetworkConfig{
+			RPCUrl:  "https://columbus.camino.network/ext/bc/C/rpc",
+			ChainID: 501,
+		},
+		
+		// Configure mainnet
+		Mainnet: NetworkConfig{
+			RPCUrl:  "https://api.camino.network/ext/bc/C/rpc",
+			ChainID: 500,
+		},
 	}
 
 	// Load secrets from AWS SSM in production
@@ -81,12 +102,32 @@ func loadFromEnv(cfg *Config) {
 	cfg.FirebaseProjectID = getEnv("FIREBASE_PROJECT_ID", "")
 	cfg.BackendSecret = getEnv("BACKEND_SECRET", "backend-secret-key")
 
-	cfg.Contracts = ContractAddresses{
-		BOGOTokenV2:       getEnv("BOGO_TOKEN_V2_ADDRESS", ""),
-		ConservationNFT:   getEnv("CONSERVATION_NFT_ADDRESS", ""),
-		CommercialNFT:     getEnv("COMMERCIAL_NFT_ADDRESS", ""),
-		RewardDistributor: getEnv("REWARD_DISTRIBUTOR_V2_ADDRESS", ""),
-		MultisigTreasury:  getEnv("MULTISIG_ADDRESS", ""),
+	// Load testnet contracts
+	cfg.Testnet.Contracts = ContractAddresses{
+		// V1 Contracts - Testnet
+		RoleManager:       getEnv("TESTNET_ROLE_MANAGER_ADDRESS", ""),
+		BOGOToken:         getEnv("TESTNET_BOGO_TOKEN_ADDRESS", ""),
+		RewardDistributor: getEnv("TESTNET_REWARD_DISTRIBUTOR_ADDRESS", ""),
+		
+		// Legacy contracts (for backward compatibility)
+		BOGOTokenV2:       getEnv("TESTNET_BOGO_TOKEN_V2_ADDRESS", ""),
+		ConservationNFT:   getEnv("TESTNET_CONSERVATION_NFT_ADDRESS", ""),
+		CommercialNFT:     getEnv("TESTNET_COMMERCIAL_NFT_ADDRESS", ""),
+		MultisigTreasury:  getEnv("TESTNET_MULTISIG_ADDRESS", ""),
+	}
+	
+	// Load mainnet contracts
+	cfg.Mainnet.Contracts = ContractAddresses{
+		// V1 Contracts - Mainnet
+		RoleManager:       getEnv("MAINNET_ROLE_MANAGER_ADDRESS", ""),
+		BOGOToken:         getEnv("MAINNET_BOGO_TOKEN_ADDRESS", ""),
+		RewardDistributor: getEnv("MAINNET_REWARD_DISTRIBUTOR_ADDRESS", ""),
+		
+		// Legacy contracts (for backward compatibility)
+		BOGOTokenV2:       getEnv("MAINNET_BOGO_TOKEN_V2_ADDRESS", ""),
+		ConservationNFT:   getEnv("MAINNET_CONSERVATION_NFT_ADDRESS", ""),
+		CommercialNFT:     getEnv("MAINNET_COMMERCIAL_NFT_ADDRESS", ""),
+		MultisigTreasury:  getEnv("MAINNET_MULTISIG_ADDRESS", ""),
 	}
 }
 
@@ -105,18 +146,22 @@ func loadSecretsFromSSM(cfg *Config) error {
 	paramNames := []string{
 		"PRIVATE_KEY",
 		"API_PRIVATE_KEY",
+		// V1 Contracts
+		"ROLE_MANAGER_ADDRESS",
+		"BOGO_TOKEN_ADDRESS",
+		"REWARD_DISTRIBUTOR_ADDRESS",
+		// Legacy contracts
 		"BOGO_TOKEN_V2_ADDRESS",
 		"CONSERVATION_NFT_ADDRESS",
 		"COMMERCIAL_NFT_ADDRESS",
 		"REWARD_DISTRIBUTOR_V2_ADDRESS",
 		"MULTISIG_ADDRESS",
-		"OCEAN_BOGO_ADDRESS",
-		"EARTH_BOGO_ADDRESS",
-		"WILDLIFE_BOGO_ADDRESS",
+		// Auth and other configs
 		"SWAGGER_USERNAME",
 		"SWAGGER_PASSWORD",
 		"FIREBASE_PROJECT_ID",
 		"BACKEND_SECRET",
+		"BACKEND_WALLET_ADDRESS",
 	}
 
 	// Get parameters

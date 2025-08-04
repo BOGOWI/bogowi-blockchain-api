@@ -13,18 +13,38 @@ async function main() {
   console.log("Account balance:", hre.ethers.formatEther(balance), "CAM\n");
 
   // Check required environment variables
-  const adminAddress = process.env.ADMIN_ADDRESS;
-  if (!adminAddress || adminAddress === "YOUR_ADMIN_ADDRESS") {
-    throw new Error("Please set ADMIN_ADDRESS in .env file");
+  // For testnet, use the testnet admin address
+  let adminAddress = process.env.ADMIN_ADDRESS;
+  
+  // If on testnet network, use testnet admin
+  if (hre.network.name === "columbus" || hre.network.name === "testnet") {
+    adminAddress = "0xB34A822F735CDE477cbB39a06118267D00948ef7"; // testnet admin
+  } else if (hre.network.name === "camino" || hre.network.name === "mainnet") {
+    adminAddress = "0x444ddA4cA50765D3c0c0c662aAecF3b5D49761Ea"; // mainnet admin
   }
+  
+  if (!adminAddress || adminAddress === "YOUR_ADMIN_ADDRESS") {
+    throw new Error("Admin address not configured for network: " + hre.network.name);
+  }
+  
+  console.log("Admin address:", adminAddress);
 
   // Deploy RoleManager
   console.log("1. Deploying RoleManager...");
   const RoleManager = await hre.ethers.getContractFactory("RoleManager");
-  const roleManager = await RoleManager.deploy(adminAddress);
+  const roleManager = await RoleManager.deploy(); // No parameters - constructor grants admin to deployer
   await roleManager.waitForDeployment();
   const roleManagerAddress = await roleManager.getAddress();
   console.log("✅ RoleManager deployed to:", roleManagerAddress);
+  
+  // Grant admin role to the specified admin if different from deployer
+  if (adminAddress.toLowerCase() !== deployer.address.toLowerCase()) {
+    console.log("Granting admin role to:", adminAddress);
+    const DEFAULT_ADMIN_ROLE = await roleManager.DEFAULT_ADMIN_ROLE();
+    const tx = await roleManager.grantRole(DEFAULT_ADMIN_ROLE, adminAddress);
+    await tx.wait();
+    console.log("✅ Admin role granted to:", adminAddress);
+  }
 
   // Deploy BOGOToken
   console.log("\n2. Deploying BOGOToken...");

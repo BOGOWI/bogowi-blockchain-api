@@ -24,15 +24,20 @@ async function main() {
   console.log("🔍 Verifying RoleManager...");
   console.log("Address:", deployment.contracts.RoleManager);
   
-  // Check admin role
-  const DEFAULT_ADMIN_ROLE = await roleManager.DEFAULT_ADMIN_ROLE();
+  // Check admin role (0x00 is OpenZeppelin's DEFAULT_ADMIN_ROLE)
+  const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
   const hasAdminRole = await roleManager.hasRole(DEFAULT_ADMIN_ROLE, deployment.adminAddress);
   console.log("Admin has DEFAULT_ADMIN_ROLE:", hasAdminRole ? "✅" : "❌");
   
-  // Check deployer role  
-  const DEPLOYER_ROLE = await roleManager.DEPLOYER_ROLE();
-  const deployerCount = await roleManager.getRoleMemberCount(DEPLOYER_ROLE);
-  console.log("Deployer role member count:", deployerCount.toString());
+  // Check actual roles that exist
+  const BUSINESS_ROLE = await roleManager.BUSINESS_ROLE();
+  const PAUSER_ROLE = await roleManager.PAUSER_ROLE();
+  const DISTRIBUTOR_BACKEND_ROLE = await roleManager.DISTRIBUTOR_BACKEND_ROLE();
+  
+  console.log("\nRole Constants:");
+  console.log("BUSINESS_ROLE:", BUSINESS_ROLE);
+  console.log("PAUSER_ROLE:", PAUSER_ROLE);
+  console.log("DISTRIBUTOR_BACKEND_ROLE:", DISTRIBUTOR_BACKEND_ROLE);
 
   console.log("\n🔍 Verifying BOGOToken...");
   console.log("Address:", deployment.contracts.BOGOToken);
@@ -88,13 +93,19 @@ async function main() {
   console.log("VERIFICATION SUMMARY");
   console.log("=".repeat(50));
   
+  // Check if key roles are assigned
+  const deployerHasBusinessRole = await roleManager.hasRole(BUSINESS_ROLE, deployment.deployer);
+  const distributorHasBusinessRole = await roleManager.hasRole(BUSINESS_ROLE, deployment.contracts.BOGORewardDistributor);
+  
   const checks = [
     { name: "RoleManager deployed", pass: deployment.contracts.RoleManager.startsWith("0x") },
     { name: "BOGOToken deployed", pass: deployment.contracts.BOGOToken.startsWith("0x") },
     { name: "RewardDistributor deployed", pass: deployment.contracts.BOGORewardDistributor.startsWith("0x") },
-    { name: "Admin has role", pass: hasAdminRole },
+    { name: "Admin has DEFAULT_ADMIN_ROLE", pass: hasAdminRole },
     { name: "Token configured correctly", pass: tokenRoleManager === deployment.contracts.RoleManager },
-    { name: "Distributor configured correctly", pass: distributorToken === deployment.contracts.BOGOToken && distributorRoleManager === deployment.contracts.RoleManager }
+    { name: "Distributor configured correctly", pass: distributorToken === deployment.contracts.BOGOToken && distributorRoleManager === deployment.contracts.RoleManager },
+    { name: "Deployer has BUSINESS_ROLE", pass: deployerHasBusinessRole },
+    { name: "Distributor has BUSINESS_ROLE", pass: distributorHasBusinessRole }
   ];
 
   let allPassed = true;

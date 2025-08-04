@@ -29,10 +29,15 @@ type BOGOWISDK struct {
 
 // ContractInstances holds all initialized contract instances
 type ContractInstances struct {
+	// V1 Contracts
+	RoleManager       *Contract
+	BOGOToken         *Contract
+	RewardDistributor *Contract
+	
+	// Legacy contracts (to be removed after migration)
 	BOGOTokenV2       *Contract
 	ConservationNFT   *Contract
 	CommercialNFT     *Contract
-	RewardDistributor *Contract
 	MultisigTreasury  *Contract
 }
 
@@ -56,25 +61,25 @@ type DAOInfo struct {
 	TransactionCount int `json:"transactionCount"`
 }
 
-// NewBOGOWISDK creates a new BOGOWI SDK instance
-func NewBOGOWISDK(cfg *config.Config) (*BOGOWISDK, error) {
+// NewBOGOWISDK creates a new BOGOWI SDK instance for a specific network
+func NewBOGOWISDK(networkConfig *config.NetworkConfig, privateKey string) (*BOGOWISDK, error) {
 	// Connect to Ethereum client
-	client, err := ethclient.Dial(cfg.RPCUrl)
+	client, err := ethclient.Dial(networkConfig.RPCUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Ethereum client: %w", err)
 	}
 
 	// Parse private key
-	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(cfg.PrivateKey, "0x"))
+	privKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKey, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 
 	// Get chain ID
-	chainID := big.NewInt(cfg.ChainID)
+	chainID := big.NewInt(networkConfig.ChainID)
 
 	// Create transactor
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+	auth, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create transactor: %w", err)
 	}
@@ -83,51 +88,60 @@ func NewBOGOWISDK(cfg *config.Config) (*BOGOWISDK, error) {
 		client:     client,
 		auth:       auth,
 		chainID:    chainID,
-		config:     cfg,
-		privateKey: privateKey,
+		privateKey: privKey,
+		contracts:  &ContractInstances{},
 	}
 
-	// Initialize contracts
-	if err := sdk.initializeContracts(); err != nil {
+	// Initialize contracts with network-specific addresses
+	if err := sdk.initializeContractsWithConfig(networkConfig); err != nil {
 		return nil, fmt.Errorf("failed to initialize contracts: %w", err)
 	}
 
 	return sdk, nil
 }
 
-// initializeContracts initializes all contract instances
-func (s *BOGOWISDK) initializeContracts() error {
-	s.contracts = &ContractInstances{}
-
-	// Initialize BOGOTokenV2
-	if s.config.Contracts.BOGOTokenV2 != "" {
-		contract, err := s.initializeContract(s.config.Contracts.BOGOTokenV2, ERC20ABI)
+// initializeContractsWithConfig initializes contracts with network-specific configuration
+func (s *BOGOWISDK) initializeContractsWithConfig(networkConfig *config.NetworkConfig) error {
+	contracts := networkConfig.Contracts
+	
+	// Initialize V1 Contracts
+	if contracts.RoleManager != "" {
+		contract, err := s.initializeContract(contracts.RoleManager, RoleManagerABI)
+		if err != nil {
+			return fmt.Errorf("failed to initialize RoleManager: %w", err)
+		}
+		s.contracts.RoleManager = contract
+	}
+	
+	if contracts.BOGOToken != "" {
+		contract, err := s.initializeContract(contracts.BOGOToken, BOGOTokenABI)
+		if err != nil {
+			return fmt.Errorf("failed to initialize BOGOToken: %w", err)
+		}
+		s.contracts.BOGOToken = contract
+	}
+	
+	if contracts.RewardDistributor != "" {
+		contract, err := s.initializeContract(contracts.RewardDistributor, RewardDistributorABI)
+		if err != nil {
+			return fmt.Errorf("failed to initialize RewardDistributor: %w", err)
+		}
+		s.contracts.RewardDistributor = contract
+		s.rewardDistributor = contract
+	}
+	
+	// Initialize Legacy Contracts if needed
+	if contracts.BOGOTokenV2 != "" {
+		contract, err := s.initializeContract(contracts.BOGOTokenV2, ERC20ABI)
 		if err != nil {
 			return fmt.Errorf("failed to initialize BOGOTokenV2: %w", err)
 		}
 		s.contracts.BOGOTokenV2 = contract
 	}
-
-	// Initialize ConservationNFT
-	if s.config.Contracts.ConservationNFT != "" {
-		contract, err := s.initializeContract(s.config.Contracts.ConservationNFT, ERC721ABI)
-		if err != nil {
-			return fmt.Errorf("failed to initialize ConservationNFT: %w", err)
-		}
-		s.contracts.ConservationNFT = contract
-	}
-
-	// Initialize CommercialNFT
-	if s.config.Contracts.CommercialNFT != "" {
-		contract, err := s.initializeContract(s.config.Contracts.CommercialNFT, ERC721ABI)
-		if err != nil {
-			return fmt.Errorf("failed to initialize CommercialNFT: %w", err)
-		}
-		s.contracts.CommercialNFT = contract
-	}
-
+	
 	return nil
 }
+
 
 // initializeContract creates a contract instance with the given address and ABI
 func (s *BOGOWISDK) initializeContract(address, abiJSON string) (*Contract, error) {
@@ -252,12 +266,11 @@ func (s *BOGOWISDK) TransferBOGOTokens(to string, amount string) (string, error)
 
 // GetPublicKey returns the public key associated with the private key
 func (s *BOGOWISDK) GetPublicKey() (string, error) {
-	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(s.config.PrivateKey, "0x"))
-	if err != nil {
-		return "", err
+	if s.privateKey == nil {
+		return "", fmt.Errorf("private key not initialized")
 	}
 
-	publicKey := privateKey.Public()
+	publicKey := s.privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
 		return "", fmt.Errorf("error casting public key to ECDSA")
