@@ -20,6 +20,8 @@ func TestHealthHandler(t *testing.T) {
 	cfg := &config.Config{
 		Environment: "test",
 		APIPort:     "3001",
+		BackendSecret: "test-secret",
+		DevBackendSecret: "test-dev-secret",
 		Testnet: config.NetworkConfig{
 			RPCUrl:    "https://columbus.camino.network/ext/bc/C/rpc",
 			ChainID:   501,

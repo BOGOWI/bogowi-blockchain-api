@@ -253,7 +253,7 @@ func (h *HandlerV2) ClaimCustomRewardV3(c *gin.Context) {
 	} else {
 		expectedSecret = h.Config.BackendSecret
 	}
-	
+
 	if authHeader != expectedSecret {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
 		return
