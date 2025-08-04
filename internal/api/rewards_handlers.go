@@ -15,9 +15,11 @@ type ClaimRewardRequestV2 struct {
 }
 
 type ClaimCustomRewardRequestV2 struct {
-	Wallet string `json:"wallet" binding:"required"`
-	Amount string `json:"amount" binding:"required"`
-	Reason string `json:"reason" binding:"required"`
+	Wallet           string `json:"wallet,omitempty"`
+	RecipientAddress string `json:"recipientAddress,omitempty"`
+	Amount           string `json:"amount" binding:"required"`
+	Reason           string `json:"reason,omitempty"`
+	RewardType       string `json:"rewardType,omitempty"`
 }
 
 type ClaimReferralRequestV2 struct {
@@ -176,20 +178,23 @@ func (h *Handler) ClaimCustomRewardV2(c *gin.Context) {
 		return
 	}
 
-	if !common.IsHexAddress(req.Wallet) {
+	// Accept either wallet or recipientAddress
+	address := req.Wallet
+	if address == "" {
+		address = req.RecipientAddress
+	}
+	
+	if !common.IsHexAddress(address) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid wallet address"})
 		return
 	}
 
-	// Validate amount
-	amount, ok := new(big.Int).SetString(req.Amount, 10)
+	// Validate amount (already in wei)
+	weiAmount, ok := new(big.Int).SetString(req.Amount, 10)
 	if !ok {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid amount format"})
 		return
 	}
-
-	// Convert to wei (multiply by 10^18)
-	weiAmount := new(big.Int).Mul(amount, big.NewInt(1e18))
 
 	// Check max amount (1000 BOGO)
 	maxAmount := new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18))
@@ -198,10 +203,16 @@ func (h *Handler) ClaimCustomRewardV2(c *gin.Context) {
 		return
 	}
 
-	walletAddr := common.HexToAddress(req.Wallet)
+	walletAddr := common.HexToAddress(address)
+
+	// Use reason or rewardType
+	reason := req.Reason
+	if reason == "" {
+		reason = req.RewardType
+	}
 
 	// Claim custom reward
-	tx, err := h.SDK.ClaimCustomReward(walletAddr, weiAmount, req.Reason)
+	tx, err := h.SDK.ClaimCustomReward(walletAddr, weiAmount, reason)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming custom reward: %v", err)})
 		return
@@ -211,7 +222,7 @@ func (h *Handler) ClaimCustomRewardV2(c *gin.Context) {
 		"success": true,
 		"txHash":  tx.Hash().Hex(),
 		"amount":  req.Amount,
-		"reason":  req.Reason,
+		"reason":  reason,
 	})
 }
 
