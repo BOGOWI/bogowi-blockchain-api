@@ -18,9 +18,9 @@ func TestHealthHandler(t *testing.T) {
 
 	// Create test config
 	cfg := &config.Config{
-		Environment: "test",
-		APIPort:     "3001",
-		BackendSecret: "test-secret",
+		Environment:      "test",
+		APIPort:          "3001",
+		BackendSecret:    "test-secret",
 		DevBackendSecret: "test-dev-secret",
 		Testnet: config.NetworkConfig{
 			RPCUrl:    "https://columbus.camino.network/ext/bc/C/rpc",
