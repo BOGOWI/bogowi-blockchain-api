@@ -29,14 +29,14 @@ func NetworkMiddleware() gin.HandlerFunc {
 		if network == "" {
 			network = "testnet" // Default to testnet
 		}
-		
+
 		// Validate network
 		if network != "testnet" && network != "mainnet" {
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid network. Use 'testnet' or 'mainnet'"})
 			c.Abort()
 			return
 		}
-		
+
 		// Store in context
 		c.Set("network", network)
 		c.Next()

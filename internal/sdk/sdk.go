@@ -33,12 +33,12 @@ type ContractInstances struct {
 	RoleManager       *Contract
 	BOGOToken         *Contract
 	RewardDistributor *Contract
-	
+
 	// Legacy contracts (to be removed after migration)
-	BOGOTokenV2       *Contract
-	ConservationNFT   *Contract
-	CommercialNFT     *Contract
-	MultisigTreasury  *Contract
+	BOGOTokenV2      *Contract
+	ConservationNFT  *Contract
+	CommercialNFT    *Contract
+	MultisigTreasury *Contract
 }
 
 // Contract represents a generic contract with ABI and address
@@ -103,7 +103,7 @@ func NewBOGOWISDK(networkConfig *config.NetworkConfig, privateKey string) (*BOGO
 // initializeContractsWithConfig initializes contracts with network-specific configuration
 func (s *BOGOWISDK) initializeContractsWithConfig(networkConfig *config.NetworkConfig) error {
 	contracts := networkConfig.Contracts
-	
+
 	// Initialize V1 Contracts
 	if contracts.RoleManager != "" {
 		contract, err := s.initializeContract(contracts.RoleManager, RoleManagerABI)
@@ -112,7 +112,7 @@ func (s *BOGOWISDK) initializeContractsWithConfig(networkConfig *config.NetworkC
 		}
 		s.contracts.RoleManager = contract
 	}
-	
+
 	if contracts.BOGOToken != "" {
 		contract, err := s.initializeContract(contracts.BOGOToken, BOGOTokenABI)
 		if err != nil {
@@ -120,7 +120,7 @@ func (s *BOGOWISDK) initializeContractsWithConfig(networkConfig *config.NetworkC
 		}
 		s.contracts.BOGOToken = contract
 	}
-	
+
 	if contracts.RewardDistributor != "" {
 		contract, err := s.initializeContract(contracts.RewardDistributor, RewardDistributorABI)
 		if err != nil {
@@ -129,7 +129,7 @@ func (s *BOGOWISDK) initializeContractsWithConfig(networkConfig *config.NetworkC
 		s.contracts.RewardDistributor = contract
 		s.rewardDistributor = contract
 	}
-	
+
 	// Initialize Legacy Contracts if needed
 	if contracts.BOGOTokenV2 != "" {
 		contract, err := s.initializeContract(contracts.BOGOTokenV2, ERC20ABI)
@@ -138,10 +138,9 @@ func (s *BOGOWISDK) initializeContractsWithConfig(networkConfig *config.NetworkC
 		}
 		s.contracts.BOGOTokenV2 = contract
 	}
-	
+
 	return nil
 }
-
 
 // initializeContract creates a contract instance with the given address and ABI
 func (s *BOGOWISDK) initializeContract(address, abiJSON string) (*Contract, error) {

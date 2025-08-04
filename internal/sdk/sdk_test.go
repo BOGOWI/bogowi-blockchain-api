@@ -412,7 +412,7 @@ func TestGetPublicKey(t *testing.T) {
 				key, _ := crypto.HexToECDSA(strings.TrimPrefix(tt.privateKey, "0x"))
 				privKey = key
 			}
-			
+
 			sdk := &BOGOWISDK{
 				privateKey: privKey,
 			}

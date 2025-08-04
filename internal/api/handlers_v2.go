@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"bogowi-blockchain-go/internal/config"
-	
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +13,7 @@ import (
 // GetHealthV2 returns health status with network info
 func (h *HandlerV2) GetHealthV2(c *gin.Context) {
 	network := GetNetworkFromContext(c)
-	
+
 	// Get SDK for the network
 	sdk, err := h.NetworkHandler.GetSDK(network)
 	if err != nil {
@@ -29,10 +29,10 @@ func (h *HandlerV2) GetHealthV2(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":     "healthy",
-		"network":    network,
-		"publicKey":  publicKey,
-		"version":    "2.0.0",
+		"status":    "healthy",
+		"network":   network,
+		"publicKey": publicKey,
+		"version":   "2.0.0",
 		"contracts": getContractAddresses(h.Config, network),
 	})
 }
@@ -40,9 +40,9 @@ func (h *HandlerV2) GetHealthV2(c *gin.Context) {
 // GetNetworkInfo returns information about the current network
 func (h *HandlerV2) GetNetworkInfo(c *gin.Context) {
 	network := GetNetworkFromContext(c)
-	
+
 	c.JSON(http.StatusOK, gin.H{
-		"network":    network,
+		"network":   network,
 		"contracts": getContractAddresses(h.Config, network),
 		"rpc_url":   getRPCUrl(h.Config, network),
 		"chain_id":  getChainID(h.Config, network),
@@ -149,10 +149,10 @@ func (h *HandlerV2) TransferBOGOTokensV2(c *gin.Context) {
 // GetRewardTemplatesV2 returns available reward templates
 func (h *HandlerV2) GetRewardTemplatesV2(c *gin.Context) {
 	network := GetNetworkFromContext(c)
-	
+
 	// TODO: Implement reward templates logic
 	c.JSON(http.StatusOK, gin.H{
-		"network": network,
+		"network":   network,
 		"templates": []interface{}{},
 	})
 }
@@ -161,7 +161,7 @@ func (h *HandlerV2) GetRewardTemplatesV2(c *gin.Context) {
 func (h *HandlerV2) GetRewardTemplateV2(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 	templateID := c.Param("id")
-	
+
 	// TODO: Implement reward template retrieval logic
 	c.JSON(http.StatusNotFound, ErrorResponse{
 		Error: fmt.Sprintf("Template '%s' not found on %s", templateID, network),
@@ -172,12 +172,12 @@ func (h *HandlerV2) GetRewardTemplateV2(c *gin.Context) {
 func (h *HandlerV2) CheckRewardEligibilityV2(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 	userID := c.GetString("uid") // From auth middleware
-	
+
 	// TODO: Implement eligibility check logic
 	c.JSON(http.StatusOK, gin.H{
-		"network": network,
+		"network":  network,
 		"eligible": false,
-		"userID": userID,
+		"userID":   userID,
 	})
 }
 
@@ -185,11 +185,11 @@ func (h *HandlerV2) CheckRewardEligibilityV2(c *gin.Context) {
 func (h *HandlerV2) GetRewardHistoryV2(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 	userID := c.GetString("uid") // From auth middleware
-	
+
 	// TODO: Implement reward history logic
 	c.JSON(http.StatusOK, gin.H{
 		"network": network,
-		"userID": userID,
+		"userID":  userID,
 		"rewards": []interface{}{},
 	})
 }
@@ -198,22 +198,22 @@ func (h *HandlerV2) GetRewardHistoryV2(c *gin.Context) {
 func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 	userID := c.GetString("uid") // From auth middleware
-	
+
 	var req struct {
 		RewardType string `json:"rewardType" binding:"required"`
 		Amount     string `json:"amount"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
 		return
 	}
-	
+
 	// TODO: Implement reward claim logic
 	c.JSON(http.StatusOK, gin.H{
-		"network": network,
-		"userID": userID,
-		"status": "pending",
+		"network":    network,
+		"userID":     userID,
+		"status":     "pending",
 		"rewardType": req.RewardType,
 	})
 }
@@ -222,21 +222,21 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 func (h *HandlerV2) ClaimReferralV3(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 	userID := c.GetString("uid") // From auth middleware
-	
+
 	var req struct {
 		ReferralCode string `json:"referralCode" binding:"required"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
 		return
 	}
-	
+
 	// TODO: Implement referral claim logic
 	c.JSON(http.StatusOK, gin.H{
-		"network": network,
-		"userID": userID,
-		"status": "pending",
+		"network":      network,
+		"userID":       userID,
+		"status":       "pending",
 		"referralCode": req.ReferralCode,
 	})
 }
@@ -244,30 +244,30 @@ func (h *HandlerV2) ClaimReferralV3(c *gin.Context) {
 // ClaimCustomRewardV3 processes custom rewards (backend only)
 func (h *HandlerV2) ClaimCustomRewardV3(c *gin.Context) {
 	network := GetNetworkFromContext(c)
-	
+
 	var req struct {
 		RecipientAddress string `json:"recipientAddress" binding:"required"`
-		Amount          string `json:"amount" binding:"required"`
-		RewardType      string `json:"rewardType" binding:"required"`
+		Amount           string `json:"amount" binding:"required"`
+		RewardType       string `json:"rewardType" binding:"required"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
 		return
 	}
-	
+
 	// Validate address
 	if !common.IsHexAddress(req.RecipientAddress) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid recipient address"})
 		return
 	}
-	
+
 	// TODO: Implement custom reward distribution logic
 	c.JSON(http.StatusOK, gin.H{
-		"network": network,
-		"status": "pending",
-		"recipient": req.RecipientAddress,
-		"amount": req.Amount,
+		"network":    network,
+		"status":     "pending",
+		"recipient":  req.RecipientAddress,
+		"amount":     req.Amount,
 		"rewardType": req.RewardType,
 	})
 }

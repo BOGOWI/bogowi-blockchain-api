@@ -98,3 +98,8 @@ docs/reward-system/state-28-july.txt
 docs/BOGOWI_ACTUAL_API_Postman_Collection.json
 docs/backend-to-backend-api.txt
 BOGOWI_CONTRACTS_TECHNICAL_ANALYSIS.txt
+contracts/v1/scripts/DEPLOYMENT_PREFLIGHT_CHECKLIST.md
+contracts/v1/scripts/DEPLOYMENT_PLAN.md
+.env.v1.multi-network.example
+.env.v1.example
+.env.dev

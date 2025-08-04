@@ -43,12 +43,12 @@ type ContractAddresses struct {
 	RoleManager       string `json:"role_manager"`
 	BOGOToken         string `json:"bogo_token"`
 	RewardDistributor string `json:"reward_distributor"`
-	
+
 	// Legacy contracts (to be removed after migration)
-	BOGOTokenV2       string `json:"bogo_token_v2"`
-	ConservationNFT   string `json:"conservation_nft"`
-	CommercialNFT     string `json:"commercial_nft"`
-	MultisigTreasury  string `json:"multisig_treasury"`
+	BOGOTokenV2      string `json:"bogo_token_v2"`
+	ConservationNFT  string `json:"conservation_nft"`
+	CommercialNFT    string `json:"commercial_nft"`
+	MultisigTreasury string `json:"multisig_treasury"`
 }
 
 // Load loads configuration from environment variables and AWS SSM
@@ -61,13 +61,13 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Environment: getEnv("NODE_ENV", "development"),
 		APIPort:     getEnv("API_PORT", "3001"),
-		
+
 		// Configure testnet
 		Testnet: NetworkConfig{
 			RPCUrl:  "https://columbus.camino.network/ext/bc/C/rpc",
 			ChainID: 501,
 		},
-		
+
 		// Configure mainnet
 		Mainnet: NetworkConfig{
 			RPCUrl:  "https://api.camino.network/ext/bc/C/rpc",
@@ -108,26 +108,26 @@ func loadFromEnv(cfg *Config) {
 		RoleManager:       getEnv("TESTNET_ROLE_MANAGER_ADDRESS", ""),
 		BOGOToken:         getEnv("TESTNET_BOGO_TOKEN_ADDRESS", ""),
 		RewardDistributor: getEnv("TESTNET_REWARD_DISTRIBUTOR_ADDRESS", ""),
-		
+
 		// Legacy contracts (for backward compatibility)
-		BOGOTokenV2:       getEnv("TESTNET_BOGO_TOKEN_V2_ADDRESS", ""),
-		ConservationNFT:   getEnv("TESTNET_CONSERVATION_NFT_ADDRESS", ""),
-		CommercialNFT:     getEnv("TESTNET_COMMERCIAL_NFT_ADDRESS", ""),
-		MultisigTreasury:  getEnv("TESTNET_MULTISIG_ADDRESS", ""),
+		BOGOTokenV2:      getEnv("TESTNET_BOGO_TOKEN_V2_ADDRESS", ""),
+		ConservationNFT:  getEnv("TESTNET_CONSERVATION_NFT_ADDRESS", ""),
+		CommercialNFT:    getEnv("TESTNET_COMMERCIAL_NFT_ADDRESS", ""),
+		MultisigTreasury: getEnv("TESTNET_MULTISIG_ADDRESS", ""),
 	}
-	
+
 	// Load mainnet contracts
 	cfg.Mainnet.Contracts = ContractAddresses{
 		// V1 Contracts - Mainnet
 		RoleManager:       getEnv("MAINNET_ROLE_MANAGER_ADDRESS", ""),
 		BOGOToken:         getEnv("MAINNET_BOGO_TOKEN_ADDRESS", ""),
 		RewardDistributor: getEnv("MAINNET_REWARD_DISTRIBUTOR_ADDRESS", ""),
-		
+
 		// Legacy contracts (for backward compatibility)
-		BOGOTokenV2:       getEnv("MAINNET_BOGO_TOKEN_V2_ADDRESS", ""),
-		ConservationNFT:   getEnv("MAINNET_CONSERVATION_NFT_ADDRESS", ""),
-		CommercialNFT:     getEnv("MAINNET_COMMERCIAL_NFT_ADDRESS", ""),
-		MultisigTreasury:  getEnv("MAINNET_MULTISIG_ADDRESS", ""),
+		BOGOTokenV2:      getEnv("MAINNET_BOGO_TOKEN_V2_ADDRESS", ""),
+		ConservationNFT:  getEnv("MAINNET_CONSERVATION_NFT_ADDRESS", ""),
+		CommercialNFT:    getEnv("MAINNET_COMMERCIAL_NFT_ADDRESS", ""),
+		MultisigTreasury: getEnv("MAINNET_MULTISIG_ADDRESS", ""),
 	}
 }
 

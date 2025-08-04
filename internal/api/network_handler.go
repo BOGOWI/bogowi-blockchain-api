@@ -10,10 +10,10 @@ import (
 
 // NetworkHandler manages SDK instances for both testnet and mainnet
 type NetworkHandler struct {
-	testnetSDK  SDKInterface
-	mainnetSDK  SDKInterface
-	config      *config.Config
-	mu          sync.RWMutex
+	testnetSDK SDKInterface
+	mainnetSDK SDKInterface
+	config     *config.Config
+	mu         sync.RWMutex
 }
 
 // NewNetworkHandler creates a new network-aware handler
