@@ -245,6 +245,20 @@ func (h *HandlerV2) ClaimReferralV3(c *gin.Context) {
 func (h *HandlerV2) ClaimCustomRewardV3(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 
+	// Check backend authentication based on network
+	authHeader := c.GetHeader("X-Backend-Auth")
+	var expectedSecret string
+	if network == "testnet" {
+		expectedSecret = h.Config.DevBackendSecret
+	} else {
+		expectedSecret = h.Config.BackendSecret
+	}
+	
+	if authHeader != expectedSecret {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		return
+	}
+
 	var req struct {
 		RecipientAddress string `json:"recipientAddress" binding:"required"`
 		Amount           string `json:"amount" binding:"required"`

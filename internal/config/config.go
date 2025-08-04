@@ -28,6 +28,7 @@ type Config struct {
 	SwaggerPassword   string `json:"swagger_password"`
 	FirebaseProjectID string `json:"firebase_project_id"`
 	BackendSecret     string `json:"backend_secret"`
+	DevBackendSecret  string `json:"dev_backend_secret"`
 }
 
 // NetworkConfig holds network-specific configuration
@@ -101,6 +102,7 @@ func loadFromEnv(cfg *Config) {
 	cfg.SwaggerPassword = getEnv("SWAGGER_PASSWORD", "")
 	cfg.FirebaseProjectID = getEnv("FIREBASE_PROJECT_ID", "")
 	cfg.BackendSecret = getEnv("BACKEND_SECRET", "backend-secret-key")
+	cfg.DevBackendSecret = getEnv("DEV_BACKEND_SECRET", cfg.BackendSecret) // Default to main secret if not set
 
 	// Load testnet contracts
 	cfg.Testnet.Contracts = ContractAddresses{
