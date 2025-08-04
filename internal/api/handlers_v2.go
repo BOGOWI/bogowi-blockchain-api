@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math/big"
 	"net/http"
 
 	"bogowi-blockchain-go/internal/config"
@@ -276,13 +277,35 @@ func (h *HandlerV2) ClaimCustomRewardV3(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement custom reward distribution logic
+	// Get SDK for the network
+	sdk, err := h.NetworkHandler.GetSDK(network)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// Parse amount from string to big.Int
+	amount := new(big.Int)
+	_, success := amount.SetString(req.Amount, 10)
+	if !success {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid amount format"})
+		return
+	}
+
+	// Call smart contract to distribute reward
+	tx, err := sdk.ClaimCustomReward(common.HexToAddress(req.RecipientAddress), amount, req.RewardType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Failed to claim reward: %v", err)})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"network":    network,
-		"status":     "pending",
-		"recipient":  req.RecipientAddress,
-		"amount":     req.Amount,
-		"rewardType": req.RewardType,
+		"network":         network,
+		"status":          "success",
+		"transactionHash": tx.Hash().Hex(),
+		"recipient":       req.RecipientAddress,
+		"amount":          req.Amount,
+		"rewardType":      req.RewardType,
 	})
 }
 
