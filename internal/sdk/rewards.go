@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 
@@ -246,9 +247,18 @@ func (s *BOGOWISDK) getTransactOpts() (*bind.TransactOpts, error) {
 		return nil, err
 	}
 
-	// Set gas price and limit
-	auth.GasPrice = big.NewInt(20000000000) // 20 gwei
-	auth.GasLimit = uint64(300000)
+	// Get suggested gas price from the network
+	gasPrice, err := s.client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	// Add 20% buffer to suggested price to ensure transaction goes through
+	gasPrice = new(big.Int).Mul(gasPrice, big.NewInt(120))
+	gasPrice = new(big.Int).Div(gasPrice, big.NewInt(100))
+
+	auth.GasPrice = gasPrice
+	auth.GasLimit = uint64(300000) // This could also be estimated dynamically
 
 	return auth, nil
 }
