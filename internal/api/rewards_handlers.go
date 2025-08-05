@@ -183,7 +183,7 @@ func (h *Handler) ClaimCustomRewardV2(c *gin.Context) {
 	if address == "" {
 		address = req.RecipientAddress
 	}
-	
+
 	if !common.IsHexAddress(address) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid wallet address"})
 		return

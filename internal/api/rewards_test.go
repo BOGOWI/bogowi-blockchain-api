@@ -174,12 +174,13 @@ func TestClaimCustomRewardV2(t *testing.T) {
 			authHeader: "test-secret",
 			request: ClaimCustomRewardRequestV2{
 				Wallet: "0x1234567890123456789012345678901234567890",
-				Amount: "500",
+				Amount: "500000000000000000000",
 				Reason: "contest_winner",
 			},
 			setupMock: func(m *MockSDK) {
 				walletAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
-				amount := new(big.Int).Mul(big.NewInt(500), big.NewInt(1e18))
+				amount := new(big.Int)
+				amount.SetString("500000000000000000000", 10)
 				tx := types.NewTransaction(0, common.HexToAddress("0x0"), big.NewInt(0), 0, big.NewInt(0), nil)
 				m.On("ClaimCustomReward", walletAddr, amount, "contest_winner").Return(tx, nil)
 			},
@@ -190,7 +191,7 @@ func TestClaimCustomRewardV2(t *testing.T) {
 			authHeader: "wrong-secret",
 			request: ClaimCustomRewardRequestV2{
 				Wallet: "0x1234567890123456789012345678901234567890",
-				Amount: "500",
+				Amount: "500000000000000000000",
 				Reason: "contest_winner",
 			},
 			setupMock:  func(m *MockSDK) {},
@@ -201,7 +202,7 @@ func TestClaimCustomRewardV2(t *testing.T) {
 			authHeader: "test-secret",
 			request: ClaimCustomRewardRequestV2{
 				Wallet: "0x1234567890123456789012345678901234567890",
-				Amount: "1500",
+				Amount: "1500000000000000000000",
 				Reason: "contest_winner",
 			},
 			setupMock:  func(m *MockSDK) {},
