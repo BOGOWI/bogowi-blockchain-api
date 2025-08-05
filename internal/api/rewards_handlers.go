@@ -332,12 +332,23 @@ func (h *Handler) ClaimCustomRewardV2WithNetwork(c *gin.Context) {
 		return
 	}
 
+	// Get transaction details for gas info
+	gasPrice := tx.GasPrice()
+	gasLimit := tx.Gas()
+	estimatedGasCost := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit)))
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"txHash":  tx.Hash().Hex(),
 		"amount":  req.Amount,
 		"reason":  reason,
 		"network": network,
+		"gas": gin.H{
+			"gasPrice": gasPrice.String(),        // in wei
+			"gasLimit": gasLimit,                 // gas units
+			"estimatedCost": estimatedGasCost.String(), // in wei
+			"gasPriceGwei": new(big.Float).Quo(new(big.Float).SetInt(gasPrice), big.NewFloat(1e9)).String(),
+		},
 	})
 }
 
