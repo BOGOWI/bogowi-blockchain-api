@@ -39,7 +39,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	} else {
 		networkConfig = &cfg.Mainnet
 	}
-	
+
 	bogoSDK, err := sdk.NewBOGOWISDK(networkConfig, cfg.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize SDK: %w", err)
