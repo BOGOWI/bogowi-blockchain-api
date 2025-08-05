@@ -15,11 +15,13 @@ import (
 
 func TestNewServer(t *testing.T) {
 	// Set up test environment
-	os.Setenv("PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	os.Setenv("TESTNET_PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	os.Setenv("MAINNET_PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	os.Setenv("RPC_URL", "https://columbus.camino.network/ext/bc/C/rpc")
 	os.Setenv("API_PORT", "3001")
 	defer func() {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv("TESTNET_PRIVATE_KEY")
+		os.Unsetenv("MAINNET_PRIVATE_KEY")
 		os.Unsetenv("RPC_URL")
 		os.Unsetenv("API_PORT")
 	}()
@@ -40,7 +42,8 @@ func TestNewServer(t *testing.T) {
 		{
 			name: "invalid private key",
 			setup: func() {
-				os.Setenv("PRIVATE_KEY", "invalid")
+				os.Setenv("TESTNET_PRIVATE_KEY", "invalid")
+				os.Setenv("MAINNET_PRIVATE_KEY", "invalid")
 				// Set contract addresses so NetworkHandler tries to initialize SDKs
 				os.Setenv("BOGO_TOKEN_ADDRESS", "0x49fc9939D8431371dD22658a8a969Ec798A26fFB")
 				os.Setenv("REWARD_DISTRIBUTOR_ADDRESS", "0x00439bd5eeED2303bfB64529Dad40C7c3F697724")
@@ -56,9 +59,11 @@ func TestNewServer(t *testing.T) {
 			name: "missing private key",
 			setup: func() {
 				// Save current values
-				oldPK := os.Getenv("PRIVATE_KEY")
-				oldAPK := os.Getenv("API_PRIVATE_KEY")
+				oldTPK := os.Getenv("TESTNET_PRIVATE_KEY")
+				oldMPK := os.Getenv("MAINNET_PRIVATE_KEY")
 				// Clear them
+				os.Unsetenv("TESTNET_PRIVATE_KEY")
+				os.Unsetenv("MAINNET_PRIVATE_KEY")
 				os.Unsetenv("PRIVATE_KEY")
 				os.Unsetenv("API_PRIVATE_KEY")
 				// Temporarily rename .env file
@@ -66,16 +71,16 @@ func TestNewServer(t *testing.T) {
 				// Restore after test
 				t.Cleanup(func() {
 					os.Rename(".env.backup", ".env")
-					if oldPK != "" {
-						os.Setenv("PRIVATE_KEY", oldPK)
+					if oldTPK != "" {
+						os.Setenv("TESTNET_PRIVATE_KEY", oldTPK)
 					}
-					if oldAPK != "" {
-						os.Setenv("API_PRIVATE_KEY", oldAPK)
+					if oldMPK != "" {
+						os.Setenv("MAINNET_PRIVATE_KEY", oldMPK)
 					}
 				})
 			},
 			wantErr: true,
-			errMsg:  "PRIVATE_KEY is required",
+			errMsg:  "At least one private key (TESTNET_PRIVATE_KEY or MAINNET_PRIVATE_KEY) is required",
 		},
 	}
 
@@ -86,7 +91,7 @@ func TestNewServer(t *testing.T) {
 			cfg, err := config.Load()
 			if tt.name == "missing private key" && err != nil {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "PRIVATE_KEY is required")
+				assert.Contains(t, err.Error(), "At least one private key")
 				return
 			}
 
@@ -109,11 +114,13 @@ func TestNewServer(t *testing.T) {
 
 func TestServerStartAndShutdown(t *testing.T) {
 	// Set up test environment
-	os.Setenv("PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	os.Setenv("TESTNET_PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	os.Setenv("MAINNET_PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	os.Setenv("RPC_URL", "https://columbus.camino.network/ext/bc/C/rpc")
 	os.Setenv("API_PORT", "18765") // Use a specific high port
 	defer func() {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv("TESTNET_PRIVATE_KEY")
+		os.Unsetenv("MAINNET_PRIVATE_KEY")
 		os.Unsetenv("RPC_URL")
 		os.Unsetenv("API_PORT")
 	}()
@@ -160,11 +167,13 @@ func TestServerStartAndShutdown(t *testing.T) {
 
 func TestServerShutdownTimeout(t *testing.T) {
 	// Set up test environment
-	os.Setenv("PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	os.Setenv("TESTNET_PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	os.Setenv("MAINNET_PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	os.Setenv("RPC_URL", "https://columbus.camino.network/ext/bc/C/rpc")
 	os.Setenv("API_PORT", "18766")
 	defer func() {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv("TESTNET_PRIVATE_KEY")
+		os.Unsetenv("MAINNET_PRIVATE_KEY")
 		os.Unsetenv("RPC_URL")
 		os.Unsetenv("API_PORT")
 	}()
@@ -238,12 +247,14 @@ var osExit = os.Exit
 
 func TestProductionMode(t *testing.T) {
 	// Set up test environment
-	os.Setenv("PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	os.Setenv("TESTNET_PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	os.Setenv("MAINNET_PRIVATE_KEY", "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	os.Setenv("RPC_URL", "https://columbus.camino.network/ext/bc/C/rpc")
 	os.Setenv("API_PORT", "18767")
 	os.Setenv("NODE_ENV", "production")
 	defer func() {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv("TESTNET_PRIVATE_KEY")
+		os.Unsetenv("MAINNET_PRIVATE_KEY")
 		os.Unsetenv("RPC_URL")
 		os.Unsetenv("API_PORT")
 		os.Unsetenv("NODE_ENV")
