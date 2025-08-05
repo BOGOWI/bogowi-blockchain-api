@@ -26,14 +26,19 @@ func (s *BOGOWISDK) ClaimRewardV2(templateID string, recipient common.Address) (
 		return nil, fmt.Errorf("reward distributor not initialized")
 	}
 
-	_, err := s.getTransactOpts()
+	opts, err := s.getTransactOpts()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transaction options: %v", err)
 	}
 
-	// For now, simulate the transaction
-	// TODO: Call actual contract method when ABI is available
-	return &types.Transaction{}, nil
+	// Call the contract method using the bound contract instance
+	// The method signature is: claimReward(string templateId)
+	tx, err := s.rewardDistributor.Instance.Transact(opts, "claimReward", templateID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute claimReward: %v", err)
+	}
+
+	return tx, nil
 }
 
 // ClaimCustomReward claims a custom amount reward (backend only)
@@ -42,20 +47,26 @@ func (s *BOGOWISDK) ClaimCustomReward(recipient common.Address, amount *big.Int,
 		return nil, fmt.Errorf("reward distributor not initialized")
 	}
 
-	_, err := s.getTransactOpts()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get transaction options: %v", err)
-	}
-
 	// Validate amount (max 1000 BOGO)
 	maxAmount := new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18))
 	if amount.Cmp(maxAmount) > 0 {
 		return nil, fmt.Errorf("amount exceeds maximum of 1000 BOGO")
 	}
 
-	// For now, simulate the transaction
-	// TODO: Call actual contract method when ABI is available
-	return &types.Transaction{}, nil
+	// Get transaction options
+	opts, err := s.getTransactOpts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transaction options: %v", err)
+	}
+
+	// Call the contract method using the bound contract instance
+	// The method signature is: claimCustomReward(address recipient, uint256 amount, string reason)
+	tx, err := s.rewardDistributor.Instance.Transact(opts, "claimCustomReward", recipient, amount, reason)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute claimCustomReward: %v", err)
+	}
+
+	return tx, nil
 }
 
 // ClaimReferralBonus claims a referral bonus
@@ -64,14 +75,19 @@ func (s *BOGOWISDK) ClaimReferralBonus(referrer common.Address, referred common.
 		return nil, fmt.Errorf("reward distributor not initialized")
 	}
 
-	_, err := s.getTransactOpts()
+	opts, err := s.getTransactOpts()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transaction options: %v", err)
 	}
 
-	// For now, simulate the transaction
-	// TODO: Call actual contract method when ABI is available
-	return &types.Transaction{}, nil
+	// Call the contract method using the bound contract instance
+	// The method signature is: claimReferralBonus(address referrer)
+	tx, err := s.rewardDistributor.Instance.Transact(opts, "claimReferralBonus", referrer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute claimReferralBonus: %v", err)
+	}
+
+	return tx, nil
 }
 
 // CheckRewardEligibility checks if a wallet is eligible for a reward

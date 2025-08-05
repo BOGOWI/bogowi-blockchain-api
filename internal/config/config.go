@@ -104,24 +104,43 @@ func loadFromEnv(cfg *Config) {
 	cfg.BackendSecret = getEnv("BACKEND_SECRET", "backend-secret-key")
 	cfg.DevBackendSecret = getEnv("DEV_BACKEND_SECRET", cfg.BackendSecret) // Default to main secret if not set
 
-	// For dev (.env.dev) - load simple variable names
+	// Load testnet contracts - these are the Columbus testnet addresses
+	cfg.Testnet.Contracts = ContractAddresses{
+		RoleManager:       getEnv("TESTNET_ROLE_MANAGER_ADDRESS", "0xEB5d2AEf60E6dA1b695b4CBA7DEb9Ab8a9bEc940"),
+		BOGOToken:         getEnv("TESTNET_BOGO_TOKEN_ADDRESS", "0xC53c2f11e1d2e36CB5888BfEE157F78e04Bb4F76"),
+		RewardDistributor: getEnv("TESTNET_REWARD_DISTRIBUTOR_ADDRESS", "0x289cb4E70D0a876E8f885f39D23f8E01E475A111"),
+	}
+	
+	// Load mainnet contracts - these are the Camino mainnet addresses
+	cfg.Mainnet.Contracts = ContractAddresses{
+		RoleManager:       getEnv("MAINNET_ROLE_MANAGER_ADDRESS", "0xD0001e0F542696c9cBDaE3AcD6be7cA6A84A54cc"),
+		BOGOToken:         getEnv("MAINNET_BOGO_TOKEN_ADDRESS", "0x49fc9939D8431371dD22658a8a969Ec798A26fFB"),
+		RewardDistributor: getEnv("MAINNET_REWARD_DISTRIBUTOR_ADDRESS", "0x00439bd5eeED2303bfB64529Dad40C7c3F697724"),
+	}
+	
+	// For backwards compatibility, also load from simple names based on environment
 	if cfg.Environment == "development" {
-		cfg.Testnet.Contracts = ContractAddresses{
-			RoleManager:       getEnv("ROLE_MANAGER_ADDRESS", ""),
-			BOGOToken:         getEnv("BOGO_TOKEN_ADDRESS", ""),
-			RewardDistributor: getEnv("REWARD_DISTRIBUTOR_ADDRESS", ""),
+		// In dev, simple names override testnet if set
+		if addr := getEnv("ROLE_MANAGER_ADDRESS", ""); addr != "" {
+			cfg.Testnet.Contracts.RoleManager = addr
 		}
-		// Mainnet contracts empty in dev
-		cfg.Mainnet.Contracts = ContractAddresses{}
+		if addr := getEnv("BOGO_TOKEN_ADDRESS", ""); addr != "" {
+			cfg.Testnet.Contracts.BOGOToken = addr
+		}
+		if addr := getEnv("REWARD_DISTRIBUTOR_ADDRESS", ""); addr != "" {
+			cfg.Testnet.Contracts.RewardDistributor = addr
+		}
 	} else {
-		// For prod (.env) - load simple variable names
-		cfg.Mainnet.Contracts = ContractAddresses{
-			RoleManager:       getEnv("ROLE_MANAGER_ADDRESS", ""),
-			BOGOToken:         getEnv("BOGO_TOKEN_ADDRESS", ""),
-			RewardDistributor: getEnv("REWARD_DISTRIBUTOR_ADDRESS", ""),
+		// In prod, simple names override mainnet if set
+		if addr := getEnv("ROLE_MANAGER_ADDRESS", ""); addr != "" {
+			cfg.Mainnet.Contracts.RoleManager = addr
 		}
-		// Testnet contracts empty in prod
-		cfg.Testnet.Contracts = ContractAddresses{}
+		if addr := getEnv("BOGO_TOKEN_ADDRESS", ""); addr != "" {
+			cfg.Mainnet.Contracts.BOGOToken = addr
+		}
+		if addr := getEnv("REWARD_DISTRIBUTOR_ADDRESS", ""); addr != "" {
+			cfg.Mainnet.Contracts.RewardDistributor = addr
+		}
 	}
 }
 
@@ -140,10 +159,17 @@ func loadSecretsFromSSM(cfg *Config) error {
 	paramNames := []string{
 		"PRIVATE_KEY",
 		"API_PRIVATE_KEY",
-		// V1 Contracts
+		// V1 Mainnet Contracts
 		"ROLE_MANAGER_ADDRESS",
 		"BOGO_TOKEN_ADDRESS",
 		"REWARD_DISTRIBUTOR_ADDRESS",
+		"MAINNET_ROLE_MANAGER_ADDRESS",
+		"MAINNET_BOGO_TOKEN_ADDRESS",
+		"MAINNET_REWARD_DISTRIBUTOR_ADDRESS",
+		// V1 Testnet Contracts
+		"TESTNET_ROLE_MANAGER_ADDRESS",
+		"TESTNET_BOGO_TOKEN_ADDRESS",
+		"TESTNET_REWARD_DISTRIBUTOR_ADDRESS",
 		// Auth and other configs
 		"SWAGGER_USERNAME",
 		"SWAGGER_PASSWORD",
