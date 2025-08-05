@@ -206,6 +206,10 @@ jobs:
         # Navigate to home directory
         cd /home/ec2-user
         
+        # Stop service before replacing binary
+        echo "Stopping API service..."
+        sudo systemctl stop bogowi-api || true
+        
         # Deploy new API binary
         echo "Deploying new API binary..."
         sudo cp /tmp/bogowi-api-linux /usr/local/bin/bogowi-api
