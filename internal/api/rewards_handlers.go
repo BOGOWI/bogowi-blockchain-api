@@ -344,10 +344,10 @@ func (h *Handler) ClaimCustomRewardV2WithNetwork(c *gin.Context) {
 		"reason":  reason,
 		"network": network,
 		"gas": gin.H{
-			"gasPrice": gasPrice.String(),        // in wei
-			"gasLimit": gasLimit,                 // gas units
+			"gasPrice":      gasPrice.String(),         // in wei
+			"gasLimit":      gasLimit,                  // gas units
 			"estimatedCost": estimatedGasCost.String(), // in wei
-			"gasPriceGwei": new(big.Float).Quo(new(big.Float).SetInt(gasPrice), big.NewFloat(1e9)).String(),
+			"gasPriceGwei":  new(big.Float).Quo(new(big.Float).SetInt(gasPrice), big.NewFloat(1e9)).String(),
 		},
 	})
 }
