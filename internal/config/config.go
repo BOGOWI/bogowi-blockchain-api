@@ -19,7 +19,7 @@ type Config struct {
 	// Private Keys for each network
 	TestnetPrivateKey string `json:"testnet_private_key"`
 	MainnetPrivateKey string `json:"mainnet_private_key"`
-	
+
 	// Legacy field for backward compatibility
 	PrivateKey string `json:"private_key"`
 
@@ -82,11 +82,11 @@ func Load() (*Config, error) {
 
 	// Load configuration from environment first
 	loadFromEnv(cfg)
-	
+
 	// Load secrets from AWS SSM in production only if keys are not already set
-	if cfg.Environment == "production" && 
-		cfg.TestnetPrivateKey == "" && 
-		cfg.MainnetPrivateKey == "" && 
+	if cfg.Environment == "production" &&
+		cfg.TestnetPrivateKey == "" &&
+		cfg.MainnetPrivateKey == "" &&
 		getEnv("PRIVATE_KEY", "") == "" {
 		log.Println("Loading secrets from AWS Systems Manager...")
 		if err := loadSecretsFromSSM(cfg); err != nil {
@@ -109,7 +109,7 @@ func loadFromEnv(cfg *Config) {
 	// Load network-specific private keys
 	cfg.TestnetPrivateKey = getEnv("TESTNET_PRIVATE_KEY", "")
 	cfg.MainnetPrivateKey = getEnv("MAINNET_PRIVATE_KEY", "")
-	
+
 	// Fallback to legacy PRIVATE_KEY for backward compatibility
 	if cfg.TestnetPrivateKey == "" && cfg.MainnetPrivateKey == "" {
 		cfg.PrivateKey = getEnv("API_PRIVATE_KEY", getEnv("PRIVATE_KEY", ""))
@@ -118,7 +118,7 @@ func loadFromEnv(cfg *Config) {
 			cfg.TestnetPrivateKey = cfg.PrivateKey
 		}
 	}
-	
+
 	cfg.SwaggerUsername = getEnv("SWAGGER_USERNAME", "")
 	cfg.SwaggerPassword = getEnv("SWAGGER_PASSWORD", "")
 	cfg.FirebaseProjectID = getEnv("FIREBASE_PROJECT_ID", "")
