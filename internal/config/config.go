@@ -16,7 +16,11 @@ type Config struct {
 	Environment string `json:"environment"`
 	APIPort     string `json:"api_port"`
 
-	// Private Key (same for both networks)
+	// Private Keys for each network
+	TestnetPrivateKey string `json:"testnet_private_key"`
+	MainnetPrivateKey string `json:"mainnet_private_key"`
+	
+	// Legacy field for backward compatibility
 	PrivateKey string `json:"private_key"`
 
 	// Network-specific configurations
@@ -76,20 +80,25 @@ func Load() (*Config, error) {
 		},
 	}
 
-	// Load secrets from AWS SSM in production
-	if cfg.Environment == "production" && getEnv("PRIVATE_KEY", "") == "" {
+	// Load configuration from environment first
+	loadFromEnv(cfg)
+	
+	// Load secrets from AWS SSM in production only if keys are not already set
+	if cfg.Environment == "production" && 
+		cfg.TestnetPrivateKey == "" && 
+		cfg.MainnetPrivateKey == "" && 
+		getEnv("PRIVATE_KEY", "") == "" {
 		log.Println("Loading secrets from AWS Systems Manager...")
 		if err := loadSecretsFromSSM(cfg); err != nil {
 			return nil, fmt.Errorf("failed to load secrets from AWS SSM: %w", err)
 		}
-	} else {
-		log.Println("Using local environment variables for configuration")
+		// Reload from env after SSM sets the values
 		loadFromEnv(cfg)
 	}
 
 	// Validate required fields
-	if cfg.PrivateKey == "" {
-		return nil, fmt.Errorf("PRIVATE_KEY is required")
+	if cfg.TestnetPrivateKey == "" && cfg.MainnetPrivateKey == "" {
+		return nil, fmt.Errorf("At least one private key (TESTNET_PRIVATE_KEY or MAINNET_PRIVATE_KEY) is required")
 	}
 
 	return cfg, nil
@@ -97,7 +106,19 @@ func Load() (*Config, error) {
 
 // loadFromEnv loads configuration from environment variables
 func loadFromEnv(cfg *Config) {
-	cfg.PrivateKey = getEnv("API_PRIVATE_KEY", getEnv("PRIVATE_KEY", ""))
+	// Load network-specific private keys
+	cfg.TestnetPrivateKey = getEnv("TESTNET_PRIVATE_KEY", "")
+	cfg.MainnetPrivateKey = getEnv("MAINNET_PRIVATE_KEY", "")
+	
+	// Fallback to legacy PRIVATE_KEY for backward compatibility
+	if cfg.TestnetPrivateKey == "" && cfg.MainnetPrivateKey == "" {
+		cfg.PrivateKey = getEnv("API_PRIVATE_KEY", getEnv("PRIVATE_KEY", ""))
+		// If only legacy key is set, use it for testnet only
+		if cfg.PrivateKey != "" {
+			cfg.TestnetPrivateKey = cfg.PrivateKey
+		}
+	}
+	
 	cfg.SwaggerUsername = getEnv("SWAGGER_USERNAME", "")
 	cfg.SwaggerPassword = getEnv("SWAGGER_PASSWORD", "")
 	cfg.FirebaseProjectID = getEnv("FIREBASE_PROJECT_ID", "")
@@ -162,6 +183,8 @@ func loadSecretsFromSSM(cfg *Config) error {
 	paramNames := []string{
 		"PRIVATE_KEY",
 		"API_PRIVATE_KEY",
+		"TESTNET_PRIVATE_KEY",
+		"MAINNET_PRIVATE_KEY",
 		// V1 Mainnet Contracts
 		"ROLE_MANAGER_ADDRESS",
 		"BOGO_TOKEN_ADDRESS",

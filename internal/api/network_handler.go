@@ -24,7 +24,11 @@ func NewNetworkHandler(cfg *config.Config) (*NetworkHandler, error) {
 
 	// Initialize testnet SDK
 	if cfg.Testnet.Contracts.BOGOToken != "" || cfg.Testnet.Contracts.RewardDistributor != "" {
-		testnetSDK, err := sdk.NewBOGOWISDK(&cfg.Testnet, cfg.PrivateKey)
+		testnetPrivateKey := cfg.TestnetPrivateKey
+		if testnetPrivateKey == "" {
+			return nil, fmt.Errorf("TESTNET_PRIVATE_KEY is required for testnet operations")
+		}
+		testnetSDK, err := sdk.NewBOGOWISDK(&cfg.Testnet, testnetPrivateKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize testnet SDK: %w", err)
 		}
@@ -33,7 +37,11 @@ func NewNetworkHandler(cfg *config.Config) (*NetworkHandler, error) {
 
 	// Initialize mainnet SDK
 	if cfg.Mainnet.Contracts.BOGOToken != "" || cfg.Mainnet.Contracts.RewardDistributor != "" {
-		mainnetSDK, err := sdk.NewBOGOWISDK(&cfg.Mainnet, cfg.PrivateKey)
+		mainnetPrivateKey := cfg.MainnetPrivateKey
+		if mainnetPrivateKey == "" {
+			return nil, fmt.Errorf("MAINNET_PRIVATE_KEY is required for mainnet operations")
+		}
+		mainnetSDK, err := sdk.NewBOGOWISDK(&cfg.Mainnet, mainnetPrivateKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize mainnet SDK: %w", err)
 		}
