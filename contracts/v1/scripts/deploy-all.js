@@ -35,7 +35,7 @@ async function main() {
   const roleManager = await RoleManager.deploy(); // No parameters - constructor grants admin to deployer
   await roleManager.waitForDeployment();
   const roleManagerAddress = await roleManager.getAddress();
-  console.log("✅ RoleManager deployed to:", roleManagerAddress);
+  console.log("✅ RoleManager deployed to::", roleManagerAddress);
   
   // Grant admin role to the specified admin if different from deployer
   if (adminAddress.toLowerCase() !== deployer.address.toLowerCase()) {
