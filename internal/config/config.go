@@ -103,7 +103,7 @@ func loadFromEnv(cfg *Config) {
 	cfg.FirebaseProjectID = getEnv("FIREBASE_PROJECT_ID", "")
 	cfg.BackendSecret = getEnv("BACKEND_SECRET", "backend-secret-key")
 	cfg.DevBackendSecret = getEnv("DEV_BACKEND_SECRET", cfg.BackendSecret) // Default to main secret if not set
-	
+
 	// Log configuration status
 	log.Printf("Backend secrets configured - Main: %v, Dev: %v", cfg.BackendSecret != "", cfg.DevBackendSecret != "")
 
