@@ -30,10 +30,10 @@ jobs:
         path: |
           ~/go/pkg/mod
           ~/.cache/go-build
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/*.go') }}
+        key: ${{ runner.os }}-go-v2-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/*.go') }}
         restore-keys: |
-          ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-
-          ${{ runner.os }}-go-
+          ${{ runner.os }}-go-v2-${{ hashFiles('**/go.sum') }}-
+          ${{ runner.os }}-go-v2-
     
     - name: Download dependencies
       run: go mod download
@@ -73,10 +73,10 @@ jobs:
         path: |
           ~/go/pkg/mod
           ~/.cache/go-build
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/*.go') }}
+        key: ${{ runner.os }}-go-v2-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/*.go') }}
         restore-keys: |
-          ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-
-          ${{ runner.os }}-go-
+          ${{ runner.os }}-go-v2-${{ hashFiles('**/go.sum') }}-
+          ${{ runner.os }}-go-v2-
     
     - name: Download dependencies
       run: go mod download
@@ -124,10 +124,10 @@ jobs:
         path: |
           ~/go/pkg/mod
           ~/.cache/go-build
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/*.go') }}
+        key: ${{ runner.os }}-go-v2-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/*.go') }}
         restore-keys: |
-          ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-
-          ${{ runner.os }}-go-
+          ${{ runner.os }}-go-v2-${{ hashFiles('**/go.sum') }}-
+          ${{ runner.os }}-go-v2-
     
     - name: Download dependencies
       run: go mod download
