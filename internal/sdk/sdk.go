@@ -170,14 +170,14 @@ func (s *BOGOWISDK) initializeContract(address, abiJSON string) (*Contract, erro
 
 // GetTokenBalance gets the BOGO token balance for an address
 func (s *BOGOWISDK) GetTokenBalance(address string) (*TokenBalance, error) {
-	if s.contracts.BOGOTokenV2 == nil {
-		return nil, fmt.Errorf("BOGOTokenV2 contract not initialized")
+	if s.contracts.BOGOToken == nil {
+		return nil, fmt.Errorf("BOGO token contract not initialized")
 	}
 
 	addr := common.HexToAddress(address)
 	var balance *big.Int
 
-	err := s.contracts.BOGOTokenV2.Instance.Call(
+	err := s.contracts.BOGOToken.Instance.Call(
 		&bind.CallOpts{Context: context.Background()},
 		&[]interface{}{&balance},
 		"balanceOf",

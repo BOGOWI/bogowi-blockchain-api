@@ -1,9 +1,9 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("solidity-coverage");
-require("dotenv").config();
+require("dotenv").config({ path: "../../.env" }); // Load from root .env
 
 // Get private key from environment or .env file
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
+const PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY || process.env.PRIVATE_KEY || "";
 
 // Network configurations
 const networks = {};
