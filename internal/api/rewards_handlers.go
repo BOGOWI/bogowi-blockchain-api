@@ -237,9 +237,13 @@ func (h *Handler) ClaimCustomRewardV2WithNetwork(c *gin.Context) {
 		}
 	}
 
+	// Log incoming request
+	fmt.Printf("[ClaimCustomReward] Network: %s, Environment: %s\n", network, h.Config.Environment)
+
 	// Get the appropriate SDK
 	sdk, err := h.NetworkHandler.GetSDK(network)
 	if err != nil {
+		fmt.Printf("[ClaimCustomReward] SDK error for network %s: %v\n", network, err)
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: fmt.Sprintf("Invalid network: %v", err)})
 		return
 	}
@@ -249,14 +253,38 @@ func (h *Handler) ClaimCustomRewardV2WithNetwork(c *gin.Context) {
 	var expectedSecret string
 	if network == "testnet" {
 		expectedSecret = h.Config.DevBackendSecret
+		fmt.Printf("[ClaimCustomReward] Using DevBackendSecret for testnet, configured: %v\n", expectedSecret != "")
 	} else {
 		expectedSecret = h.Config.BackendSecret
+		fmt.Printf("[ClaimCustomReward] Using BackendSecret for mainnet, configured: %v\n", expectedSecret != "")
+	}
+
+	// Log auth details (partial for security)
+	if authHeader != "" {
+		fmt.Printf("[ClaimCustomReward] Auth header received, first 10 chars: %s...\n", authHeader[:10])
+	} else {
+		fmt.Printf("[ClaimCustomReward] No auth header received\n")
+	}
+
+	// Log for debugging (remove in production)
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Missing X-Backend-Auth header"})
+		return
+	}
+
+	if expectedSecret == "" {
+		fmt.Printf("[ClaimCustomReward] ERROR: Backend secret not configured for %s network\n", network)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Backend secret not configured for %s network", network)})
+		return
 	}
 
 	if authHeader != expectedSecret {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		fmt.Printf("[ClaimCustomReward] Auth mismatch - expected first 10: %s...\n", expectedSecret[:10])
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Invalid authentication"})
 		return
 	}
+
+	fmt.Printf("[ClaimCustomReward] Authentication successful for %s network\n", network)
 
 	var req ClaimCustomRewardRequestV2
 	if err := c.ShouldBindJSON(&req); err != nil {
