@@ -247,14 +247,14 @@ func TestClaimCustomRewardV2WithNetwork(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
-		name       string
-		network    string
-		authHeader string
-		request    ClaimCustomRewardRequestV2
-		setupMock  func(m *MockSDK)
+		name                string
+		network             string
+		authHeader          string
+		request             ClaimCustomRewardRequestV2
+		setupMock           func(m *MockSDK)
 		setupNetworkHandler func(nh *NetworkHandler)
-		wantStatus int
-		checkResponse func(t *testing.T, body []byte)
+		wantStatus          int
+		checkResponse       func(t *testing.T, body []byte)
 	}{
 		{
 			name:       "Valid request testnet",
@@ -288,8 +288,8 @@ func TestClaimCustomRewardV2WithNetwork(t *testing.T) {
 			authHeader: "main-secret",
 			request: ClaimCustomRewardRequestV2{
 				RecipientAddress: "0x1234567890123456789012345678901234567890",
-				Amount: "300000000000000000000",
-				RewardType: "special_bonus",
+				Amount:           "300000000000000000000",
+				RewardType:       "special_bonus",
 			},
 			setupMock: func(m *MockSDK) {
 				walletAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
@@ -339,7 +339,7 @@ func TestClaimCustomRewardV2WithNetwork(t *testing.T) {
 				m.On("ClaimCustomReward", walletAddr, amount, "contest_winner").Return(nil, fmt.Errorf("reward distributor not initialized"))
 			},
 			setupNetworkHandler: func(nh *NetworkHandler) {},
-			wantStatus: http.StatusInternalServerError,
+			wantStatus:          http.StatusInternalServerError,
 			checkResponse: func(t *testing.T, body []byte) {
 				var resp map[string]interface{}
 				json.Unmarshal(body, &resp)
@@ -355,9 +355,9 @@ func TestClaimCustomRewardV2WithNetwork(t *testing.T) {
 				Amount: "500000000000000000000",
 				Reason: "contest_winner",
 			},
-			setupMock: func(m *MockSDK) {},
+			setupMock:           func(m *MockSDK) {},
 			setupNetworkHandler: func(nh *NetworkHandler) {},
-			wantStatus: http.StatusUnauthorized,
+			wantStatus:          http.StatusUnauthorized,
 		},
 	}
 
@@ -402,7 +402,7 @@ func TestClaimCustomRewardV2WithNetwork(t *testing.T) {
 			handler.ClaimCustomRewardV2WithNetwork(c)
 
 			assert.Equal(t, tt.wantStatus, w.Code)
-			
+
 			if tt.checkResponse != nil {
 				tt.checkResponse(t, w.Body.Bytes())
 			}
