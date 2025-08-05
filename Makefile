@@ -60,6 +60,14 @@ coverage-all: ## Generate all coverage reports
 	@echo "  📄 coverage.html (standard)"
 	@echo "  📄 coverage-enhanced.html (enhanced)"
 
+coverage-api: ## Run API tests with coverage
+	@echo "🔍 Running API tests with coverage..."
+	$(GOTEST) -v -race -coverprofile=coverage-api.out ./internal/api/...
+	$(GOCMD) tool cover -html=coverage-api.out -o coverage-api.html
+	@echo "📊 API coverage report generated: coverage-api.html"
+	@echo "📈 API coverage summary:"
+	@$(GOCMD) tool cover -func=coverage-api.out | grep total
+
 coverage-install: ## Install coverage tools
 	@echo "📦 Installing coverage tools..."
 	go install github.com/axw/gocov/gocov@latest

@@ -104,32 +104,24 @@ func loadFromEnv(cfg *Config) {
 	cfg.BackendSecret = getEnv("BACKEND_SECRET", "backend-secret-key")
 	cfg.DevBackendSecret = getEnv("DEV_BACKEND_SECRET", cfg.BackendSecret) // Default to main secret if not set
 
-	// Load testnet contracts
-	cfg.Testnet.Contracts = ContractAddresses{
-		// V1 Contracts - Testnet
-		RoleManager:       getEnv("TESTNET_ROLE_MANAGER_ADDRESS", ""),
-		BOGOToken:         getEnv("TESTNET_BOGO_TOKEN_ADDRESS", ""),
-		RewardDistributor: getEnv("TESTNET_REWARD_DISTRIBUTOR_ADDRESS", ""),
-
-		// Legacy contracts (for backward compatibility)
-		BOGOTokenV2:      getEnv("TESTNET_BOGO_TOKEN_V2_ADDRESS", ""),
-		ConservationNFT:  getEnv("TESTNET_CONSERVATION_NFT_ADDRESS", ""),
-		CommercialNFT:    getEnv("TESTNET_COMMERCIAL_NFT_ADDRESS", ""),
-		MultisigTreasury: getEnv("TESTNET_MULTISIG_ADDRESS", ""),
-	}
-
-	// Load mainnet contracts
-	cfg.Mainnet.Contracts = ContractAddresses{
-		// V1 Contracts - Mainnet
-		RoleManager:       getEnv("MAINNET_ROLE_MANAGER_ADDRESS", ""),
-		BOGOToken:         getEnv("MAINNET_BOGO_TOKEN_ADDRESS", ""),
-		RewardDistributor: getEnv("MAINNET_REWARD_DISTRIBUTOR_ADDRESS", ""),
-
-		// Legacy contracts (for backward compatibility)
-		BOGOTokenV2:      getEnv("MAINNET_BOGO_TOKEN_V2_ADDRESS", ""),
-		ConservationNFT:  getEnv("MAINNET_CONSERVATION_NFT_ADDRESS", ""),
-		CommercialNFT:    getEnv("MAINNET_COMMERCIAL_NFT_ADDRESS", ""),
-		MultisigTreasury: getEnv("MAINNET_MULTISIG_ADDRESS", ""),
+	// For dev (.env.dev) - load simple variable names
+	if cfg.Environment == "development" {
+		cfg.Testnet.Contracts = ContractAddresses{
+			RoleManager:       getEnv("ROLE_MANAGER_ADDRESS", ""),
+			BOGOToken:         getEnv("BOGO_TOKEN_ADDRESS", ""),
+			RewardDistributor: getEnv("REWARD_DISTRIBUTOR_ADDRESS", ""),
+		}
+		// Mainnet contracts empty in dev
+		cfg.Mainnet.Contracts = ContractAddresses{}
+	} else {
+		// For prod (.env) - load simple variable names
+		cfg.Mainnet.Contracts = ContractAddresses{
+			RoleManager:       getEnv("ROLE_MANAGER_ADDRESS", ""),
+			BOGOToken:         getEnv("BOGO_TOKEN_ADDRESS", ""),
+			RewardDistributor: getEnv("REWARD_DISTRIBUTOR_ADDRESS", ""),
+		}
+		// Testnet contracts empty in prod
+		cfg.Testnet.Contracts = ContractAddresses{}
 	}
 }
 
@@ -152,17 +144,12 @@ func loadSecretsFromSSM(cfg *Config) error {
 		"ROLE_MANAGER_ADDRESS",
 		"BOGO_TOKEN_ADDRESS",
 		"REWARD_DISTRIBUTOR_ADDRESS",
-		// Legacy contracts
-		"BOGO_TOKEN_V2_ADDRESS",
-		"CONSERVATION_NFT_ADDRESS",
-		"COMMERCIAL_NFT_ADDRESS",
-		"REWARD_DISTRIBUTOR_V2_ADDRESS",
-		"MULTISIG_ADDRESS",
 		// Auth and other configs
 		"SWAGGER_USERNAME",
 		"SWAGGER_PASSWORD",
 		"FIREBASE_PROJECT_ID",
 		"BACKEND_SECRET",
+		"DEV_BACKEND_SECRET",
 		"BACKEND_WALLET_ADDRESS",
 	}
 
