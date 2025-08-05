@@ -197,71 +197,45 @@ jobs:
         # Navigate to home directory
         cd /home/ec2-user
         
-        # Stop existing process (kill only ec2-user's bogowi-api-linux process)
-        echo "Stopping existing Go API process..."
-        pkill -u ec2-user -f "bogowi-api-linux" || echo "No existing process found"
+        # Deploy new API binary
+        echo "Deploying new API binary..."
+        sudo cp /tmp/bogowi-api-linux /usr/local/bin/bogowi-api
+        sudo chmod +x /usr/local/bin/bogowi-api
         
-        # Wait for process to stop
+        # Update build info
+        echo "Updating build info..."
+        echo '{
+          "version": "'${{ github.ref_name }}'",
+          "build_date": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+          "last_commit": "'${{ github.sha }}'",
+          "commit_message": '"$(echo "${{ github.event.head_commit.message }}" | sed 's/"/\\"/g' | head -1)"',
+          "branch": "'${{ github.ref_name }}'"
+        }' | sudo tee /var/www/html/build-info.json
+        
+        # Restart API service
+        echo "Restarting API service..."
+        sudo systemctl restart bogowi-api
+        
+        # Check API status
+        echo "Checking API status..."
         sleep 2
+        sudo systemctl status bogowi-api
         
-        # Backup current binary if exists
-        if [ -f "bogowi-api-linux" ]; then
-          echo "Backing up current binary..."
-          mv bogowi-api-linux bogowi-api-linux.backup.$(date +%Y%m%d_%H%M%S) || true
-        fi
-        
-        # Move new binary from /tmp/ to home directory
-        echo "Moving new binary from /tmp/..."
-        if [ -f "/tmp/bogowi-api-linux" ]; then
-          mv /tmp/bogowi-api-linux /home/ec2-user/bogowi-api-linux
-          chown ec2-user:ec2-user /home/ec2-user/bogowi-api-linux
-          chmod +x /home/ec2-user/bogowi-api-linux
-          echo "Binary moved and permissions set"
-        else
-          echo "ERROR: Binary not found in /tmp/"
-          exit 1
-        fi
-        
-        # Start the API process
-        echo "Starting Go API process..."
-        cd /home/ec2-user
-        nohup ./bogowi-api-linux > api.log 2>&1 &
-        
-        # Wait for API to be ready (up to 3 minutes)
-        echo "Waiting for API to be ready..."
-        max_attempts=45
-        for i in $(seq 1 $max_attempts); do
-          if curl -f -m 5 http://localhost:3001/api/health &>/dev/null; then
-            echo "API is ready after $((i * 4)) seconds!"
+        # Health check
+        echo "Running health check..."
+        for i in {1..30}; do
+          if curl -f -m 5 http://localhost:3001/api/health; then
+            echo "✅ API is healthy!"
             break
           fi
-          echo "Waiting for API... ($i/$max_attempts)"
-          # Check if process is still running
-          if ! pgrep -u ec2-user -f "bogowi-api-linux" > /dev/null; then
-            echo "ERROR: API process died during startup"
-            echo "Last 50 lines of api.log:"
-            tail -50 api.log
-            exit 1
-          fi
-          sleep 4
+          echo "Waiting for API... ($i/30)"
+          sleep 2
         done
         
-        # Check if process is running
-        if pgrep -u ec2-user -f "bogowi-api-linux" > /dev/null; then
-          echo "=== Deployment successful! ==="
-          echo "API process is running with PID: $(pgrep -u ec2-user -f bogowi-api-linux)"
-        else
-          echo "=== Deployment failed - Process not running ==="
-          echo "Checking logs:"
-          tail -20 api.log
-          exit 1
-        fi
-        
-        # Final health check
-        if curl -f http://localhost:3001/api/health; then
-          echo "✅ Health check passed!"
-        else
+        # Final verification
+        if ! curl -f http://localhost:3001/api/health; then
           echo "❌ Health check failed!"
+          sudo journalctl -u bogowi-api -n 50
           exit 1
         fi
         SCRIPT
