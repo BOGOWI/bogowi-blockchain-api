@@ -226,6 +226,93 @@ func (h *Handler) ClaimCustomRewardV2(c *gin.Context) {
 	})
 }
 
+// ClaimCustomRewardV2WithNetwork handles custom reward claims with network support
+func (h *Handler) ClaimCustomRewardV2WithNetwork(c *gin.Context) {
+	// Get network from query parameter
+	network := c.Query("network")
+	if network == "" {
+		network = "mainnet" // Default to mainnet
+		if h.Config.Environment == "development" {
+			network = "testnet" // Default to testnet in dev
+		}
+	}
+
+	// Get the appropriate SDK
+	sdk, err := h.NetworkHandler.GetSDK(network)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: fmt.Sprintf("Invalid network: %v", err)})
+		return
+	}
+
+	// Check backend authentication based on network
+	authHeader := c.GetHeader("X-Backend-Auth")
+	var expectedSecret string
+	if network == "testnet" {
+		expectedSecret = h.Config.DevBackendSecret
+	} else {
+		expectedSecret = h.Config.BackendSecret
+	}
+
+	if authHeader != expectedSecret {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		return
+	}
+
+	var req ClaimCustomRewardRequestV2
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request"})
+		return
+	}
+
+	// Accept either wallet or recipientAddress
+	address := req.Wallet
+	if address == "" {
+		address = req.RecipientAddress
+	}
+
+	if !common.IsHexAddress(address) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid wallet address"})
+		return
+	}
+
+	// Validate amount (already in wei)
+	weiAmount, ok := new(big.Int).SetString(req.Amount, 10)
+	if !ok {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid amount format"})
+		return
+	}
+
+	// Check max amount (1000 BOGO)
+	maxAmount := new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18))
+	if weiAmount.Cmp(maxAmount) > 0 {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Amount exceeds maximum (1000 BOGO)"})
+		return
+	}
+
+	walletAddr := common.HexToAddress(address)
+
+	// Use reason or rewardType
+	reason := req.Reason
+	if reason == "" {
+		reason = req.RewardType
+	}
+
+	// Claim custom reward using the network-specific SDK
+	tx, err := sdk.ClaimCustomReward(walletAddr, weiAmount, reason)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming custom reward: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"txHash":  tx.Hash().Hex(),
+		"amount":  req.Amount,
+		"reason":  reason,
+		"network": network,
+	})
+}
+
 // CheckRewardEligibility checks what rewards a user can claim
 func (h *Handler) CheckRewardEligibility(c *gin.Context) {
 	wallet, exists := c.Get("wallet")

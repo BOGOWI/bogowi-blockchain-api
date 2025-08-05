@@ -41,9 +41,16 @@ func TestNewServer(t *testing.T) {
 			name: "invalid private key",
 			setup: func() {
 				os.Setenv("PRIVATE_KEY", "invalid")
+				// Set contract addresses so NetworkHandler tries to initialize SDKs
+				os.Setenv("BOGO_TOKEN_ADDRESS", "0x49fc9939D8431371dD22658a8a969Ec798A26fFB")
+				os.Setenv("REWARD_DISTRIBUTOR_ADDRESS", "0x00439bd5eeED2303bfB64529Dad40C7c3F697724")
+				t.Cleanup(func() {
+					os.Unsetenv("BOGO_TOKEN_ADDRESS")
+					os.Unsetenv("REWARD_DISTRIBUTOR_ADDRESS")
+				})
 			},
 			wantErr: true,
-			errMsg:  "failed to initialize SDK",
+			errMsg:  "failed to initialize network handler",
 		},
 		{
 			name: "missing private key",
@@ -94,7 +101,6 @@ func TestNewServer(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, server)
 				assert.NotNil(t, server.srv)
-				assert.NotNil(t, server.sdk)
 				assert.NotNil(t, server.config)
 			}
 		})

@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -237,6 +238,175 @@ func TestClaimCustomRewardV2(t *testing.T) {
 			handler.ClaimCustomRewardV2(c)
 
 			assert.Equal(t, tt.wantStatus, w.Code)
+			mockSDK.AssertExpectations(t)
+		})
+	}
+}
+
+func TestClaimCustomRewardV2WithNetwork(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name       string
+		network    string
+		authHeader string
+		request    ClaimCustomRewardRequestV2
+		setupMock  func(m *MockSDK)
+		setupNetworkHandler func(nh *NetworkHandler)
+		wantStatus int
+		checkResponse func(t *testing.T, body []byte)
+	}{
+		{
+			name:       "Valid request testnet",
+			network:    "testnet",
+			authHeader: "dev-secret",
+			request: ClaimCustomRewardRequestV2{
+				Wallet: "0x1234567890123456789012345678901234567890",
+				Amount: "500000000000000000000",
+				Reason: "contest_winner",
+			},
+			setupMock: func(m *MockSDK) {
+				walletAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
+				amount := new(big.Int)
+				amount.SetString("500000000000000000000", 10)
+				tx := types.NewTransaction(0, common.HexToAddress("0x0"), big.NewInt(0), 0, big.NewInt(0), nil)
+				m.On("ClaimCustomReward", walletAddr, amount, "contest_winner").Return(tx, nil)
+			},
+			setupNetworkHandler: func(nh *NetworkHandler) {
+				// NetworkHandler will return the mock SDK
+			},
+			wantStatus: http.StatusOK,
+			checkResponse: func(t *testing.T, body []byte) {
+				var resp map[string]interface{}
+				json.Unmarshal(body, &resp)
+				assert.Equal(t, "testnet", resp["network"])
+			},
+		},
+		{
+			name:       "Valid request mainnet",
+			network:    "mainnet",
+			authHeader: "main-secret",
+			request: ClaimCustomRewardRequestV2{
+				RecipientAddress: "0x1234567890123456789012345678901234567890",
+				Amount: "300000000000000000000",
+				RewardType: "special_bonus",
+			},
+			setupMock: func(m *MockSDK) {
+				walletAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
+				amount := new(big.Int)
+				amount.SetString("300000000000000000000", 10)
+				tx := types.NewTransaction(0, common.HexToAddress("0x0"), big.NewInt(0), 0, big.NewInt(0), nil)
+				m.On("ClaimCustomReward", walletAddr, amount, "special_bonus").Return(tx, nil)
+			},
+			setupNetworkHandler: func(nh *NetworkHandler) {
+				// NetworkHandler will return the mock SDK
+			},
+			wantStatus: http.StatusOK,
+			checkResponse: func(t *testing.T, body []byte) {
+				var resp map[string]interface{}
+				json.Unmarshal(body, &resp)
+				assert.Equal(t, "mainnet", resp["network"])
+			},
+		},
+		{
+			name:       "Invalid network",
+			network:    "invalid",
+			authHeader: "dev-secret",
+			request: ClaimCustomRewardRequestV2{
+				Wallet: "0x1234567890123456789012345678901234567890",
+				Amount: "500000000000000000000",
+				Reason: "contest_winner",
+			},
+			setupMock: func(m *MockSDK) {},
+			setupNetworkHandler: func(nh *NetworkHandler) {
+				// Will return error for invalid network
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "Reward distributor not initialized",
+			network:    "testnet",
+			authHeader: "dev-secret",
+			request: ClaimCustomRewardRequestV2{
+				Wallet: "0x1234567890123456789012345678901234567890",
+				Amount: "500000000000000000000",
+				Reason: "contest_winner",
+			},
+			setupMock: func(m *MockSDK) {
+				walletAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
+				amount := new(big.Int)
+				amount.SetString("500000000000000000000", 10)
+				m.On("ClaimCustomReward", walletAddr, amount, "contest_winner").Return(nil, fmt.Errorf("reward distributor not initialized"))
+			},
+			setupNetworkHandler: func(nh *NetworkHandler) {},
+			wantStatus: http.StatusInternalServerError,
+			checkResponse: func(t *testing.T, body []byte) {
+				var resp map[string]interface{}
+				json.Unmarshal(body, &resp)
+				assert.Contains(t, resp["error"], "reward distributor not initialized")
+			},
+		},
+		{
+			name:       "Wrong auth for network",
+			network:    "testnet",
+			authHeader: "main-secret", // Wrong secret for testnet
+			request: ClaimCustomRewardRequestV2{
+				Wallet: "0x1234567890123456789012345678901234567890",
+				Amount: "500000000000000000000",
+				Reason: "contest_winner",
+			},
+			setupMock: func(m *MockSDK) {},
+			setupNetworkHandler: func(nh *NetworkHandler) {},
+			wantStatus: http.StatusUnauthorized,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockSDK := new(MockSDK)
+			if tt.setupMock != nil {
+				tt.setupMock(mockSDK)
+			}
+
+			cfg := &config.Config{
+				BackendSecret:    "main-secret",
+				DevBackendSecret: "dev-secret",
+				Environment:      "production",
+			}
+
+			// Create a mock NetworkHandler
+			networkHandler := &NetworkHandler{
+				testnetSDK: mockSDK,
+				mainnetSDK: mockSDK,
+				config:     cfg,
+			}
+
+			handler := &Handler{
+				SDK:            mockSDK,
+				NetworkHandler: networkHandler,
+				Config:         cfg,
+			}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			body, _ := json.Marshal(tt.request)
+			url := "/api/rewards/claim-custom"
+			if tt.network != "" {
+				url += "?network=" + tt.network
+			}
+			c.Request, _ = http.NewRequest("POST", url, bytes.NewBuffer(body))
+			c.Request.Header.Set("Content-Type", "application/json")
+			c.Request.Header.Set("X-Backend-Auth", tt.authHeader)
+
+			handler.ClaimCustomRewardV2WithNetwork(c)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+			
+			if tt.checkResponse != nil {
+				tt.checkResponse(t, w.Body.Bytes())
+			}
+
 			mockSDK.AssertExpectations(t)
 		})
 	}

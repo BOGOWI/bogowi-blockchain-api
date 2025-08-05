@@ -32,17 +32,18 @@ type Server struct {
 
 // NewServer creates a new server instance
 func NewServer(cfg *config.Config) (*Server, error) {
-	// Initialize SDK with appropriate network configuration
-	var networkConfig *config.NetworkConfig
-	if cfg.Environment == "development" {
-		networkConfig = &cfg.Testnet
-	} else {
-		networkConfig = &cfg.Mainnet
+	// Initialize NetworkHandler (it creates SDKs internally)
+	networkHandler, err := api.NewNetworkHandler(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize network handler: %w", err)
 	}
 
-	bogoSDK, err := sdk.NewBOGOWISDK(networkConfig, cfg.PrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize SDK: %w", err)
+	// Get default SDK based on environment
+	var defaultSDK api.SDKInterface
+	if cfg.Environment == "development" {
+		defaultSDK, _ = networkHandler.GetSDK("testnet")
+	} else {
+		defaultSDK, _ = networkHandler.GetSDK("mainnet")
 	}
 
 	// Set Gin mode
@@ -50,8 +51,8 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Initialize API server
-	router := api.NewRouter(bogoSDK, cfg)
+	// Initialize API server with network support
+	router := api.NewRouterWithNetworkSupport(networkHandler, defaultSDK, cfg)
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -64,7 +65,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 
 	return &Server{
 		srv:    srv,
-		sdk:    bogoSDK,
+		sdk:    nil, // We're using NetworkHandler now
 		config: cfg,
 	}, nil
 }
