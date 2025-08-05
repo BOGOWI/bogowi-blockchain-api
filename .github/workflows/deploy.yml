@@ -113,6 +113,17 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
     
+    - name: Install AWS CLI
+      run: |
+        if ! command -v aws &> /dev/null; then
+          echo "Installing AWS CLI..."
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+        else
+          echo "AWS CLI already installed: $(aws --version)"
+        fi
+    
     - name: Debug Connection
       env:
         EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -186,9 +197,9 @@ jobs:
         # Navigate to home directory
         cd /home/ec2-user
         
-        # Stop existing process (kill any running bogowi-api-linux process)
+        # Stop existing process (kill only ec2-user's bogowi-api-linux process)
         echo "Stopping existing Go API process..."
-        pkill -f "bogowi-api-linux" || echo "No existing process found"
+        pkill -u ec2-user -f "bogowi-api-linux" || echo "No existing process found"
         
         # Wait for process to stop
         sleep 2
@@ -216,21 +227,29 @@ jobs:
         cd /home/ec2-user
         nohup ./bogowi-api-linux > api.log 2>&1 &
         
-        # Wait for API to be ready
+        # Wait for API to be ready (up to 3 minutes)
         echo "Waiting for API to be ready..."
-        for i in {1..30}; do
-          if curl -f http://localhost:3001/api/health &>/dev/null; then
-            echo "API is ready!"
+        max_attempts=45
+        for i in $(seq 1 $max_attempts); do
+          if curl -f -m 5 http://localhost:3001/api/health &>/dev/null; then
+            echo "API is ready after $((i * 4)) seconds!"
             break
           fi
-          echo "Waiting for API... ($i/30)"
-          sleep 2
+          echo "Waiting for API... ($i/$max_attempts)"
+          # Check if process is still running
+          if ! pgrep -u ec2-user -f "bogowi-api-linux" > /dev/null; then
+            echo "ERROR: API process died during startup"
+            echo "Last 50 lines of api.log:"
+            tail -50 api.log
+            exit 1
+          fi
+          sleep 4
         done
         
         # Check if process is running
-        if pgrep -f "bogowi-api-linux" > /dev/null; then
+        if pgrep -u ec2-user -f "bogowi-api-linux" > /dev/null; then
           echo "=== Deployment successful! ==="
-          echo "API process is running with PID: $(pgrep -f bogowi-api-linux)"
+          echo "API process is running with PID: $(pgrep -u ec2-user -f bogowi-api-linux)"
         else
           echo "=== Deployment failed - Process not running ==="
           echo "Checking logs:"

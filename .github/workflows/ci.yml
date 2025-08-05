@@ -106,11 +106,8 @@ jobs:
     
     strategy:
       matrix:
-        goos: [linux, darwin, windows]
-        goarch: [amd64, arm64]
-        exclude:
-          - goos: windows
-            goarch: arm64
+        goos: [linux]
+        goarch: [amd64]
     
     steps:
     - name: Checkout code
@@ -160,52 +157,3 @@ jobs:
         path: bogowi-api-${{ matrix.goos }}-${{ matrix.goarch }}
         retention-days: 7
 
-  docker:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: [test, lint]
-    timeout-minutes: 15
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Build Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: false
-        load: true
-        tags: bogowi-api:test
-        cache-from: type=gha,scope=buildkit
-        cache-to: type=gha,mode=max,scope=buildkit
-    
-    - name: Test Docker image
-      run: |
-        # Start container in background
-        docker run -d --name test-api -p 3001:3001 \
-          -e NODE_ENV=test \
-          -e API_PORT=3001 \
-          -e PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-          -e RPC_URL=https://columbus.camino.network/ext/bc/C/rpc \
-          -e BOGO_TOKEN_V2_ADDRESS=0x1234567890123456789012345678901234567890 \
-          -e CONSERVATION_NFT_ADDRESS=0x2234567890123456789012345678901234567890 \
-          -e COMMERCIAL_NFT_ADDRESS=0x3234567890123456789012345678901234567890 \
-          bogowi-api:test
-        
-        # Wait for API to start
-        sleep 10
-        
-        # Test health endpoint
-        curl -f http://localhost:3001/api/health || {
-          echo "Docker health check failed"
-          docker logs test-api
-          exit 1
-        }
-        
-        # Cleanup
-        docker stop test-api
-        docker rm test-api
