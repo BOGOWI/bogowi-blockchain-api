@@ -118,7 +118,7 @@ func TestSDKWithInvalidPrivateKey(t *testing.T) {
 func TestGetTokenBalance(t *testing.T) {
 	sdk := &BOGOWISDK{
 		contracts: &ContractInstances{
-			BOGOTokenV2: &Contract{
+			BOGOToken: &Contract{
 				Instance: nil, // Will be set in test
 			},
 		},
@@ -169,7 +169,7 @@ func TestGetTokenBalance(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockContract := new(MockBoundContract)
-			sdk.contracts.BOGOTokenV2.Instance = mockContract
+			sdk.contracts.BOGOToken.Instance = mockContract
 
 			if tt.mockError != nil {
 				mockContract.On("Call", mock.Anything, mock.Anything, "balanceOf", mock.Anything).
@@ -203,7 +203,7 @@ func TestGetTokenBalance_NoContract(t *testing.T) {
 
 	balance, err := sdk.GetTokenBalance("0x742d35Cc6634C0532925a3b844Bc9e7595f8f8E2")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "BOGOTokenV2 contract not initialized")
+	assert.Contains(t, err.Error(), "BOGO token contract not initialized")
 	assert.Nil(t, balance)
 }
 
