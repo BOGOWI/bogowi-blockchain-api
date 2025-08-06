@@ -130,14 +130,7 @@ func (s *BOGOWISDK) initializeContractsWithConfig(networkConfig *config.NetworkC
 		s.rewardDistributor = contract
 	}
 
-	// Initialize Legacy Contracts if needed
-	if contracts.BOGOTokenV2 != "" {
-		contract, err := s.initializeContract(contracts.BOGOTokenV2, ERC20ABI)
-		if err != nil {
-			return fmt.Errorf("failed to initialize BOGOTokenV2: %w", err)
-		}
-		s.contracts.BOGOTokenV2 = contract
-	}
+	// Note: BOGOTokenV2 is deprecated and no longer used
 
 	return nil
 }
@@ -170,6 +163,7 @@ func (s *BOGOWISDK) initializeContract(address, abiJSON string) (*Contract, erro
 
 // GetTokenBalance gets the BOGO token balance for an address
 func (s *BOGOWISDK) GetTokenBalance(address string) (*TokenBalance, error) {
+	// Use BOGOToken if available
 	if s.contracts.BOGOToken == nil {
 		return nil, fmt.Errorf("BOGO token contract not initialized")
 	}
@@ -185,6 +179,11 @@ func (s *BOGOWISDK) GetTokenBalance(address string) (*TokenBalance, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token balance: %w", err)
+	}
+
+	// Handle nil balance
+	if balance == nil {
+		balance = big.NewInt(0)
 	}
 
 	// Convert wei to ether (18 decimals)
@@ -218,7 +217,7 @@ func (s *BOGOWISDK) TransferBOGOTokens(to string, amount string) (string, error)
 		return "", fmt.Errorf("invalid recipient address")
 	}
 
-	if s.contracts.BOGOTokenV2 == nil {
+	if s.contracts.BOGOToken == nil {
 		return "", fmt.Errorf("BOGO token contract not initialized")
 	}
 
@@ -255,7 +254,7 @@ func (s *BOGOWISDK) TransferBOGOTokens(to string, amount string) (string, error)
 	s.auth.GasLimit = uint64(100000) // Standard gas limit for ERC20 transfer
 
 	// Execute transfer
-	tx, err := s.contracts.BOGOTokenV2.Instance.Transact(s.auth, "transfer", toAddress, amountWei)
+	tx, err := s.contracts.BOGOToken.Instance.Transact(s.auth, "transfer", toAddress, amountWei)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute transfer: %w", err)
 	}
