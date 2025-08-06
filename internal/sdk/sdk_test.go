@@ -278,7 +278,7 @@ func TestTransferBOGOTokens(t *testing.T) {
 		client: mockClient,
 		auth:   &bind.TransactOpts{From: common.HexToAddress("0x1234567890123456789012345678901234567890")},
 		contracts: &ContractInstances{
-			BOGOTokenV2: &Contract{
+			BOGOToken: &Contract{
 				Instance: mockContract,
 			},
 		},
