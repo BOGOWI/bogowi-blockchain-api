@@ -216,8 +216,29 @@ func (h *Handler) TransferBOGOTokens(c *gin.Context) {
 		return
 	}
 
+	// Check for network parameter
+	network := c.Query("network")
+	if network == "" {
+		network = c.GetHeader("X-Network")
+	}
+	
+	// Use network-specific SDK if available and network is specified
+	var sdkToUse SDKInterface
+	if network != "" && h.NetworkHandler != nil {
+		networkSDK, err := h.NetworkHandler.GetSDK(network)
+		if err != nil {
+			// Fall back to default SDK if network is invalid
+			sdkToUse = h.SDK
+		} else {
+			sdkToUse = networkSDK
+		}
+	} else {
+		// Use default SDK
+		sdkToUse = h.SDK
+	}
+
 	// Execute the transfer
-	txHash, err := h.SDK.TransferBOGOTokens(req.To, req.Amount)
+	txHash, err := sdkToUse.TransferBOGOTokens(req.To, req.Amount)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
