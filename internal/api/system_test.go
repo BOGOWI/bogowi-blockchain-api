@@ -182,9 +182,17 @@ func setupTestRouter() (*gin.Engine, *MockSDK, *config.Config) {
 		},
 	}
 
+	// Create a mock NetworkHandler
+	networkHandler := &NetworkHandler{
+		testnetSDK: mockSDK,
+		mainnetSDK: mockSDK,
+		config:     cfg,
+	}
+
 	handler := &Handler{
-		SDK:    mockSDK,
-		Config: cfg,
+		SDK:            mockSDK,
+		NetworkHandler: networkHandler,
+		Config:         cfg,
 	}
 
 	router := gin.New()
