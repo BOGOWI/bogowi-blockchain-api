@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"bogowi-blockchain-go/internal/config"
 	"bogowi-blockchain-go/internal/sdk"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -18,8 +19,24 @@ func setupTokenRouter() (*gin.Engine, *MockSDK) {
 	gin.SetMode(gin.TestMode)
 
 	mockSDK := new(MockSDK)
+	
+	// Create a mock config
+	cfg := &config.Config{
+		Testnet: config.NetworkConfig{},
+		Mainnet: config.NetworkConfig{},
+	}
+	
+	// Create a mock NetworkHandler
+	networkHandler := &NetworkHandler{
+		testnetSDK: mockSDK,
+		mainnetSDK: mockSDK,
+		config:     cfg,
+	}
+	
 	handler := &Handler{
-		SDK: mockSDK,
+		SDK:            mockSDK,
+		NetworkHandler: networkHandler,
+		Config:         cfg,
 	}
 
 	router := gin.New()
