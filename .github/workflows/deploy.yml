@@ -210,10 +210,14 @@ jobs:
         echo "Stopping API service..."
         sudo systemctl stop bogowi-api || true
         
-        # Deploy new API binary
-        echo "Deploying new API binary..."
-        sudo cp /tmp/bogowi-api-linux /usr/local/bin/bogowi-api
-        sudo chmod +x /usr/local/bin/bogowi-api
+        # Deploy new API binary to correct location
+        echo "Deploying new API binary to /opt/bogowi/..."
+        sudo mkdir -p /opt/bogowi
+        sudo cp /tmp/bogowi-api-linux /opt/bogowi/bogowi-api
+        sudo chmod +x /opt/bogowi/bogowi-api
+        
+        # Also update the symlink in /usr/local/bin for backward compatibility
+        sudo ln -sf /opt/bogowi/bogowi-api /usr/local/bin/bogowi-api
         
         # Update build info
         echo "Updating build info..."
