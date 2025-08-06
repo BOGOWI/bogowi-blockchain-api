@@ -50,7 +50,6 @@ type ContractAddresses struct {
 	RewardDistributor string `json:"reward_distributor"`
 
 	// Legacy contracts (to be removed after migration)
-	BOGOTokenV2      string `json:"bogo_token_v2"`
 	ConservationNFT  string `json:"conservation_nft"`
 	CommercialNFT    string `json:"commercial_nft"`
 	MultisigTreasury string `json:"multisig_treasury"`

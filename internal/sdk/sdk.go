@@ -35,7 +35,6 @@ type ContractInstances struct {
 	RewardDistributor *Contract
 
 	// Legacy contracts (to be removed after migration)
-	BOGOTokenV2      *Contract
 	ConservationNFT  *Contract
 	CommercialNFT    *Contract
 	MultisigTreasury *Contract
@@ -129,8 +128,6 @@ func (s *BOGOWISDK) initializeContractsWithConfig(networkConfig *config.NetworkC
 		s.contracts.RewardDistributor = contract
 		s.rewardDistributor = contract
 	}
-
-	// Note: BOGOTokenV2 is deprecated and no longer used
 
 	return nil
 }
