@@ -19,20 +19,20 @@ func setupTokenRouter() (*gin.Engine, *MockSDK) {
 	gin.SetMode(gin.TestMode)
 
 	mockSDK := new(MockSDK)
-	
+
 	// Create a mock config
 	cfg := &config.Config{
 		Testnet: config.NetworkConfig{},
 		Mainnet: config.NetworkConfig{},
 	}
-	
+
 	// Create a mock NetworkHandler
 	networkHandler := &NetworkHandler{
 		testnetSDK: mockSDK,
 		mainnetSDK: mockSDK,
 		config:     cfg,
 	}
-	
+
 	handler := &Handler{
 		SDK:            mockSDK,
 		NetworkHandler: networkHandler,
