@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 // TransferBOGOTokensRequest represents a BOGO token transfer request
 type TransferBOGOTokensRequest struct {
 	To     string `json:"to" binding:"required"`

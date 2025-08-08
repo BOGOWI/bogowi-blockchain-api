@@ -191,7 +191,6 @@ func (s *BOGOWISDK) GetRemainingDailyLimit() (*big.Int, error) {
 	return new(big.Int).Mul(big.NewInt(400000), big.NewInt(1e18)), nil
 }
 
-
 // Helper method to get transaction options
 func (s *BOGOWISDK) getTransactOpts() (*bind.TransactOpts, error) {
 	auth, err := bind.NewKeyedTransactorWithChainID(s.privateKey, s.chainID)
