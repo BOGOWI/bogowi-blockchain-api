@@ -191,54 +191,6 @@ func (s *BOGOWISDK) GetRemainingDailyLimit() (*big.Int, error) {
 	return new(big.Int).Mul(big.NewInt(400000), big.NewInt(1e18)), nil
 }
 
-// ClaimReward is the legacy claim reward method for backward compatibility
-func (s *BOGOWISDK) ClaimReward(address string, rewardType string, rewardAmount string) (string, error) {
-	// Validate address
-	if !common.IsHexAddress(address) {
-		return "", fmt.Errorf("invalid address")
-	}
-
-	// For now, return a mock transaction hash
-	// TODO: Implement actual reward claiming when migrating to new system
-	return "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", nil
-}
-
-// GetRewardInfo gets reward information for an address
-func (s *BOGOWISDK) GetRewardInfo(address string) (map[string]interface{}, error) {
-	// Validate address
-	if !common.IsHexAddress(address) {
-		return nil, fmt.Errorf("invalid address")
-	}
-
-	// For now, return mock data
-	// TODO: Implement actual reward info query
-	return map[string]interface{}{
-		"address":          address,
-		"totalRewards":     "1000",
-		"claimedRewards":   "200",
-		"unclaimedRewards": "800",
-		"isWhitelisted":    true,
-		"achievements":     []string{"Early Adopter", "Conservation Hero"},
-	}, nil
-}
-
-// GetAchievementProgress gets achievement progress for an address
-func (s *BOGOWISDK) GetAchievementProgress(address string, achievementId string) (map[string]interface{}, error) {
-	// Validate address
-	if !common.IsHexAddress(address) {
-		return nil, fmt.Errorf("invalid address")
-	}
-
-	// For now, return mock data
-	// TODO: Implement actual achievement progress query
-	return map[string]interface{}{
-		"achievementId": achievementId,
-		"progress":      75,
-		"target":        100,
-		"completed":     false,
-		"description":   "Mint 100 conservation NFTs",
-	}, nil
-}
 
 // Helper method to get transaction options
 func (s *BOGOWISDK) getTransactOpts() (*bind.TransactOpts, error) {

@@ -15,12 +15,6 @@ type SDKInterface interface {
 	TransferBOGOTokens(to string, amount string) (string, error)
 	GetPublicKey() (string, error)
 	Close()
-	GetNFTBalance(address string, tokenId string) (string, error)
-	MintEventTicket(to string, eventName string, eventDate string) (string, error)
-	MintConservationNFT(to string, tokenURI string, description string) (string, error)
-	GetRewardInfo(address string) (map[string]interface{}, error)
-	GetAchievementProgress(address string, achievementId string) (map[string]interface{}, error)
-	ClaimReward(address string, rewardType string, rewardAmount string) (string, error)
 
 	// New reward system methods
 	CheckRewardEligibility(templateID string, wallet common.Address) (bool, string, error)
