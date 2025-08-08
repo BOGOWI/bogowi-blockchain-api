@@ -86,106 +86,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /token/flavored-balances/{address}:
-    get:
-      summary: Get Flavored Token Balances
-      description: Returns balances for Ocean, Earth, and Wildlife BOGO tokens
+
+  /token/transfer:
+    post:
+      summary: Transfer BOGO Tokens
+      description: Transfer BOGO tokens to another address
       tags: [Tokens]
       parameters:
-        - name: address
-          in: path
-          required: true
-          description: Ethereum wallet address
+        - name: network
+          in: query
+          description: Network to use (testnet or mainnet)
           schema:
             type: string
-      responses:
-        '200':
-          description: Flavored token balances
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  address:
-                    type: string
-                  balances:
-                    type: object
-                    properties:
-                      ocean:
-                        type: string
-                      earth:
-                        type: string
-                      wildlife:
-                        type: string
-
-  /nft/balance/{address}/{tokenId}:
-    get:
-      summary: Get NFT Balance
-      description: Check if an address owns a specific NFT token ID
-      tags: [NFTs]
-      parameters:
-        - name: address
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: tokenId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: NFT balance check result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  address:
-                    type: string
-                  tokenId:
-                    type: string
-                  balance:
-                    type: string
-
-  /nft/mint-ticket:
-    post:
-      summary: Mint Event Ticket NFT
-      description: Mints a new event ticket NFT
-      tags: [NFTs]
+            enum: [testnet, mainnet]
+            default: mainnet
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [to, tokenId, eventDate, expiryDate, venue, uri, price]
+              required: [to, amount]
               properties:
                 to:
                   type: string
                   description: Recipient address
-                tokenId:
+                  example: "0x742b18C3E6C2E0dD5f75FbBd7D71d8CaE59c7054"
+                amount:
                   type: string
-                  description: Token ID to mint
-                eventDate:
-                  type: integer
-                  description: Event date (Unix timestamp)
-                expiryDate:
-                  type: integer
-                  description: Expiry date (Unix timestamp)
-                venue:
-                  type: string
-                  description: Event venue
-                uri:
-                  type: string
-                  description: Metadata URI
-                price:
-                  type: string
-                  description: Ticket price
+                  description: Amount to transfer (in BOGO)
+                  example: "100"
       responses:
         '200':
-          description: NFT minted successfully
+          description: Transfer successful
           content:
             application/json:
               schema:
@@ -193,68 +126,173 @@ paths:
                 properties:
                   message:
                     type: string
-                  to:
-                    type: string
-                  tokenId:
-                    type: string
                   transaction:
                     type: string
+                  to:
+                    type: string
+                  amount:
+                    type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
-  /rewards/info/{address}:
+  /rewards/templates:
     get:
-      summary: Get Reward Information
-      description: Returns reward points and achievement progress for a user
+      summary: Get Reward Templates
+      description: Returns available reward templates
+      tags: [Rewards]
+      responses:
+        '200':
+          description: List of reward templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      type: object
+
+  /rewards/templates/{id}:
+    get:
+      summary: Get Reward Template
+      description: Returns a specific reward template
       tags: [Rewards]
       parameters:
-        - name: address
+        - name: id
           in: path
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: User reward information
+          description: Reward template details
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  address:
-                    type: string
-                  totalRewards:
-                    type: string
-                  claimedRewards:
-                    type: string
-                  unclaimedRewards:
-                    type: string
-                  isWhitelisted:
-                    type: boolean
-                  achievements:
-                    type: array
-                    items:
-                      type: string
+        '404':
+          description: Template not found
 
-  /dao/info:
+  /rewards/eligibility:
     get:
-      summary: Get DAO Information
-      description: Returns DAO/Multisig treasury information
-      tags: [DAO]
+      summary: Check Reward Eligibility
+      description: Check if authenticated user is eligible for rewards
+      tags: [Rewards]
+      security:
+        - firebase: []
       responses:
         '200':
-          description: DAO information
+          description: Eligibility status
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  threshold:
-                    type: integer
-                  signerCount:
-                    type: integer
-                  transactionCount:
-                    type: integer
+
+  /rewards/history:
+    get:
+      summary: Get Reward History
+      description: Returns reward history for authenticated user
+      tags: [Rewards]
+      security:
+        - firebase: []
+      responses:
+        '200':
+          description: User's reward history
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /rewards/claim-v2:
+    post:
+      summary: Claim Reward V2
+      description: Claim rewards for authenticated user
+      tags: [Rewards]
+      security:
+        - firebase: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rewardType]
+              properties:
+                rewardType:
+                  type: string
+                amount:
+                  type: string
+      responses:
+        '200':
+          description: Reward claimed successfully
+
+  /rewards/claim-referral:
+    post:
+      summary: Claim Referral Reward
+      description: Claim referral rewards
+      tags: [Rewards]
+      security:
+        - firebase: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [referralCode]
+              properties:
+                referralCode:
+                  type: string
+      responses:
+        '200':
+          description: Referral reward claimed
+
+  /rewards/claim-custom:
+    post:
+      summary: Claim Custom Reward
+      description: Backend-only endpoint to claim custom rewards
+      tags: [Rewards]
+      parameters:
+        - name: X-Backend-Auth
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Backend authentication token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipientAddress, amount, rewardType]
+              properties:
+                recipientAddress:
+                  type: string
+                amount:
+                  type: string
+                rewardType:
+                  type: string
+      responses:
+        '200':
+          description: Custom reward processed
+        '401':
+          description: Unauthorized
+
 
 components:
+  securitySchemes:
+    firebase:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase Authentication token
+  
   schemas:
     Error:
       type: object
@@ -268,9 +306,5 @@ tags:
     description: System health and utility endpoints
   - name: Tokens
     description: BOGO token operations
-  - name: NFTs
-    description: NFT minting and balance operations
   - name: Rewards
     description: User rewards and achievements
-  - name: DAO
-    description: DAO and multisig treasury operations
