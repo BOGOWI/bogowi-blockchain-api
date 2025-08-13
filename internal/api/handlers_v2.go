@@ -177,7 +177,7 @@ func (h *HandlerV2) GetRewardTemplateV2(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve template"})
 		return
 	}
-	
+
 	if template == nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{
 			Error: fmt.Sprintf("Template '%s' not found on %s", templateID, network),
@@ -193,7 +193,7 @@ func (h *HandlerV2) CheckRewardEligibilityV2(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 	userID := c.GetString("uid") // From auth middleware
 	templateID := c.Query("templateId")
-	
+
 	if templateID == "" {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "templateId is required"})
 		return
@@ -205,19 +205,19 @@ func (h *HandlerV2) CheckRewardEligibilityV2(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to check eligibility"})
 		return
 	}
-	
+
 	if eligibility == nil {
 		// No previous eligibility record, create default
 		eligibility = &models.UserRewardEligibility{
-			UserID:         userID,
-			TemplateID:     templateID,
-			IsEligible:     true,
-			Reason:         "",
-			ClaimCount:     0,
-			Network:        network,
-			LastChecked:    time.Now(),
+			UserID:      userID,
+			TemplateID:  templateID,
+			IsEligible:  true,
+			Reason:      "",
+			ClaimCount:  0,
+			Network:     network,
+			LastChecked: time.Now(),
 		}
-		
+
 		// Save eligibility
 		h.Storage.SaveUserEligibility(c.Request.Context(), eligibility)
 	}
@@ -236,9 +236,9 @@ func (h *HandlerV2) CheckRewardEligibilityV2(c *gin.Context) {
 // GetRewardHistoryV2 returns user's reward history
 func (h *HandlerV2) GetRewardHistoryV2(c *gin.Context) {
 	network := GetNetworkFromContext(c)
-	userID := c.GetString("uid") // From auth middleware
+	userID := c.GetString("uid")    // From auth middleware
 	wallet := c.GetString("wallet") // From auth middleware
-	
+
 	if wallet == "" {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Wallet not found in context"})
 		return
@@ -250,7 +250,7 @@ func (h *HandlerV2) GetRewardHistoryV2(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve reward history"})
 		return
 	}
-	
+
 	// Filter by network if needed
 	var filteredClaims []gin.H
 	for _, claim := range rewardClaims {
@@ -278,7 +278,7 @@ func (h *HandlerV2) GetRewardHistoryV2(c *gin.Context) {
 // ClaimRewardV3 processes reward claims
 func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 	network := GetNetworkFromContext(c)
-	userID := c.GetString("uid") // From auth middleware
+	userID := c.GetString("uid")    // From auth middleware
 	wallet := c.GetString("wallet") // From auth middleware
 
 	var req struct {
@@ -290,7 +290,7 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
 		return
 	}
-	
+
 	if wallet == "" {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Wallet not found in context"})
 		return
@@ -302,25 +302,25 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve template"})
 		return
 	}
-	
+
 	if template == nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{Error: fmt.Sprintf("Template '%s' not found", req.RewardType)})
 		return
 	}
-	
+
 	// Check eligibility
 	eligibility, _ := h.Storage.GetUserEligibility(c.Request.Context(), userID, req.RewardType, network)
 	if eligibility != nil && !eligibility.IsEligible {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: eligibility.Reason})
 		return
 	}
-	
+
 	// Determine amount
 	amount := template.FixedAmount
 	if req.Amount != "" {
 		amount = req.Amount
 	}
-	
+
 	// Create claim record
 	claimRecord := &models.RewardClaim{
 		WalletAddress: wallet,
@@ -330,13 +330,13 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 		ClaimedAt:     time.Now(),
 		Network:       network,
 	}
-	
+
 	err = h.Storage.CreateRewardClaim(c.Request.Context(), claimRecord)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create claim record"})
 		return
 	}
-	
+
 	// Get SDK for network
 	sdk, err := h.NetworkHandler.GetSDK(network)
 	if err != nil {
@@ -344,7 +344,7 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Network %s not available", network)})
 		return
 	}
-	
+
 	// Process claim through SDK
 	walletAddr := common.HexToAddress(wallet)
 	tx, err := sdk.ClaimRewardV2(req.RewardType, walletAddr)
@@ -353,10 +353,10 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming reward: %v", err)})
 		return
 	}
-	
+
 	// Update claim status
 	h.Storage.UpdateRewardClaimStatus(c.Request.Context(), claimRecord.ID, "completed", tx.Hash().Hex())
-	
+
 	// Update eligibility
 	if eligibility == nil {
 		eligibility = &models.UserRewardEligibility{
@@ -367,7 +367,7 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 	}
 	eligibility.ClaimCount++
 	eligibility.LastChecked = time.Now()
-	
+
 	// Check if max claims reached
 	if uint64(eligibility.ClaimCount) >= template.MaxClaimsPerWallet {
 		eligibility.IsEligible = false
@@ -375,7 +375,7 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 	} else if template.CooldownPeriod > 0 {
 		eligibility.NextEligibleAt = time.Now().Add(time.Duration(template.CooldownPeriod) * time.Second)
 	}
-	
+
 	h.Storage.SaveUserEligibility(c.Request.Context(), eligibility)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -391,7 +391,7 @@ func (h *HandlerV2) ClaimRewardV3(c *gin.Context) {
 // ClaimReferralV3 processes referral rewards
 func (h *HandlerV2) ClaimReferralV3(c *gin.Context) {
 	network := GetNetworkFromContext(c)
-	userID := c.GetString("uid") // From auth middleware
+	userID := c.GetString("uid")    // From auth middleware
 	wallet := c.GetString("wallet") // From auth middleware
 
 	var req struct {
@@ -402,19 +402,19 @@ func (h *HandlerV2) ClaimReferralV3(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
 		return
 	}
-	
+
 	if wallet == "" {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Wallet not found in context"})
 		return
 	}
-	
+
 	// For demo purposes, treating referral code as the referrer's address
 	// In production, this would map to actual referral codes
 	if !common.IsHexAddress(req.ReferralCode) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid referral code format"})
 		return
 	}
-	
+
 	// Create referral claim record
 	referralClaim := &models.ReferralClaim{
 		ReferrerAddress: req.ReferralCode,
@@ -425,13 +425,13 @@ func (h *HandlerV2) ClaimReferralV3(c *gin.Context) {
 		ClaimedAt:       time.Now(),
 		Network:         network,
 	}
-	
+
 	err := h.Storage.CreateReferralClaim(c.Request.Context(), referralClaim)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create referral claim"})
 		return
 	}
-	
+
 	// Get SDK for network
 	sdk, err := h.NetworkHandler.GetSDK(network)
 	if err != nil {
@@ -439,18 +439,18 @@ func (h *HandlerV2) ClaimReferralV3(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Network %s not available", network)})
 		return
 	}
-	
+
 	// Process referral through SDK
 	referrerAddr := common.HexToAddress(req.ReferralCode)
 	referredAddr := common.HexToAddress(wallet)
-	
+
 	tx, err := sdk.ClaimReferralBonus(referrerAddr, referredAddr)
 	if err != nil {
 		h.Storage.UpdateReferralClaimStatus(c.Request.Context(), referralClaim.ID, "failed", "")
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming referral: %v", err)})
 		return
 	}
-	
+
 	// Update status to completed
 	h.Storage.UpdateReferralClaimStatus(c.Request.Context(), referralClaim.ID, "completed", tx.Hash().Hex())
 

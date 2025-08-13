@@ -15,17 +15,17 @@ type RewardsStorage interface {
 	GetRewardClaim(ctx context.Context, id uint) (*models.RewardClaim, error)
 	GetRewardClaimsByWallet(ctx context.Context, wallet string, limit int) ([]*models.RewardClaim, error)
 	UpdateRewardClaimStatus(ctx context.Context, id uint, status string, txHash string) error
-	
+
 	// Referral Claims
 	CreateReferralClaim(ctx context.Context, claim *models.ReferralClaim) error
 	GetReferralClaimsByWallet(ctx context.Context, wallet string, limit int) ([]*models.ReferralClaim, error)
 	UpdateReferralClaimStatus(ctx context.Context, id uint, status string, txHash string) error
-	
+
 	// Templates
 	SaveRewardTemplate(ctx context.Context, template *models.RewardTemplate) error
 	GetRewardTemplate(ctx context.Context, id, network string) (*models.RewardTemplate, error)
 	GetAllRewardTemplates(ctx context.Context, network string, activeOnly bool) ([]*models.RewardTemplate, error)
-	
+
 	// Eligibility
 	SaveUserEligibility(ctx context.Context, eligibility *models.UserRewardEligibility) error
 	GetUserEligibility(ctx context.Context, userID, templateID, network string) (*models.UserRewardEligibility, error)
@@ -55,16 +55,16 @@ func NewInMemoryRewardsStorage() *InMemoryRewardsStorage {
 		referralsByWallet: make(map[string][]uint),
 		nextID:            1,
 	}
-	
+
 	// Initialize with default templates
 	storage.initializeDefaultTemplates()
-	
+
 	return storage
 }
 
 func (s *InMemoryRewardsStorage) initializeDefaultTemplates() {
 	now := time.Now()
-	
+
 	templates := []*models.RewardTemplate{
 		{
 			ID:                 "welcome_bonus",
@@ -112,9 +112,9 @@ func (s *InMemoryRewardsStorage) initializeDefaultTemplates() {
 			ID:                 "dao_participation",
 			Name:               "DAO Participation Reward",
 			Description:        "Reward for participating in DAO governance",
-			FixedAmount:        "5000000000000000000", // 5 BOGO
+			FixedAmount:        "5000000000000000000",  // 5 BOGO
 			MaxAmount:          "50000000000000000000", // Max 50 BOGO
-			CooldownPeriod:     604800, // 7 days
+			CooldownPeriod:     604800,                 // 7 days
 			MaxClaimsPerWallet: 10,
 			RequiresWhitelist:  false,
 			Active:             true,
@@ -123,7 +123,7 @@ func (s *InMemoryRewardsStorage) initializeDefaultTemplates() {
 			UpdatedAt:          now,
 		},
 	}
-	
+
 	for _, template := range templates {
 		key := template.ID + ":" + template.Network
 		s.templates[key] = template
@@ -134,15 +134,15 @@ func (s *InMemoryRewardsStorage) initializeDefaultTemplates() {
 func (s *InMemoryRewardsStorage) CreateRewardClaim(ctx context.Context, claim *models.RewardClaim) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	claim.ID = s.nextID
 	s.nextID++
 	claim.CreatedAt = time.Now()
 	claim.UpdatedAt = time.Now()
-	
+
 	s.rewardClaims[claim.ID] = claim
 	s.claimsByWallet[claim.WalletAddress] = append(s.claimsByWallet[claim.WalletAddress], claim.ID)
-	
+
 	return nil
 }
 
@@ -150,12 +150,12 @@ func (s *InMemoryRewardsStorage) CreateRewardClaim(ctx context.Context, claim *m
 func (s *InMemoryRewardsStorage) GetRewardClaim(ctx context.Context, id uint) (*models.RewardClaim, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	claim, exists := s.rewardClaims[id]
 	if !exists {
 		return nil, nil
 	}
-	
+
 	return claim, nil
 }
 
@@ -163,15 +163,15 @@ func (s *InMemoryRewardsStorage) GetRewardClaim(ctx context.Context, id uint) (*
 func (s *InMemoryRewardsStorage) GetRewardClaimsByWallet(ctx context.Context, wallet string, limit int) ([]*models.RewardClaim, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	claimIDs, exists := s.claimsByWallet[wallet]
 	if !exists {
 		return []*models.RewardClaim{}, nil
 	}
-	
+
 	var claims []*models.RewardClaim
 	count := 0
-	
+
 	// Get claims in reverse order (most recent first)
 	for i := len(claimIDs) - 1; i >= 0 && (limit == 0 || count < limit); i-- {
 		if claim, exists := s.rewardClaims[claimIDs[i]]; exists {
@@ -179,7 +179,7 @@ func (s *InMemoryRewardsStorage) GetRewardClaimsByWallet(ctx context.Context, wa
 			count++
 		}
 	}
-	
+
 	return claims, nil
 }
 
@@ -187,18 +187,18 @@ func (s *InMemoryRewardsStorage) GetRewardClaimsByWallet(ctx context.Context, wa
 func (s *InMemoryRewardsStorage) UpdateRewardClaimStatus(ctx context.Context, id uint, status string, txHash string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	claim, exists := s.rewardClaims[id]
 	if !exists {
 		return nil
 	}
-	
+
 	claim.Status = status
 	if txHash != "" {
 		claim.TxHash = txHash
 	}
 	claim.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -206,15 +206,15 @@ func (s *InMemoryRewardsStorage) UpdateRewardClaimStatus(ctx context.Context, id
 func (s *InMemoryRewardsStorage) CreateReferralClaim(ctx context.Context, claim *models.ReferralClaim) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	claim.ID = s.nextID
 	s.nextID++
 	claim.CreatedAt = time.Now()
 	claim.UpdatedAt = time.Now()
-	
+
 	s.referralClaims[claim.ID] = claim
 	s.referralsByWallet[claim.ReferredAddress] = append(s.referralsByWallet[claim.ReferredAddress], claim.ID)
-	
+
 	return nil
 }
 
@@ -222,15 +222,15 @@ func (s *InMemoryRewardsStorage) CreateReferralClaim(ctx context.Context, claim 
 func (s *InMemoryRewardsStorage) GetReferralClaimsByWallet(ctx context.Context, wallet string, limit int) ([]*models.ReferralClaim, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	claimIDs, exists := s.referralsByWallet[wallet]
 	if !exists {
 		return []*models.ReferralClaim{}, nil
 	}
-	
+
 	var claims []*models.ReferralClaim
 	count := 0
-	
+
 	// Get claims in reverse order (most recent first)
 	for i := len(claimIDs) - 1; i >= 0 && (limit == 0 || count < limit); i-- {
 		if claim, exists := s.referralClaims[claimIDs[i]]; exists {
@@ -238,7 +238,7 @@ func (s *InMemoryRewardsStorage) GetReferralClaimsByWallet(ctx context.Context, 
 			count++
 		}
 	}
-	
+
 	return claims, nil
 }
 
@@ -246,18 +246,18 @@ func (s *InMemoryRewardsStorage) GetReferralClaimsByWallet(ctx context.Context, 
 func (s *InMemoryRewardsStorage) UpdateReferralClaimStatus(ctx context.Context, id uint, status string, txHash string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	claim, exists := s.referralClaims[id]
 	if !exists {
 		return nil
 	}
-	
+
 	claim.Status = status
 	if txHash != "" {
 		claim.TxHash = txHash
 	}
 	claim.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -265,7 +265,7 @@ func (s *InMemoryRewardsStorage) UpdateReferralClaimStatus(ctx context.Context, 
 func (s *InMemoryRewardsStorage) SaveRewardTemplate(ctx context.Context, template *models.RewardTemplate) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	key := template.ID + ":" + template.Network
 	if existing, exists := s.templates[key]; exists {
 		template.CreatedAt = existing.CreatedAt
@@ -273,7 +273,7 @@ func (s *InMemoryRewardsStorage) SaveRewardTemplate(ctx context.Context, templat
 		template.CreatedAt = time.Now()
 	}
 	template.UpdatedAt = time.Now()
-	
+
 	s.templates[key] = template
 	return nil
 }
@@ -282,13 +282,13 @@ func (s *InMemoryRewardsStorage) SaveRewardTemplate(ctx context.Context, templat
 func (s *InMemoryRewardsStorage) GetRewardTemplate(ctx context.Context, id, network string) (*models.RewardTemplate, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	key := id + ":" + network
 	template, exists := s.templates[key]
 	if !exists {
 		return nil, nil
 	}
-	
+
 	return template, nil
 }
 
@@ -296,9 +296,9 @@ func (s *InMemoryRewardsStorage) GetRewardTemplate(ctx context.Context, id, netw
 func (s *InMemoryRewardsStorage) GetAllRewardTemplates(ctx context.Context, network string, activeOnly bool) ([]*models.RewardTemplate, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	var templates []*models.RewardTemplate
-	
+
 	for _, template := range s.templates {
 		if template.Network == network {
 			if !activeOnly || template.Active {
@@ -306,7 +306,7 @@ func (s *InMemoryRewardsStorage) GetAllRewardTemplates(ctx context.Context, netw
 			}
 		}
 	}
-	
+
 	return templates, nil
 }
 
@@ -314,10 +314,10 @@ func (s *InMemoryRewardsStorage) GetAllRewardTemplates(ctx context.Context, netw
 func (s *InMemoryRewardsStorage) SaveUserEligibility(ctx context.Context, eligibility *models.UserRewardEligibility) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	key := eligibility.UserID + ":" + eligibility.TemplateID + ":" + eligibility.Network
 	s.eligibilities[key] = eligibility
-	
+
 	return nil
 }
 
@@ -325,12 +325,12 @@ func (s *InMemoryRewardsStorage) SaveUserEligibility(ctx context.Context, eligib
 func (s *InMemoryRewardsStorage) GetUserEligibility(ctx context.Context, userID, templateID, network string) (*models.UserRewardEligibility, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	key := userID + ":" + templateID + ":" + network
 	eligibility, exists := s.eligibilities[key]
 	if !exists {
 		return nil, nil
 	}
-	
+
 	return eligibility, nil
 }

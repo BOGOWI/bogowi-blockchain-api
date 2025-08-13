@@ -109,7 +109,7 @@ func (h *Handler) ClaimRewardV2(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error getting template: %v", err)})
 		return
 	}
-	
+
 	// Store claim record with pending status
 	claimRecord := &models.RewardClaim{
 		WalletAddress: wallet.(string),
@@ -119,13 +119,13 @@ func (h *Handler) ClaimRewardV2(c *gin.Context) {
 		ClaimedAt:     time.Now(),
 		Network:       "camino",
 	}
-	
+
 	err = h.Storage.CreateRewardClaim(c.Request.Context(), claimRecord)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to record claim"})
 		return
 	}
-	
+
 	// Claim reward
 	tx, err := h.SDK.ClaimRewardV2(req.TemplateID, walletAddr)
 	if err != nil {
@@ -134,7 +134,7 @@ func (h *Handler) ClaimRewardV2(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming reward: %v", err)})
 		return
 	}
-	
+
 	// Update claim status to completed
 	h.Storage.UpdateRewardClaimStatus(c.Request.Context(), claimRecord.ID, "completed", tx.Hash().Hex())
 
@@ -189,13 +189,13 @@ func (h *Handler) ClaimReferralV2(c *gin.Context) {
 		ClaimedAt:       time.Now(),
 		Network:         "camino",
 	}
-	
+
 	err = h.Storage.CreateReferralClaim(c.Request.Context(), referralClaim)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to record referral claim"})
 		return
 	}
-	
+
 	// Claim referral bonus
 	tx, err := h.SDK.ClaimReferralBonus(referrerAddr, referredAddr)
 	if err != nil {
@@ -204,7 +204,7 @@ func (h *Handler) ClaimReferralV2(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming referral: %v", err)})
 		return
 	}
-	
+
 	// Update status to completed
 	h.Storage.UpdateReferralClaimStatus(c.Request.Context(), referralClaim.ID, "completed", tx.Hash().Hex())
 
@@ -463,24 +463,24 @@ func (h *Handler) GetRewardHistory(c *gin.Context) {
 	}
 
 	walletAddr := wallet.(string)
-	
+
 	// Get reward claims from storage
 	rewardClaims, err := h.Storage.GetRewardClaimsByWallet(c.Request.Context(), walletAddr, 50)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve claim history"})
 		return
 	}
-	
+
 	// Get referral claims from storage
 	referralClaims, err := h.Storage.GetReferralClaimsByWallet(c.Request.Context(), walletAddr, 50)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve referral history"})
 		return
 	}
-	
+
 	// Combine and format the claims
 	var allClaims []gin.H
-	
+
 	for _, claim := range rewardClaims {
 		allClaims = append(allClaims, gin.H{
 			"type":       "reward",
@@ -492,7 +492,7 @@ func (h *Handler) GetRewardHistory(c *gin.Context) {
 			"network":    claim.Network,
 		})
 	}
-	
+
 	for _, claim := range referralClaims {
 		allClaims = append(allClaims, gin.H{
 			"type":            "referral",

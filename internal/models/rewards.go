@@ -20,17 +20,17 @@ type RewardClaim struct {
 
 // ReferralClaim represents a referral claim record
 type ReferralClaim struct {
-	ID               uint      `json:"id"`
-	ReferrerAddress  string    `json:"referrer_address"`
-	ReferredAddress  string    `json:"referred_address"`
-	ReferralCode     string    `json:"referral_code"`
-	BonusAmount      string    `json:"bonus_amount"`
-	TxHash           string    `json:"tx_hash"`
-	Status           string    `json:"status"`
-	ClaimedAt        time.Time `json:"claimed_at"`
-	Network          string    `json:"network"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID              uint      `json:"id"`
+	ReferrerAddress string    `json:"referrer_address"`
+	ReferredAddress string    `json:"referred_address"`
+	ReferralCode    string    `json:"referral_code"`
+	BonusAmount     string    `json:"bonus_amount"`
+	TxHash          string    `json:"tx_hash"`
+	Status          string    `json:"status"`
+	ClaimedAt       time.Time `json:"claimed_at"`
+	Network         string    `json:"network"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // RewardTemplate represents a reward template configuration
