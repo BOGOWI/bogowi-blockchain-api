@@ -7,6 +7,7 @@ import (
 
 	"bogowi-blockchain-go/internal/config"
 	"bogowi-blockchain-go/internal/middleware"
+	"bogowi-blockchain-go/internal/storage"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,7 @@ import (
 type HandlerV2 struct {
 	NetworkHandler *NetworkHandler
 	Config         *config.Config
+	Storage        storage.RewardsStorage
 }
 
 // NetworkMiddleware extracts and validates the network parameter
@@ -60,6 +62,7 @@ func NewRouterV2(cfg *config.Config) (*gin.Engine, error) {
 	handler := &HandlerV2{
 		NetworkHandler: networkHandler,
 		Config:         cfg,
+		Storage:        storage.NewInMemoryRewardsStorage(),
 	}
 
 	router := gin.New()

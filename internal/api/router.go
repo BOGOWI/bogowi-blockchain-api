@@ -8,6 +8,7 @@ import (
 	"bogowi-blockchain-go/internal/config"
 	"bogowi-blockchain-go/internal/middleware"
 	"bogowi-blockchain-go/internal/sdk"
+	"bogowi-blockchain-go/internal/storage"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -19,13 +20,15 @@ type Handler struct {
 	SDK            SDKInterface
 	NetworkHandler *NetworkHandler
 	Config         *config.Config
+	Storage        storage.RewardsStorage
 }
 
 // NewRouter creates a new Gin router with all routes configured
 func NewRouter(bogoSDK *sdk.BOGOWISDK, cfg *config.Config) *gin.Engine {
 	handler := &Handler{
-		SDK:    bogoSDK,
-		Config: cfg,
+		SDK:     bogoSDK,
+		Config:  cfg,
+		Storage: storage.NewInMemoryRewardsStorage(),
 	}
 
 	router := gin.New()

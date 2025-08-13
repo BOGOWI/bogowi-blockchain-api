@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"time"
 
 	"bogowi-blockchain-go/internal/middleware"
+	"bogowi-blockchain-go/internal/models"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 )
@@ -101,17 +103,46 @@ func (h *Handler) ClaimRewardV2(c *gin.Context) {
 		return
 	}
 
+	// Get template info for amount
+	template, err := h.SDK.GetRewardTemplate(req.TemplateID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error getting template: %v", err)})
+		return
+	}
+	
+	// Store claim record with pending status
+	claimRecord := &models.RewardClaim{
+		WalletAddress: wallet.(string),
+		TemplateID:    req.TemplateID,
+		Amount:        template.FixedAmount.String(),
+		Status:        "pending",
+		ClaimedAt:     time.Now(),
+		Network:       "camino",
+	}
+	
+	err = h.Storage.CreateRewardClaim(c.Request.Context(), claimRecord)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to record claim"})
+		return
+	}
+	
 	// Claim reward
 	tx, err := h.SDK.ClaimRewardV2(req.TemplateID, walletAddr)
 	if err != nil {
+		// Update claim status to failed
+		h.Storage.UpdateRewardClaimStatus(c.Request.Context(), claimRecord.ID, "failed", "")
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming reward: %v", err)})
 		return
 	}
+	
+	// Update claim status to completed
+	h.Storage.UpdateRewardClaimStatus(c.Request.Context(), claimRecord.ID, "completed", tx.Hash().Hex())
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"txHash":  tx.Hash().Hex(),
 		"message": fmt.Sprintf("Successfully claimed %s", req.TemplateID),
+		"claimId": claimRecord.ID,
 	})
 }
 
@@ -149,17 +180,39 @@ func (h *Handler) ClaimReferralV2(c *gin.Context) {
 		return
 	}
 
+	// Store referral claim record
+	referralClaim := &models.ReferralClaim{
+		ReferrerAddress: req.ReferrerAddress,
+		ReferredAddress: wallet.(string),
+		BonusAmount:     "5000000000000000000", // Default 5 BOGO for referral
+		Status:          "pending",
+		ClaimedAt:       time.Now(),
+		Network:         "camino",
+	}
+	
+	err = h.Storage.CreateReferralClaim(c.Request.Context(), referralClaim)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to record referral claim"})
+		return
+	}
+	
 	// Claim referral bonus
 	tx, err := h.SDK.ClaimReferralBonus(referrerAddr, referredAddr)
 	if err != nil {
+		// Update status to failed
+		h.Storage.UpdateReferralClaimStatus(c.Request.Context(), referralClaim.ID, "failed", "")
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming referral: %v", err)})
 		return
 	}
+	
+	// Update status to completed
+	h.Storage.UpdateReferralClaimStatus(c.Request.Context(), referralClaim.ID, "completed", tx.Hash().Hex())
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"txHash":  tx.Hash().Hex(),
 		"message": "Referral bonus claimed successfully",
+		"claimId": referralClaim.ID,
 	})
 }
 
@@ -409,11 +462,53 @@ func (h *Handler) GetRewardHistory(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement claim history from database
+	walletAddr := wallet.(string)
+	
+	// Get reward claims from storage
+	rewardClaims, err := h.Storage.GetRewardClaimsByWallet(c.Request.Context(), walletAddr, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve claim history"})
+		return
+	}
+	
+	// Get referral claims from storage
+	referralClaims, err := h.Storage.GetReferralClaimsByWallet(c.Request.Context(), walletAddr, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve referral history"})
+		return
+	}
+	
+	// Combine and format the claims
+	var allClaims []gin.H
+	
+	for _, claim := range rewardClaims {
+		allClaims = append(allClaims, gin.H{
+			"type":       "reward",
+			"templateId": claim.TemplateID,
+			"amount":     claim.Amount,
+			"status":     claim.Status,
+			"txHash":     claim.TxHash,
+			"claimedAt":  claim.ClaimedAt,
+			"network":    claim.Network,
+		})
+	}
+	
+	for _, claim := range referralClaims {
+		allClaims = append(allClaims, gin.H{
+			"type":            "referral",
+			"referrerAddress": claim.ReferrerAddress,
+			"bonusAmount":     claim.BonusAmount,
+			"status":          claim.Status,
+			"txHash":          claim.TxHash,
+			"claimedAt":       claim.ClaimedAt,
+			"network":         claim.Network,
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"wallet":  wallet,
-		"claims":  []interface{}{},
-		"message": "Claim history not yet implemented",
+		"wallet": walletAddr,
+		"claims": allClaims,
+		"total":  len(allClaims),
 	})
 }
 
