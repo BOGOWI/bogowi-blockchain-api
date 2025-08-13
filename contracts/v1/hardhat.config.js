@@ -46,7 +46,8 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      allowUnlimitedContractSize: true
+      allowUnlimitedContractSize: true,
+      chainId: 501 // Use Camino testnet chain ID for testing
     },
     ...networks
   }
