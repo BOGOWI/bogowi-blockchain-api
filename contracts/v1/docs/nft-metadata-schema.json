@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BOGOWI Ticket NFT Metadata",
+  "type": "object",
+  "required": ["name", "description", "image", "attributes"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the ticket NFT",
+      "example": "BOGOWI Eco-Experience #10001"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the experience",
+      "example": "Exclusive wildlife safari experience in Costa Rica's Manuel Antonio National Park"
+    },
+    "image": {
+      "type": "string",
+      "format": "uri",
+      "description": "IPFS or HTTPS URL to the ticket image",
+      "example": "ipfs://QmXxx... or https://storage.bogowi.com/tickets/10001.png"
+    },
+    "animation_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional animated version or QR code animation"
+    },
+    "external_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Link to BOGOWI experience page",
+      "example": "https://bogowi.com/experiences/10001"
+    },
+    "attributes": [
+      {
+        "trait_type": "Experience Type",
+        "value": "Wildlife Safari"
+      },
+      {
+        "trait_type": "Location",
+        "value": "Costa Rica"
+      },
+      {
+        "trait_type": "Duration",
+        "value": "3 Days"
+      },
+      {
+        "trait_type": "Max Participants",
+        "value": "8"
+      },
+      {
+        "trait_type": "Carbon Offset",
+        "value": "100 kg CO2"
+      },
+      {
+        "trait_type": "Conservation Impact",
+        "value": "Supports local wildlife protection"
+      },
+      {
+        "trait_type": "Booking ID",
+        "value": "0x123abc...",
+        "display_type": "string"
+      },
+      {
+        "trait_type": "Event ID",
+        "value": "0x456def...",
+        "display_type": "string"
+      },
+      {
+        "trait_type": "Valid Until",
+        "value": 1735689600,
+        "display_type": "date"
+      },
+      {
+        "trait_type": "Transferable After",
+        "value": 1704067200,
+        "display_type": "date"
+      },
+      {
+        "trait_type": "BOGO Rewards",
+        "value": "100",
+        "display_type": "boost_percentage"
+      },
+      {
+        "trait_type": "Status",
+        "value": "Active"
+      }
+    ],
+    "properties": {
+      "booking_details": {
+        "booking_id": "string",
+        "event_id": "string",
+        "provider": "string",
+        "provider_contact": "string"
+      },
+      "redemption": {
+        "qr_code": "string",
+        "redemption_code": "string",
+        "instructions": "string"
+      },
+      "rewards": {
+        "bogo_tokens": "number",
+        "carbon_credits": "number",
+        "loyalty_points": "number"
+      }
+    }
+  }
+}

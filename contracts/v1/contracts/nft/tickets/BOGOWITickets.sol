@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title BOGOWITickets
@@ -47,6 +48,9 @@ contract BOGOWITickets is
     uint256 public constant INITIAL_TOKEN_ID = 10001; // Configurable start token ID
     address public conservationDAO; // Royalty receiver
     
+    // Datakyte integration
+    string private _baseTokenURI;
+    
     // State variables
     uint256 private _nextTokenId;
     mapping(uint256 => TicketData) private _tickets;
@@ -81,6 +85,9 @@ contract BOGOWITickets is
         _setDefaultRoyalty(_conservationDAO, DEFAULT_ROYALTY_BPS);
         
         _nextTokenId = INITIAL_TOKEN_ID; // Start token IDs at configured value
+        
+        // Set default Datakyte base URI
+        _baseTokenURI = "https://dklnk.to/api/nfts/";
     }
     
     /**
@@ -167,7 +174,7 @@ contract BOGOWITickets is
      */
     function _mintTicketInternal(
         MintParams memory params
-    ) private returns (uint256) {
+    ) internal returns (uint256) {
         // Validations
         require(params.to != address(0), "Cannot mint to zero address");
         require(!_usedBookingIds[params.bookingId], "Booking ID already used");
@@ -403,6 +410,22 @@ contract BOGOWITickets is
     }
     
     /**
+     * @notice Set the base URI for Datakyte metadata
+     * @param newBaseURI The new base URI (e.g., "https://dklnk.to/api/nfts/")
+     */
+    function setBaseURI(string memory newBaseURI) external onlyRole(Roles.ADMIN_ROLE) {
+        _baseTokenURI = newBaseURI;
+        emit BaseURIUpdated(newBaseURI);
+    }
+    
+    /**
+     * @notice Get the current base URI
+     */
+    function baseURI() external view returns (string memory) {
+        return _baseTokenURI;
+    }
+    
+    /**
      * @notice Pause all minting and transfers
      */
     function pause() external onlyRole(Roles.PAUSER_ROLE) {
@@ -421,10 +444,28 @@ contract BOGOWITickets is
     function tokenURI(uint256 tokenId)
         public
         view
+        virtual
         override(ERC721, ERC721URIStorage)
         returns (string memory)
     {
-        return super.tokenURI(tokenId);
+        require(_ownerOf(tokenId) != address(0), "Token does not exist");
+        
+        // Check if individual URI is set
+        string memory individualURI = super.tokenURI(tokenId);
+        if (bytes(individualURI).length > 0) {
+            return individualURI;
+        }
+        
+        // Otherwise, use Datakyte format
+        return string(
+            abi.encodePacked(
+                _baseTokenURI,
+                Strings.toHexString(uint160(address(this)), 20),
+                "/",
+                Strings.toString(tokenId),
+                "/metadata"
+            )
+        );
     }
     
     function supportsInterface(bytes4 interfaceId)

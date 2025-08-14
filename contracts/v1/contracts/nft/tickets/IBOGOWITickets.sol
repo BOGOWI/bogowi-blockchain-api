@@ -107,6 +107,15 @@ interface IBOGOWITickets is IERC721 {
         address indexed owner
     );
     
+    event BaseURIUpdated(
+        string newBaseURI
+    );
+    
+    event DatakyteMetadataLinked(
+        uint256 indexed tokenId,
+        string datakyteNftId
+    );
+    
     // Core Functions
     
     /**
