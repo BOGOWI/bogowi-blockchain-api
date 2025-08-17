@@ -150,7 +150,7 @@ func TestImageService_ValidateImage_EdgeCases(t *testing.T) {
 	t.Run("exactly at size limit", func(t *testing.T) {
 		config := DefaultUploadConfig()
 		config.MaxSizeBytes = 10000 // Small limit for testing
-		
+
 		// Create image that's under the limit
 		img := createTestJPEGWithSize(9500)
 		err := service.ValidateImage(img, config)
@@ -168,7 +168,7 @@ func TestImageService_NewImageService(t *testing.T) {
 	// Test that NewImageService properly initializes
 	// Note: This will fail without AWS credentials, but we can test the structure
 	service, err := NewImageService("test-bucket", "https://cdn.example.com")
-	
+
 	// We expect an error without proper AWS config, but the function should exist
 	if err == nil {
 		assert.NotNil(t, service)
@@ -187,7 +187,7 @@ func TestImageService_DefaultImageMapping(t *testing.T) {
 
 	// Test that the method exists and has correct signature
 	assert.NotNil(t, service.GenerateDefaultImage)
-	
+
 	// Test cases for experience type mapping
 	tests := []struct {
 		experienceType string
@@ -219,10 +219,10 @@ func TestImageService_ImageProcessing(t *testing.T) {
 
 	// Test that ProcessAndUploadImage method exists
 	assert.NotNil(t, service.ProcessAndUploadImage)
-	
+
 	// Test config validation
 	config := DefaultUploadConfig()
-	
+
 	t.Run("validate config quality", func(t *testing.T) {
 		assert.Greater(t, config.Quality, 0)
 		assert.LessOrEqual(t, config.Quality, 100)
@@ -243,7 +243,7 @@ func TestImageService_PresignedURL(t *testing.T) {
 
 	// Verify the method exists with correct signature
 	assert.NotNil(t, service.GeneratePresignedUploadURL)
-	
+
 	// The actual functionality requires AWS SDK setup
 	// which we skip in unit tests
 }
@@ -254,7 +254,7 @@ func createTestJPEG(width, height int) io.Reader {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	// Fill with some color
 	draw.Draw(img, img.Bounds(), &image.Uniform{color.RGBA{100, 100, 100, 255}}, image.Point{}, draw.Src)
-	
+
 	var buf bytes.Buffer
 	jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85})
 	return &buf
@@ -264,7 +264,7 @@ func createTestPNG(width, height int) io.Reader {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	// Fill with some color
 	draw.Draw(img, img.Bounds(), &image.Uniform{color.RGBA{100, 100, 100, 255}}, image.Point{}, draw.Src)
-	
+
 	var buf bytes.Buffer
 	png.Encode(&buf, img)
 	return &buf
@@ -274,19 +274,19 @@ func createTestJPEGWithSize(targetSize int) io.Reader {
 	// Start with a small image and adjust quality until we reach target size
 	width, height := 100, 100
 	quality := 85
-	
+
 	for {
 		img := image.NewRGBA(image.Rect(0, 0, width, height))
 		draw.Draw(img, img.Bounds(), &image.Uniform{color.RGBA{100, 100, 100, 255}}, image.Point{}, draw.Src)
-		
+
 		var buf bytes.Buffer
 		jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality})
-		
+
 		size := buf.Len()
 		if size >= targetSize-100 && size <= targetSize {
 			return &buf
 		}
-		
+
 		if size < targetSize {
 			width += 10
 			height += 10

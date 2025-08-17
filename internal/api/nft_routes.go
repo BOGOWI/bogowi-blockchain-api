@@ -5,7 +5,7 @@ import (
 )
 
 // RegisterNFTRoutes registers all NFT-related routes
-func RegisterNFTRoutes(router *gin.RouterGroup, handler *HandlerV2) {
+func RegisterNFTRoutes(router *gin.RouterGroup, handler *Handler) {
 	// Create NFT handler
 	nftHandler := NewNFTHandler(handler)
 

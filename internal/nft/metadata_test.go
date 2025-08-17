@@ -68,10 +68,10 @@ func TestMetadataGenerator_GenerateTicketMetadata(t *testing.T) {
 				assert.Contains(t, m.Description, "Kenya")
 				assert.Equal(t, "https://images.bogowi.com/1.png", m.Image)
 				assert.Equal(t, "https://bogowi.com/experiences/1", m.ExternalURL)
-				
+
 				// Check attributes
 				assert.Len(t, m.Attributes, 12)
-				
+
 				// Find specific attributes
 				var foundType, foundLocation, foundStatus bool
 				for _, attr := range m.Attributes {
@@ -95,17 +95,17 @@ func TestMetadataGenerator_GenerateTicketMetadata(t *testing.T) {
 				assert.True(t, foundType, "Experience Type attribute not found")
 				assert.True(t, foundLocation, "Location attribute not found")
 				assert.True(t, foundStatus, "Status attribute not found")
-				
+
 				// Check properties
 				assert.NotNil(t, m.Properties)
 				assert.NotNil(t, m.Properties.BookingDetails)
 				assert.Equal(t, "BOOK-123456789", m.Properties.BookingDetails.BookingID)
 				assert.Equal(t, "EVENT-456", m.Properties.BookingDetails.EventID)
-				
+
 				assert.NotNil(t, m.Properties.Redemption)
 				assert.Equal(t, "bogowi://redeem/1/BOOK-123456789", m.Properties.Redemption.QRCode)
 				assert.Equal(t, "BWX-1-BOOK-123", m.Properties.Redemption.RedemptionCode)
-				
+
 				assert.NotNil(t, m.Properties.Rewards)
 				assert.Equal(t, 500, m.Properties.Rewards.BOGOTokens)
 				assert.Equal(t, 50, m.Properties.Rewards.CarbonCredits)
@@ -130,7 +130,7 @@ func TestMetadataGenerator_GenerateTicketMetadata(t *testing.T) {
 				assert.Equal(t, "https://ipfs.io/ipfs/QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco", m.Image)
 				assert.Contains(t, m.Description, "Marine Conservation")
 				assert.Contains(t, m.Description, "Maldives")
-				
+
 				// Check rewards calculation
 				assert.Equal(t, 1000, m.Properties.Rewards.BOGOTokens)
 				assert.Equal(t, 10000, m.Properties.Rewards.LoyaltyPoints)
@@ -176,7 +176,7 @@ func TestMetadataGenerator_GenerateTicketMetadata(t *testing.T) {
 
 			assert.NotNil(t, metadata)
 			tt.validateFunc(t, metadata)
-			
+
 			// Common validations
 			assert.NotEmpty(t, metadata.Name)
 			assert.NotEmpty(t, metadata.Description)
@@ -225,12 +225,12 @@ func TestMetadata_ToJSON(t *testing.T) {
 	// Check structure
 	assert.Equal(t, "Test NFT", parsed["name"])
 	assert.Equal(t, "Test Description", parsed["description"])
-	
+
 	// Check attributes
 	attrs, ok := parsed["attributes"].([]interface{})
 	assert.True(t, ok)
 	assert.Len(t, attrs, 2)
-	
+
 	// Check indentation (should be pretty-printed)
 	assert.Contains(t, jsonStr, "\n  ")
 }
@@ -360,7 +360,7 @@ func TestMetadataAttribute_JSONSerialization(t *testing.T) {
 			require.NoError(t, err)
 			jsonStr := string(data)
 			tt.validate(t, jsonStr)
-			
+
 			// Verify it can be unmarshalled back
 			var parsed MetadataAttribute
 			err = json.Unmarshal(data, &parsed)
@@ -392,24 +392,24 @@ func TestProperties_JSONSerialization(t *testing.T) {
 
 	data, err := json.Marshal(props)
 	require.NoError(t, err)
-	
+
 	jsonStr := string(data)
-	
+
 	// Check all fields are present
 	assert.Contains(t, jsonStr, "booking_details")
 	assert.Contains(t, jsonStr, "BOOK-123")
 	assert.Contains(t, jsonStr, "EVENT-456")
 	assert.Contains(t, jsonStr, "Test Provider")
-	
+
 	assert.Contains(t, jsonStr, "redemption")
 	assert.Contains(t, jsonStr, "bogowi://redeem")
 	assert.Contains(t, jsonStr, "BWX-1-BOOK-123")
-	
+
 	assert.Contains(t, jsonStr, "rewards")
 	assert.Contains(t, jsonStr, "bogo_tokens")
 	assert.Contains(t, jsonStr, "carbon_credits")
 	assert.Contains(t, jsonStr, "loyalty_points")
-	
+
 	// Verify it can be unmarshalled back
 	var parsed Properties
 	err = json.Unmarshal(data, &parsed)
@@ -457,7 +457,7 @@ func TestMetadata_CompleteJSONRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Image, parsed.Image)
 	assert.Equal(t, original.ExternalURL, parsed.ExternalURL)
 	assert.Len(t, parsed.Attributes, len(original.Attributes))
-	
+
 	// Verify properties
 	assert.NotNil(t, parsed.Properties)
 	assert.Equal(t, original.Properties.BookingDetails.BookingID, parsed.Properties.BookingDetails.BookingID)
@@ -473,19 +473,19 @@ func TestMetadataGenerator_EdgeCases(t *testing.T) {
 
 	t.Run("zero values", func(t *testing.T) {
 		metadata := generator.GenerateTicketMetadata(
-			0, // zero token ID
-			"",  // empty booking ID
-			"",  // empty event ID
-			"",  // empty experience type
-			"",  // empty location
-			"",  // empty duration
-			0,   // zero participants
-			0,   // zero carbon offset
-			"",  // empty conservation impact
+			0,           // zero token ID
+			"",          // empty booking ID
+			"",          // empty event ID
+			"",          // empty experience type
+			"",          // empty location
+			"",          // empty duration
+			0,           // zero participants
+			0,           // zero carbon offset
+			"",          // empty conservation impact
 			time.Time{}, // zero time
 			time.Time{}, // zero time
-			0,   // zero rewards
-			"",  // empty image hash
+			0,           // zero rewards
+			"",          // empty image hash
 		)
 
 		assert.NotNil(t, metadata)
@@ -540,10 +540,10 @@ func TestMetadataGenerator_EdgeCases(t *testing.T) {
 		assert.NotNil(t, metadata)
 		jsonStr, err := metadata.ToJSON()
 		assert.NoError(t, err)
-		
+
 		// JSON should properly escape special characters
 		assert.Contains(t, jsonStr, `\"quotes\"`)
-		
+
 		// Should be able to parse back
 		var parsed Metadata
 		err = json.Unmarshal([]byte(jsonStr), &parsed)

@@ -35,9 +35,9 @@ func TestGetNetworkFromContext(t *testing.T) {
 			gin.SetMode(gin.TestMode)
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			tt.setupContext(c)
-			
+
 			if got := GetNetworkFromContext(c); got != tt.want {
 				t.Errorf("GetNetworkFromContext() = %v, want %v", got, tt.want)
 			}
@@ -49,7 +49,7 @@ func TestErrorResponse(t *testing.T) {
 	err := ErrorResponse{
 		Error: "test error",
 	}
-	
+
 	if err.Error != "test error" {
 		t.Errorf("ErrorResponse.Error = %v, want %v", err.Error, "test error")
 	}
@@ -63,11 +63,11 @@ func TestSuccessResponse(t *testing.T) {
 			"name": "test",
 		},
 	}
-	
+
 	if resp.Message != "Operation successful" {
 		t.Errorf("SuccessResponse.Message = %v, want %v", resp.Message, "Operation successful")
 	}
-	
+
 	if data, ok := resp.Data.(map[string]interface{}); !ok {
 		t.Errorf("SuccessResponse.Data type assertion failed")
 	} else {
@@ -79,4 +79,3 @@ func TestSuccessResponse(t *testing.T) {
 		}
 	}
 }
-

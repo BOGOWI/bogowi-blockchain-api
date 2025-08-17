@@ -18,7 +18,7 @@ import (
 
 // NFTHandler handles NFT ticket-related endpoints
 type NFTHandler struct {
-	*HandlerV2
+	*Handler
 	metadataServiceTestnet *datakyte.TicketMetadataService
 	metadataServiceMainnet *datakyte.TicketMetadataService
 	datakyteConfig         *config.DatakyteConfig
@@ -26,7 +26,7 @@ type NFTHandler struct {
 }
 
 // NewNFTHandler creates a new NFT handler
-func NewNFTHandler(h *HandlerV2) *NFTHandler {
+func NewNFTHandler(h *Handler) *NFTHandler {
 	datakyteConfig := config.GetDatakyteConfig()
 
 	// Get contract addresses from config or environment
@@ -61,7 +61,7 @@ func NewNFTHandler(h *HandlerV2) *NFTHandler {
 	imageService, _ := storage.NewImageService(bucketName, cdnBaseURL)
 
 	return &NFTHandler{
-		HandlerV2:      h,
+		Handler:        h,
 		datakyteConfig: datakyteConfig,
 		imageService:   imageService,
 		metadataServiceTestnet: datakyte.NewTicketMetadataService(
@@ -190,9 +190,10 @@ func (h *NFTHandler) MintTicket(c *gin.Context) {
 }
 
 // mintOnChain handles the blockchain transaction for minting
-func (h *NFTHandler) mintOnChain(sdk interface{}, req MintTicketRequest) (uint64, string, error) {
+func (h *NFTHandler) mintOnChain(_ interface{}, _ MintTicketRequest) (uint64, string, error) {
 	// TODO: Implement actual SDK call to mint NFT
 	// This is a placeholder - needs to be integrated with your SDK
+	// Parameters are intentionally unused until implementation is complete
 
 	// For now, return mock data
 	tokenID := uint64(10001) // This would come from the smart contract

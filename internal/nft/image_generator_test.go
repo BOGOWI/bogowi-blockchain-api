@@ -16,11 +16,11 @@ import (
 
 func TestNewTicketImageGenerator(t *testing.T) {
 	tests := []struct {
-		name      string
-		fontData  []byte
-		wantErr   bool
-		errMsg    string
-		validate  func(*testing.T, *TicketImageGenerator)
+		name     string
+		fontData []byte
+		wantErr  bool
+		errMsg   string
+		validate func(*testing.T, *TicketImageGenerator)
 	}{
 		{
 			name:     "valid font data",
@@ -94,19 +94,19 @@ func TestTicketImageGenerator_GenerateTicketImage(t *testing.T) {
 			},
 			validate: func(t *testing.T, imgData []byte) {
 				assert.NotEmpty(t, imgData)
-				
+
 				// Verify it's a valid PNG
 				reader := bytes.NewReader(imgData)
 				img, format, err := image.Decode(reader)
 				assert.NoError(t, err)
 				assert.Equal(t, "png", format)
 				assert.NotNil(t, img)
-				
+
 				// Check dimensions
 				bounds := img.Bounds()
 				assert.Equal(t, 1200, bounds.Dx())
 				assert.Equal(t, 600, bounds.Dy())
-				
+
 				// Check that corners have border color (green)
 				rgbaImg, ok := img.(*image.RGBA)
 				if ok {
@@ -230,7 +230,7 @@ func TestTicketImageGenerator_drawHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	img := image.NewRGBA(image.Rect(0, 0, gen.templateWidth, gen.templateHeight))
-	
+
 	// Fill with white background to see text
 	for y := 0; y < gen.templateHeight; y++ {
 		for x := 0; x < gen.templateWidth; x++ {
@@ -268,7 +268,7 @@ func TestTicketImageGenerator_drawTicketDetails(t *testing.T) {
 	require.NoError(t, err)
 
 	img := image.NewRGBA(image.Rect(0, 0, gen.templateWidth, gen.templateHeight))
-	
+
 	// Fill with white background
 	for y := 0; y < gen.templateHeight; y++ {
 		for x := 0; x < gen.templateWidth; x++ {
@@ -278,13 +278,13 @@ func TestTicketImageGenerator_drawTicketDetails(t *testing.T) {
 
 	now := time.Now()
 	data := TicketData{
-		TokenID:            1,
-		BookingID:          "BOOK-123456789012345678",
-		ExperienceTitle:    "Test Experience",
-		Location:           "Test Location",
-		Date:               now,
-		ValidUntil:         now.Add(30 * 24 * time.Hour),
-		ExperienceType:     "Adventure",
+		TokenID:         1,
+		BookingID:       "BOOK-123456789012345678",
+		ExperienceTitle: "Test Experience",
+		Location:        "Test Location",
+		Date:            now,
+		ValidUntil:      now.Add(30 * 24 * time.Hour),
+		ExperienceType:  "Adventure",
 	}
 
 	// Draw details
@@ -312,7 +312,7 @@ func TestTicketImageGenerator_drawFooter(t *testing.T) {
 	require.NoError(t, err)
 
 	img := image.NewRGBA(image.Rect(0, 0, gen.templateWidth, gen.templateHeight))
-	
+
 	// Fill with white background
 	for y := 0; y < gen.templateHeight; y++ {
 		for x := 0; x < gen.templateWidth; x++ {
@@ -350,7 +350,7 @@ func TestTicketImageGenerator_drawWrappedText(t *testing.T) {
 	require.NoError(t, err)
 
 	img := image.NewRGBA(image.Rect(0, 0, gen.templateWidth, gen.templateHeight))
-	
+
 	// Fill with white background
 	for y := 0; y < gen.templateHeight; y++ {
 		for x := 0; x < gen.templateWidth; x++ {
@@ -407,13 +407,13 @@ func TestTicketImageGenerator_drawWrappedText(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Should not panic
 			gen.drawWrappedText(c, tt.text, tt.x, tt.y, tt.maxWidth)
-			
+
 			// If text is not empty, check that something was drawn
 			if tt.text != "" {
 				hasNonWhite := false
 				// Check area around where text should be
-				for y := tt.y - 20; y < tt.y + 50 && y < gen.templateHeight; y++ {
-					for x := tt.x; x < tt.x + tt.maxWidth && x < gen.templateWidth; x++ {
+				for y := tt.y - 20; y < tt.y+50 && y < gen.templateHeight; y++ {
+					for x := tt.x; x < tt.x+tt.maxWidth && x < gen.templateWidth; x++ {
 						if c := img.RGBAAt(x, y); c != (color.RGBA{255, 255, 255, 255}) {
 							hasNonWhite = true
 							break
@@ -571,7 +571,7 @@ func BenchmarkGenerateTicketImage(b *testing.B) {
 func TestPNGEncoding(t *testing.T) {
 	// Test that we can encode and decode PNG properly
 	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
-	
+
 	// Fill with a color
 	testColor := color.RGBA{R: 100, G: 150, B: 200, A: 255}
 	for y := 0; y < 100; y++ {

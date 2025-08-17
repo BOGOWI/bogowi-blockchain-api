@@ -79,7 +79,7 @@ func TestTicketMetadataService_CreateTicketMetadata(t *testing.T) {
 
 		// Check attributes
 		assert.Greater(t, len(reqBody.Metadata.Attributes), 0)
-		
+
 		// Check custom data
 		assert.Equal(t, "BOOK-123", reqBody.CustomData["bookingId"])
 		assert.Equal(t, "EVENT-456", reqBody.CustomData["eventId"])
@@ -139,7 +139,7 @@ func TestTicketMetadataService_generateMetadata(t *testing.T) {
 				assert.Contains(t, metadata.Description, "Nature Tour")
 				assert.Equal(t, "https://storage.bogowi.com/tickets/1.png", metadata.Image)
 				assert.Equal(t, "https://bogowi.com/experiences/1", metadata.ExternalURL)
-				
+
 				// Check attributes
 				found := false
 				for _, attr := range metadata.Attributes {
@@ -150,7 +150,7 @@ func TestTicketMetadataService_generateMetadata(t *testing.T) {
 					}
 				}
 				assert.True(t, found, "Experience Type attribute not found")
-				
+
 				// Check BOGO rewards conversion
 				found = false
 				for _, attr := range metadata.Attributes {
@@ -184,7 +184,7 @@ func TestTicketMetadataService_generateMetadata(t *testing.T) {
 			validate: func(t *testing.T, metadata NFTMetadata) {
 				assert.Equal(t, "BOGOWI Eco-Experience #2", metadata.Name)
 				assert.Equal(t, "https://custom.com/image.jpg", metadata.Image)
-				
+
 				// Check carbon offset formatting
 				found := false
 				for _, attr := range metadata.Attributes {
@@ -203,16 +203,16 @@ func TestTicketMetadataService_generateMetadata(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			metadata := service.generateMetadata(tt.data)
 			tt.validate(t, metadata)
-			
+
 			// Common validations
 			assert.NotEmpty(t, metadata.Attributes)
 			assert.NotNil(t, metadata.Properties)
-			
+
 			// Check properties structure
 			bookingDetails, ok := metadata.Properties["booking_details"].(map[string]interface{})
 			assert.True(t, ok, "booking_details should be a map")
 			assert.Equal(t, tt.data.BookingID, bookingDetails["booking_id"])
-			
+
 			redemption, ok := metadata.Properties["redemption"].(map[string]interface{})
 			assert.True(t, ok, "redemption should be a map")
 			assert.Contains(t, redemption["qr_code"], fmt.Sprintf("%d", tt.data.TokenID))
@@ -238,12 +238,12 @@ func TestTicketMetadataService_UpdateTicketStatus(t *testing.T) {
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
-		
+
 		if callCount == 1 {
 			// First call: GET NFT
 			assert.Equal(t, "GET", r.Method)
 			assert.Contains(t, r.URL.Path, "nft-123")
-			
+
 			response := Response{
 				Success: true,
 				Data:    mustMarshal(currentNFT),
@@ -253,11 +253,11 @@ func TestTicketMetadataService_UpdateTicketStatus(t *testing.T) {
 			// Second call: Update metadata
 			assert.Equal(t, "POST", r.Method)
 			assert.Contains(t, r.URL.Path, "metadata")
-			
+
 			var metadata NFTMetadata
 			err := json.NewDecoder(r.Body).Decode(&metadata)
 			require.NoError(t, err)
-			
+
 			// Check that status was updated
 			found := false
 			for _, attr := range metadata.Attributes {
@@ -268,10 +268,10 @@ func TestTicketMetadataService_UpdateTicketStatus(t *testing.T) {
 				}
 			}
 			assert.True(t, found, "Status attribute not found or not updated")
-			
+
 			updatedNFT := currentNFT
 			updatedNFT.Metadata = metadata
-			
+
 			response := Response{
 				Success: true,
 				Data:    mustMarshal(updatedNFT),
@@ -349,33 +349,33 @@ func TestTicketMetadataService_GetMetadataURI(t *testing.T) {
 func TestTicketMetadataService_BatchCreateTickets(t *testing.T) {
 	tickets := []BOGOWITicketData{
 		{
-			TokenID:            1,
-			BookingID:          "BOOK-1",
-			EventID:            "EVENT-1",
-			ExperienceType:     "Nature Tour",
-			Location:           "Costa Rica",
-			Duration:           "4 hours",
-			ValidUntil:         time.Now().Add(30 * 24 * time.Hour),
-			TransferableAfter:  time.Now().Add(7 * 24 * time.Hour),
-			ExpiresAt:          time.Now().Add(60 * 24 * time.Hour),
+			TokenID:           1,
+			BookingID:         "BOOK-1",
+			EventID:           "EVENT-1",
+			ExperienceType:    "Nature Tour",
+			Location:          "Costa Rica",
+			Duration:          "4 hours",
+			ValidUntil:        time.Now().Add(30 * 24 * time.Hour),
+			TransferableAfter: time.Now().Add(7 * 24 * time.Hour),
+			ExpiresAt:         time.Now().Add(60 * 24 * time.Hour),
 		},
 		{
-			TokenID:            2,
-			BookingID:          "BOOK-2",
-			EventID:            "EVENT-2",
-			ExperienceType:     "Safari",
-			Location:           "Kenya",
-			Duration:           "2 days",
-			ValidUntil:         time.Now().Add(30 * 24 * time.Hour),
-			TransferableAfter:  time.Now().Add(7 * 24 * time.Hour),
-			ExpiresAt:          time.Now().Add(60 * 24 * time.Hour),
+			TokenID:           2,
+			BookingID:         "BOOK-2",
+			EventID:           "EVENT-2",
+			ExperienceType:    "Safari",
+			Location:          "Kenya",
+			Duration:          "2 days",
+			ValidUntil:        time.Now().Add(30 * 24 * time.Hour),
+			TransferableAfter: time.Now().Add(7 * 24 * time.Hour),
+			ExpiresAt:         time.Now().Add(60 * 24 * time.Hour),
 		},
 	}
 
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
-		
+
 		var reqBody CreateNFTRequest
 		err := json.NewDecoder(r.Body).Decode(&reqBody)
 		require.NoError(t, err)
@@ -406,7 +406,7 @@ func TestTicketMetadataService_BatchCreateTickets(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(results))
 	assert.Equal(t, 2, callCount)
-	
+
 	// Verify results
 	assert.Equal(t, "nft-1", results[0].ID)
 	assert.Equal(t, "nft-2", results[1].ID)

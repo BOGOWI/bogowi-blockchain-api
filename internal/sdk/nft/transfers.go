@@ -260,7 +260,7 @@ func (c *Client) SetApprovalForAll(ctx context.Context, operator common.Address,
 // GetApproved returns the approved address for a specific ticket
 func (c *Client) GetApproved(ctx context.Context, tokenID uint64) (common.Address, error) {
 	opts := &bind.CallOpts{Context: ctx}
-	
+
 	approved, err := c.ticketsContract.GetApproved(opts, new(big.Int).SetUint64(tokenID))
 	if err != nil {
 		return common.Address{}, fmt.Errorf("failed to get approved: %w", err)
@@ -272,7 +272,7 @@ func (c *Client) GetApproved(ctx context.Context, tokenID uint64) (common.Addres
 // IsApprovedForAll checks if an operator is approved to manage all tickets for an owner
 func (c *Client) IsApprovedForAll(ctx context.Context, owner, operator common.Address) (bool, error) {
 	opts := &bind.CallOpts{Context: ctx}
-	
+
 	approved, err := c.ticketsContract.IsApprovedForAll(opts, owner, operator)
 	if err != nil {
 		return false, fmt.Errorf("failed to check approval for all: %w", err)
@@ -348,7 +348,7 @@ func (c *Client) BatchTransfer(ctx context.Context, to common.Address, tokenIDs 
 	}
 
 	txs := make([]*types.Transaction, 0, len(tokenIDs))
-	
+
 	for _, tokenID := range tokenIDs {
 		tx, err := c.Transfer(ctx, to, tokenID)
 		if err != nil {
@@ -368,7 +368,7 @@ func (c *Client) TransferToMultiple(ctx context.Context, transfers map[common.Ad
 	}
 
 	var txs []*types.Transaction
-	
+
 	for recipient, tokenIDs := range transfers {
 		for _, tokenID := range tokenIDs {
 			tx, err := c.Transfer(ctx, recipient, tokenID)

@@ -13,7 +13,7 @@ import (
 // GetTicketData retrieves the on-chain data for a ticket
 func (c *Client) GetTicketData(ctx context.Context, tokenID uint64) (*TicketData, error) {
 	opts := &bind.CallOpts{Context: ctx}
-	
+
 	data, err := c.ticketsContract.GetTicketData(opts, new(big.Int).SetUint64(tokenID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ticket data: %w", err)
@@ -34,7 +34,7 @@ func (c *Client) GetTicketData(ctx context.Context, tokenID uint64) (*TicketData
 // IsTransferable checks if a ticket can be transferred
 func (c *Client) IsTransferable(ctx context.Context, tokenID uint64) (bool, error) {
 	opts := &bind.CallOpts{Context: ctx}
-	
+
 	transferable, err := c.ticketsContract.IsTransferable(opts, new(big.Int).SetUint64(tokenID))
 	if err != nil {
 		return false, fmt.Errorf("failed to check transferability: %w", err)
@@ -46,7 +46,7 @@ func (c *Client) IsTransferable(ctx context.Context, tokenID uint64) (bool, erro
 // GetOwnerOf returns the owner of a ticket
 func (c *Client) GetOwnerOf(ctx context.Context, tokenID uint64) (common.Address, error) {
 	opts := &bind.CallOpts{Context: ctx}
-	
+
 	owner, err := c.ticketsContract.OwnerOf(opts, new(big.Int).SetUint64(tokenID))
 	if err != nil {
 		return common.Address{}, fmt.Errorf("failed to get owner: %w", err)
@@ -58,7 +58,7 @@ func (c *Client) GetOwnerOf(ctx context.Context, tokenID uint64) (common.Address
 // GetTokenURI returns the metadata URI for a ticket
 func (c *Client) GetTokenURI(ctx context.Context, tokenID uint64) (string, error) {
 	opts := &bind.CallOpts{Context: ctx}
-	
+
 	uri, err := c.ticketsContract.TokenURI(opts, new(big.Int).SetUint64(tokenID))
 	if err != nil {
 		return "", fmt.Errorf("failed to get token URI: %w", err)
@@ -70,7 +70,7 @@ func (c *Client) GetTokenURI(ctx context.Context, tokenID uint64) (string, error
 // GetBalanceOf returns the number of tickets owned by an address
 func (c *Client) GetBalanceOf(ctx context.Context, owner common.Address) (*big.Int, error) {
 	opts := &bind.CallOpts{Context: ctx}
-	
+
 	balance, err := c.ticketsContract.BalanceOf(opts, owner)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get balance: %w", err)
@@ -194,7 +194,7 @@ func (c *Client) GetTicketMetadata(ctx context.Context, tokenID uint64) (*TokenM
 			metadata.Name = datakyteMetadata.Name
 			metadata.Description = datakyteMetadata.Description
 			metadata.Image = datakyteMetadata.Image
-			
+
 			// Extract conservation impact from attributes
 			for _, attr := range datakyteMetadata.Attributes {
 				if attr.TraitType == "Conservation Impact" {
@@ -202,7 +202,7 @@ func (c *Client) GetTicketMetadata(ctx context.Context, tokenID uint64) (*TokenM
 						metadata.ConservationImpact = impact
 					}
 				}
-				
+
 				// Add all attributes to metadata
 				metadata.Attributes = append(metadata.Attributes, MetadataAttribute{
 					TraitType:   attr.TraitType,

@@ -33,12 +33,12 @@ func TestHashBookingID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := HashBookingID(tt.bookingID)
-			
+
 			// Check that we got a 32-byte array
 			if len(got) != 32 {
 				t.Errorf("HashBookingID() returned array of length %d, want 32", len(got))
 			}
-			
+
 			// Check if result is empty (all zeros)
 			isEmpty := true
 			for _, b := range got {
@@ -47,7 +47,7 @@ func TestHashBookingID(t *testing.T) {
 					break
 				}
 			}
-			
+
 			if tt.bookingID != "" && isEmpty {
 				t.Errorf("HashBookingID() returned empty hash for non-empty input")
 			}
@@ -77,7 +77,7 @@ func TestHashEventID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := HashEventID(tt.eventID)
-			
+
 			// Check that we got a 32-byte array
 			if len(got) != 32 {
 				t.Errorf("HashEventID() returned array of length %d, want 32", len(got))
@@ -190,22 +190,22 @@ func TestGetNetworkConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetNetworkConfig(tt.network)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetNetworkConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if !tt.wantErr {
 				if got == nil {
 					t.Errorf("GetNetworkConfig() returned nil config")
 					return
 				}
-				
+
 				if got.ChainID.Cmp(tt.wantChain) != 0 {
 					t.Errorf("GetNetworkConfig() ChainID = %v, want %v", got.ChainID, tt.wantChain)
 				}
-				
+
 				if got.RPCURL == "" {
 					t.Errorf("GetNetworkConfig() returned empty RPC URL")
 				}
@@ -257,15 +257,15 @@ func TestRedemptionParams(t *testing.T) {
 		Nonce:    12345,
 		Deadline: 1735689600,
 	}
-	
+
 	if params.TokenID != 10001 {
 		t.Errorf("TokenID = %v, want %v", params.TokenID, 10001)
 	}
-	
+
 	if params.Nonce != 12345 {
 		t.Errorf("Nonce = %v, want %v", params.Nonce, 12345)
 	}
-	
+
 	if params.Deadline != 1735689600 {
 		t.Errorf("Deadline = %v, want %v", params.Deadline, 1735689600)
 	}

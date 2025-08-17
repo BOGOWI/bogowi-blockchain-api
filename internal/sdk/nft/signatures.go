@@ -47,6 +47,9 @@ func GenerateRedemptionSignature(
 	chainID *big.Int,
 	contractAddress common.Address,
 ) ([]byte, error) {
+	if privateKey == nil {
+		return nil, fmt.Errorf("private key cannot be nil")
+	}
 	// Create the EIP-712 typed data
 	domain := apitypes.TypedDataDomain{
 		Name:              "BOGOWITickets",
@@ -221,7 +224,7 @@ func GenerateRedemptionQRCode(
 func ParseRedemptionQRCode(qrData string) (*RedemptionData, error) {
 	// This is a simplified parser - in production, use proper URL parsing
 	// Expected format: baseURL/redeem?tokenId=X&redeemer=0x...&nonce=Y&deadline=Z&sig=0x...
-	
+
 	// TODO: Implement proper URL parsing
 	return nil, fmt.Errorf("QR code parsing not yet implemented")
 }

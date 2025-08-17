@@ -103,3 +103,8 @@ contracts/v1/scripts/DEPLOYMENT_PLAN.md
 .env.v1.multi-network.example
 .env.v1.example
 .env.dev
+# Compiled example binaries
+examples/mint_ticket
+examples/query_tickets
+examples/redeem_ticket
+examples/transfer_tickets

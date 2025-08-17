@@ -38,7 +38,7 @@ build-all: ## Build for all platforms
 
 ## Test commands
 test: ## Run tests
-	$(GOTEST) -v -race $$(go list ./... | grep -v -e /examples -e /docs)
+	$(GOTEST) -v -race $$(go list ./... | grep -v -e /examples -e /docs -e /contracts)
 
 test-coverage: ## Run tests with coverage (standard)
 	$(GOTEST) -v -race -coverprofile=coverage.out $$(go list ./... | grep -v -e /examples -e /docs)

@@ -51,8 +51,14 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Initialize API server with network support
-	router := api.NewRouterWithNetworkSupport(networkHandler, defaultSDK, cfg)
+	// Initialize API server with unified router
+	routerConfig := &api.RouterConfig{
+		SDK:            defaultSDK,
+		NetworkHandler: networkHandler,
+		AppConfig:      cfg,
+		// Storage will use default (in-memory)
+	}
+	router := api.CreateRouter(routerConfig)
 
 	// Create HTTP server
 	srv := &http.Server{
