@@ -8,9 +8,9 @@ import (
 
 // MetadataAttribute represents a single attribute in NFT metadata
 type MetadataAttribute struct {
-	TraitType    string      `json:"trait_type"`
-	Value        interface{} `json:"value"`
-	DisplayType  string      `json:"display_type,omitempty"`
+	TraitType   string      `json:"trait_type"`
+	Value       interface{} `json:"value"`
+	DisplayType string      `json:"display_type,omitempty"`
 }
 
 // BookingDetails contains booking-specific information
@@ -23,16 +23,16 @@ type BookingDetails struct {
 
 // RedemptionInfo contains redemption-specific information
 type RedemptionInfo struct {
-	QRCode           string `json:"qr_code"`
-	RedemptionCode   string `json:"redemption_code"`
-	Instructions     string `json:"instructions"`
+	QRCode         string `json:"qr_code"`
+	RedemptionCode string `json:"redemption_code"`
+	Instructions   string `json:"instructions"`
 }
 
 // RewardInfo contains reward-specific information
 type RewardInfo struct {
-	BOGOTokens     int `json:"bogo_tokens"`
-	CarbonCredits  int `json:"carbon_credits"`
-	LoyaltyPoints  int `json:"loyalty_points"`
+	BOGOTokens    int `json:"bogo_tokens"`
+	CarbonCredits int `json:"carbon_credits"`
+	LoyaltyPoints int `json:"loyalty_points"`
 }
 
 // Properties contains additional structured data
@@ -44,13 +44,13 @@ type Properties struct {
 
 // Metadata represents the complete NFT metadata structure
 type Metadata struct {
-	Name         string               `json:"name"`
-	Description  string               `json:"description"`
-	Image        string               `json:"image"`
-	AnimationURL string               `json:"animation_url,omitempty"`
-	ExternalURL  string               `json:"external_url,omitempty"`
-	Attributes   []MetadataAttribute  `json:"attributes"`
-	Properties   *Properties          `json:"properties,omitempty"`
+	Name         string              `json:"name"`
+	Description  string              `json:"description"`
+	Image        string              `json:"image"`
+	AnimationURL string              `json:"animation_url,omitempty"`
+	ExternalURL  string              `json:"external_url,omitempty"`
+	Attributes   []MetadataAttribute `json:"attributes"`
+	Properties   *Properties         `json:"properties,omitempty"`
 }
 
 // MetadataGenerator handles creation of NFT metadata
@@ -87,7 +87,7 @@ func (g *MetadataGenerator) GenerateTicketMetadata(
 ) *Metadata {
 	// Generate QR code data
 	qrData := fmt.Sprintf("bogowi://redeem/%d/%s", tokenID, bookingID)
-	
+
 	// Create attributes
 	attributes := []MetadataAttribute{
 		{
@@ -144,7 +144,7 @@ func (g *MetadataGenerator) GenerateTicketMetadata(
 			Value:     "Active",
 		},
 	}
-	
+
 	// Build image URL (could be IPFS or regular URL)
 	var imageURL string
 	if imageHash != "" {
@@ -152,7 +152,7 @@ func (g *MetadataGenerator) GenerateTicketMetadata(
 	} else {
 		imageURL = fmt.Sprintf("%s/%d.png", g.baseImageURL, tokenID)
 	}
-	
+
 	// Create metadata
 	metadata := &Metadata{
 		Name:        fmt.Sprintf("BOGOWI Eco-Experience #%d", tokenID),
@@ -168,8 +168,8 @@ func (g *MetadataGenerator) GenerateTicketMetadata(
 			},
 			Redemption: &RedemptionInfo{
 				QRCode:         qrData,
-				RedemptionCode: fmt.Sprintf("BWX-%d-%s", tokenID, bookingID[:8]),
-				Instructions:  "Present this QR code at the venue to redeem your experience",
+				RedemptionCode: fmt.Sprintf("BWX-%d-%s", tokenID, truncateBookingID(bookingID, 8)),
+				Instructions:   "Present this QR code at the venue to redeem your experience",
 			},
 			Rewards: &RewardInfo{
 				BOGOTokens:    bogoRewards,
@@ -178,7 +178,7 @@ func (g *MetadataGenerator) GenerateTicketMetadata(
 			},
 		},
 	}
-	
+
 	return metadata
 }
 
@@ -204,4 +204,12 @@ func (m *Metadata) UpdateStatus(newStatus string) {
 		TraitType: "Status",
 		Value:     newStatus,
 	})
+}
+
+// truncateBookingID safely truncates a booking ID to a maximum length
+func truncateBookingID(bookingID string, maxLen int) string {
+	if len(bookingID) <= maxLen {
+		return bookingID
+	}
+	return bookingID[:maxLen]
 }

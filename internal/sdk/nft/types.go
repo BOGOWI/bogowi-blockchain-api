@@ -29,7 +29,7 @@ type TicketData struct {
 	UtilityFlags               uint32
 	State                      uint8 // 0=ISSUED, 1=REDEEMED, 2=EXPIRED
 	NonTransferableAfterRedeem bool
-	BurnOnRedeem              bool
+	BurnOnRedeem               bool
 }
 
 // TicketState represents the lifecycle state of a ticket
@@ -49,6 +49,14 @@ type RedemptionData struct {
 	Deadline  *big.Int
 	ChainID   *big.Int
 	Signature []byte
+}
+
+// RedemptionParams represents parameters for redeeming a ticket
+type RedemptionParams struct {
+	TokenID  uint64
+	Redeemer common.Address
+	Nonce    uint64
+	Deadline int64
 }
 
 // EventFilter represents parameters for filtering events

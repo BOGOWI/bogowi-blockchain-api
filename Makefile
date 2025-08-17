@@ -38,17 +38,17 @@ build-all: ## Build for all platforms
 
 ## Test commands
 test: ## Run tests
-	$(GOTEST) -v -race ./...
+	$(GOTEST) -v -race $$(go list ./... | grep -v -e /examples -e /docs)
 
 test-coverage: ## Run tests with coverage (standard)
-	$(GOTEST) -v -race -coverprofile=coverage.out ./...
+	$(GOTEST) -v -race -coverprofile=coverage.out $$(go list ./... | grep -v -e /examples -e /docs)
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 	@echo "📊 Coverage report generated: coverage.html"
 
 coverage-enhanced: ## Generate enhanced HTML coverage report with gocov
 	@echo "🚀 Generating enhanced coverage report with gocov..."
 	@export PATH=$$PATH:$$(go env GOPATH)/bin && \
-	gocov test ./... | gocov-html > coverage-enhanced.html
+	gocov test $$(go list ./... | grep -v -e /examples -e /docs) | gocov-html > coverage-enhanced.html
 	@echo "✅ Enhanced coverage report: coverage-enhanced.html"
 	@command -v open >/dev/null 2>&1 && open coverage-enhanced.html || echo "📄 Report ready to view"
 
@@ -67,6 +67,28 @@ coverage-api: ## Run API tests with coverage
 	@echo "📊 API coverage report generated: coverage-api.html"
 	@echo "📈 API coverage summary:"
 	@$(GOCMD) tool cover -func=coverage-api.out | grep total
+
+coverage-sdk: ## Run SDK tests with coverage
+	@echo "🔍 Running SDK tests with coverage..."
+	$(GOTEST) -v -race -coverprofile=coverage-sdk.out ./internal/sdk/...
+	$(GOCMD) tool cover -html=coverage-sdk.out -o coverage-sdk.html
+	@echo "📊 SDK coverage report generated: coverage-sdk.html"
+	@echo "📈 SDK coverage summary:"
+	@$(GOCMD) tool cover -func=coverage-sdk.out | grep total
+
+coverage: ## Interactive coverage viewer (like contracts)
+	@echo "🚀 Running tests with coverage..."
+	@$(GOTEST) -coverprofile=coverage.out -covermode=atomic $$(go list ./... | grep -v -e /examples -e /docs) > /dev/null 2>&1
+	@echo ""
+	@bash scripts/istanbul-style-coverage.sh coverage.out
+	@echo ""
+	@echo "> Coverage reports written to ./coverage.out and ./coverage.html"
+	@echo ""
+
+coverage-detailed: ## Detailed interactive coverage breakdown
+	@echo "🔍 Generating detailed coverage analysis..."
+	@$(GOTEST) -coverprofile=coverage.out -covermode=atomic $$(go list ./... | grep -v -e /examples -e /docs) > /dev/null 2>&1
+	@bash scripts/detailed-coverage.sh coverage.out
 
 coverage-install: ## Install coverage tools
 	@echo "📦 Installing coverage tools..."

@@ -50,7 +50,7 @@ func main() {
 		UtilityFlags:      0, // Standard ticket
 		TransferUnlockAt:  uint64(time.Now().Add(24 * time.Hour).Unix()),
 		ExpiresAt:         uint64(time.Now().Add(30 * 24 * time.Hour).Unix()),
-		MetadataURI:       "", // Will use Datakyte
+		MetadataURI:       "",  // Will use Datakyte
 		RewardBasisPoints: 500, // 5% rewards
 		DatakyteNftID:     "",  // Will be generated
 	}

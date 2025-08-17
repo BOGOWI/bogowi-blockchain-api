@@ -10,6 +10,7 @@ import (
 	"bogowi-blockchain-go/internal/services/datakyte"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -162,7 +163,7 @@ func (c *Client) extractTokenIDFromReceipt(receipt *types.Receipt) (uint64, erro
 // extractTokenIDsFromBatchReceipt extracts multiple token IDs from batch mint receipt
 func (c *Client) extractTokenIDsFromBatchReceipt(receipt *types.Receipt, expectedCount int) ([]uint64, error) {
 	tokenIDs := make([]uint64, 0, expectedCount)
-	
+
 	for _, log := range receipt.Logs {
 		event, err := c.ticketsContract.ParseTicketMinted(*log)
 		if err == nil {
@@ -254,6 +255,108 @@ func (c *Client) ExpireTicket(ctx context.Context, tokenID uint64) (*types.Trans
 	return tx, nil
 }
 
+// RedeemTicket redeems a ticket using EIP-712 signature
+func (c *Client) RedeemTicket(ctx context.Context, params RedemptionParams) (*types.Transaction, error) {
+	// Generate signature
+	signature, err := GenerateRedemptionSignature(
+		c.privateKey,
+		new(big.Int).SetUint64(params.TokenID),
+		params.Redeemer,
+		new(big.Int).SetUint64(params.Nonce),
+		new(big.Int).SetInt64(params.Deadline),
+		c.networkConfig.ChainID,
+		c.ticketsAddress,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate signature: %w", err)
+	}
+
+	// Get gas price
+	gasPrice, err := c.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	c.auth.GasPrice = gasPrice
+	c.auth.Context = ctx
+
+	// Create redemption data structure
+	redemptionData := contracts.IBOGOWITicketsRedemptionData{
+		TokenId:   new(big.Int).SetUint64(params.TokenID),
+		Redeemer:  params.Redeemer,
+		Nonce:     new(big.Int).SetUint64(params.Nonce),
+		Deadline:  new(big.Int).SetInt64(params.Deadline),
+		ChainId:   c.networkConfig.ChainID,
+		Signature: signature,
+	}
+
+	// Call redeem function
+	tx, err := c.ticketsContract.RedeemTicket(c.auth, redemptionData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to redeem ticket: %w", err)
+	}
+
+	// Wait for confirmation
+	receipt, err := c.WaitForTransaction(ctx, tx.Hash())
+	if err != nil {
+		return tx, fmt.Errorf("transaction failed: %w", err)
+	}
+
+	// Update Datakyte status if available
+	if c.datakyteService != nil {
+		go func() {
+			// Note: Would need to store Datakyte NFT ID mapping
+			fmt.Printf("TODO: Update Datakyte status for redeemed ticket %d\n", params.TokenID)
+		}()
+	}
+
+	// Check if redemption was successful
+	if receipt.Status == 0 {
+		return tx, fmt.Errorf("redemption transaction failed")
+	}
+
+	c.ResetAuth()
+	return tx, nil
+}
+
+// GenerateRedemptionQR generates a QR code for ticket redemption
+func (c *Client) GenerateRedemptionQR(tokenID uint64, redeemer common.Address) (string, error) {
+	// Generate nonce and deadline
+	nonce := uint64(time.Now().Unix())
+	deadline := time.Now().Add(5 * time.Minute).Unix() // 5 minute validity
+
+	// Generate signature
+	signature, err := GenerateRedemptionSignature(
+		c.privateKey,
+		new(big.Int).SetUint64(tokenID),
+		redeemer,
+		new(big.Int).SetUint64(nonce),
+		new(big.Int).SetInt64(deadline),
+		c.networkConfig.ChainID,
+		c.ticketsAddress,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate signature: %w", err)
+	}
+
+	// Generate QR code data
+	baseURL := "https://bogowi.com"
+	if c.network == "testnet" {
+		baseURL = "https://testnet.bogowi.com"
+	}
+
+	qrData := GenerateRedemptionQRCode(
+		new(big.Int).SetUint64(tokenID),
+		redeemer,
+		new(big.Int).SetUint64(nonce),
+		new(big.Int).SetInt64(deadline),
+		signature,
+		baseURL,
+	)
+
+	return qrData, nil
+}
+
 // UpdateTransferUnlock updates the transfer unlock time for a ticket
 func (c *Client) UpdateTransferUnlock(ctx context.Context, tokenID uint64, newUnlockTime uint64) (*types.Transaction, error) {
 	// Get gas price
@@ -266,8 +369,8 @@ func (c *Client) UpdateTransferUnlock(ctx context.Context, tokenID uint64, newUn
 	c.auth.Context = ctx
 
 	tx, err := c.ticketsContract.UpdateTransferUnlock(
-		c.auth, 
-		new(big.Int).SetUint64(tokenID), 
+		c.auth,
+		new(big.Int).SetUint64(tokenID),
 		newUnlockTime,
 	)
 	if err != nil {

@@ -12,7 +12,7 @@ import (
 const (
 	// BaseURL is the Datakyte API endpoint
 	BaseURL = "https://dklnk.to"
-	
+
 	// API endpoints
 	EndpointPing           = "/ping"
 	EndpointValidateKey    = "/auth/validate-api-key"
@@ -60,13 +60,13 @@ type ErrorResponse struct {
 
 // NFTMetadata represents the metadata structure for Datakyte NFTs
 type NFTMetadata struct {
-	Name         string                   `json:"name"`
-	Description  string                   `json:"description"`
-	Image        string                   `json:"image"`
-	ExternalURL  string                   `json:"external_url,omitempty"`
-	AnimationURL string                   `json:"animation_url,omitempty"`
-	Attributes   []NFTAttribute           `json:"attributes"`
-	Properties   map[string]interface{}   `json:"properties,omitempty"`
+	Name         string                 `json:"name"`
+	Description  string                 `json:"description"`
+	Image        string                 `json:"image"`
+	ExternalURL  string                 `json:"external_url,omitempty"`
+	AnimationURL string                 `json:"animation_url,omitempty"`
+	Attributes   []NFTAttribute         `json:"attributes"`
+	Properties   map[string]interface{} `json:"properties,omitempty"`
 }
 
 // NFTAttribute represents a single NFT attribute
@@ -103,7 +103,7 @@ type NFT struct {
 // doRequest performs an HTTP request with authentication
 func (c *Client) doRequest(method, endpoint string, body interface{}) (*Response, error) {
 	url := c.baseURL + endpoint
-	
+
 	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
@@ -112,41 +112,41 @@ func (c *Client) doRequest(method, endpoint string, body interface{}) (*Response
 		}
 		bodyReader = bytes.NewBuffer(jsonBody)
 	}
-	
+
 	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// Set headers
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	var response Response
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	
+
 	// Check for error response
 	if !response.Success && response.Error != nil {
-		return nil, fmt.Errorf("API error %d: %s - %s", 
-			response.Error.StatusCode, 
-			response.Error.Name, 
+		return nil, fmt.Errorf("API error %d: %s - %s",
+			response.Error.StatusCode,
+			response.Error.Name,
 			response.Error.Message)
 	}
-	
+
 	return &response, nil
 }
 
@@ -162,12 +162,12 @@ func (c *Client) ValidateAPIKey() (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var user User
 	if err := json.Unmarshal(resp.Data, &user); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
 	}
-	
+
 	return &user, nil
 }
 
@@ -177,12 +177,12 @@ func (c *Client) CreateNFT(nft CreateNFTRequest) (*NFT, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var createdNFT NFT
 	if err := json.Unmarshal(resp.Data, &createdNFT); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal NFT data: %w", err)
 	}
-	
+
 	return &createdNFT, nil
 }
 
@@ -193,12 +193,12 @@ func (c *Client) GetNFT(nftID string) (*NFT, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var nft NFT
 	if err := json.Unmarshal(resp.Data, &nft); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal NFT data: %w", err)
 	}
-	
+
 	return &nft, nil
 }
 
@@ -209,12 +209,12 @@ func (c *Client) UpdateMetadata(nftID string, metadata NFTMetadata) (*NFT, error
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var updatedNFT NFT
 	if err := json.Unmarshal(resp.Data, &updatedNFT); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal NFT data: %w", err)
 	}
-	
+
 	return &updatedNFT, nil
 }
 
@@ -223,22 +223,22 @@ func (c *Client) GetMetadataByTokenID(contractAddress, tokenID string) (*NFTMeta
 	endpoint := fmt.Sprintf(EndpointGetMetadata, contractAddress, tokenID)
 	// This endpoint is public, so we don't need authentication
 	url := c.baseURL + endpoint
-	
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to get metadata: status %d", resp.StatusCode)
 	}
-	
+
 	var metadata NFTMetadata
 	if err := json.NewDecoder(resp.Body).Decode(&metadata); err != nil {
 		return nil, fmt.Errorf("failed to decode metadata: %w", err)
 	}
-	
+
 	return &metadata, nil
 }
 
@@ -248,12 +248,12 @@ func (c *Client) ListNFTs() ([]NFT, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var nfts []NFT
 	if err := json.Unmarshal(resp.Data, &nfts); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal NFTs data: %w", err)
 	}
-	
+
 	return nfts, nil
 }
 

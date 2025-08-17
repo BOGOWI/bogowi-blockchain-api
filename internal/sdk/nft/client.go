@@ -11,9 +11,9 @@ import (
 	"bogowi-blockchain-go/internal/sdk/contracts"
 	"bogowi-blockchain-go/internal/services/datakyte"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -52,7 +52,7 @@ func NewClient(config ClientConfig) (*Client, error) {
 	// Connect to Ethereum client
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	ethClient, err := ethclient.DialContext(ctx, rpcURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Camino network: %w", err)
@@ -65,7 +65,7 @@ func NewClient(config ClientConfig) (*Client, error) {
 	}
 
 	if chainID.Cmp(networkConfig.ChainID) != 0 {
-		return nil, fmt.Errorf("chain ID mismatch: expected %s, got %s", 
+		return nil, fmt.Errorf("chain ID mismatch: expected %s, got %s",
 			networkConfig.ChainID.String(), chainID.String())
 	}
 
@@ -158,7 +158,7 @@ func (c *Client) initDatakyteService() {
 
 	contractAddr := c.ticketsAddress.Hex()
 	chainID := int(c.chainID.Int64())
-	
+
 	c.datakyteService = datakyte.NewTicketMetadataService(apiKey, contractAddr, chainID)
 }
 
@@ -188,7 +188,7 @@ func (c *Client) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64,
 	if err != nil {
 		return 0, fmt.Errorf("failed to estimate gas: %w", err)
 	}
-	
+
 	// Apply multiplier for safety
 	gasWithBuffer := float64(gas) * c.config.GasMultiplier
 	return uint64(gasWithBuffer), nil

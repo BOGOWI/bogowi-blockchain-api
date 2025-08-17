@@ -50,7 +50,7 @@ type BOGOWITicketData struct {
 func (s *TicketMetadataService) CreateTicketMetadata(data BOGOWITicketData) (*NFT, error) {
 	// Generate metadata
 	metadata := s.generateMetadata(data)
-	
+
 	// Create NFT request
 	request := CreateNFTRequest{
 		TokenID:         fmt.Sprintf("%d", data.TokenID),
@@ -65,13 +65,13 @@ func (s *TicketMetadataService) CreateTicketMetadata(data BOGOWITicketData) (*NF
 			"createdAt":        time.Now().Format(time.RFC3339),
 		},
 	}
-	
+
 	// Create NFT in Datakyte
 	nft, err := s.client.CreateNFT(request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create NFT metadata: %w", err)
 	}
-	
+
 	return nft, nil
 }
 
@@ -82,7 +82,7 @@ func (s *TicketMetadataService) generateMetadata(data BOGOWITicketData) NFTMetad
 	if imageURL == "" {
 		imageURL = fmt.Sprintf("%s/%d.png", s.baseImageURL, data.TokenID)
 	}
-	
+
 	// Create attributes
 	attributes := []NFTAttribute{
 		{
@@ -138,7 +138,7 @@ func (s *TicketMetadataService) generateMetadata(data BOGOWITicketData) NFTMetad
 			Value:     s.getNetworkName(),
 		},
 	}
-	
+
 	// Create properties
 	properties := map[string]interface{}{
 		"booking_details": map[string]interface{}{
@@ -149,7 +149,7 @@ func (s *TicketMetadataService) generateMetadata(data BOGOWITicketData) NFTMetad
 		},
 		"redemption": map[string]interface{}{
 			"qr_code":         fmt.Sprintf("bogowi://redeem/%d/%s", data.TokenID, data.BookingID),
-			"redemption_code": fmt.Sprintf("BWX-%d-%s", data.TokenID, data.BookingID[:8]),
+			"redemption_code": fmt.Sprintf("BWX-%d-%s", data.TokenID, truncateString(data.BookingID, 8)),
 			"instructions":    "Present this QR code at the venue to redeem your experience",
 		},
 		"rewards": map[string]interface{}{
@@ -158,7 +158,7 @@ func (s *TicketMetadataService) generateMetadata(data BOGOWITicketData) NFTMetad
 			"loyalty_points": data.BOGORewards * 10,
 		},
 	}
-	
+
 	return NFTMetadata{
 		Name:         fmt.Sprintf("BOGOWI Eco-Experience #%d", data.TokenID),
 		Description:  fmt.Sprintf("%s in %s. Duration: %s. %s", data.ExperienceType, data.Location, data.Duration, data.ConservationImpact),
@@ -177,7 +177,7 @@ func (s *TicketMetadataService) UpdateTicketStatus(nftID string, status string) 
 	if err != nil {
 		return fmt.Errorf("failed to get NFT: %w", err)
 	}
-	
+
 	// Update status attribute
 	for i, attr := range nft.Metadata.Attributes {
 		if attr.TraitType == "Status" {
@@ -185,13 +185,13 @@ func (s *TicketMetadataService) UpdateTicketStatus(nftID string, status string) 
 			break
 		}
 	}
-	
+
 	// Update metadata
 	_, err = s.client.UpdateMetadata(nftID, nft.Metadata)
 	if err != nil {
 		return fmt.Errorf("failed to update metadata: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -201,7 +201,7 @@ func (s *TicketMetadataService) GetTicketMetadata(tokenID uint64) (*NFTMetadata,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metadata: %w", err)
 	}
-	
+
 	return metadata, nil
 }
 
@@ -214,7 +214,7 @@ func (s *TicketMetadataService) GetMetadataURI(tokenID uint64) string {
 // BatchCreateTickets creates metadata for multiple tickets
 func (s *TicketMetadataService) BatchCreateTickets(tickets []BOGOWITicketData) ([]*NFT, error) {
 	results := make([]*NFT, 0, len(tickets))
-	
+
 	for _, ticket := range tickets {
 		nft, err := s.CreateTicketMetadata(ticket)
 		if err != nil {
@@ -224,7 +224,7 @@ func (s *TicketMetadataService) BatchCreateTickets(tickets []BOGOWITicketData) (
 		}
 		results = append(results, nft)
 	}
-	
+
 	return results, nil
 }
 
@@ -248,3 +248,11 @@ const (
 	StatusBurned   = "Burned"
 	StatusPending  = "Pending"
 )
+
+// truncateString safely truncates a string to a maximum length
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen]
+}

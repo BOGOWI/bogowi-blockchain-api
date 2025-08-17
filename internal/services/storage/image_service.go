@@ -62,9 +62,9 @@ func DefaultUploadConfig() UploadConfig {
 // GeneratePresignedUploadURL generates a presigned URL for direct frontend upload
 func (s *ImageService) GeneratePresignedUploadURL(tokenID uint64, contentType string) (string, error) {
 	key := fmt.Sprintf("tickets/%d/original.jpg", tokenID)
-	
+
 	presignClient := s3.NewPresignClient(s.s3Client)
-	
+
 	request, err := presignClient.PresignPutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:      aws.String(s.bucketName),
 		Key:         aws.String(key),
@@ -72,11 +72,11 @@ func (s *ImageService) GeneratePresignedUploadURL(tokenID uint64, contentType st
 	}, func(opts *s3.PresignOptions) {
 		opts.Expires = time.Duration(15 * time.Minute)
 	})
-	
+
 	if err != nil {
 		return "", fmt.Errorf("failed to create presigned URL: %w", err)
 	}
-	
+
 	return request.URL, nil
 }
 
@@ -87,10 +87,10 @@ func (s *ImageService) ProcessAndUploadImage(reader io.Reader, tokenID uint64, c
 	if err != nil {
 		return "", fmt.Errorf("failed to decode image: %w", err)
 	}
-	
+
 	// Resize image if needed
 	processed := imaging.Fit(img, config.ResizeWidth, config.ResizeHeight, imaging.Lanczos)
-	
+
 	// Generate multiple sizes for responsive display
 	sizes := map[string]image.Image{
 		"original": processed,
@@ -98,12 +98,12 @@ func (s *ImageService) ProcessAndUploadImage(reader io.Reader, tokenID uint64, c
 		"medium":   imaging.Resize(processed, 400, 0, imaging.Lanczos),
 		"thumb":    imaging.Fill(processed, 200, 200, imaging.Center, imaging.Lanczos),
 	}
-	
+
 	baseKey := fmt.Sprintf("tickets/%d", tokenID)
-	
+
 	for sizeName, sizedImg := range sizes {
 		var buf bytes.Buffer
-		
+
 		// Encode based on format
 		switch format {
 		case "png":
@@ -111,29 +111,29 @@ func (s *ImageService) ProcessAndUploadImage(reader io.Reader, tokenID uint64, c
 		default:
 			err = jpeg.Encode(&buf, sizedImg, &jpeg.Options{Quality: config.Quality})
 		}
-		
+
 		if err != nil {
 			return "", fmt.Errorf("failed to encode image: %w", err)
 		}
-		
+
 		// Upload to S3
 		key := fmt.Sprintf("%s/%s.jpg", baseKey, sizeName)
 		_, err = s.s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
-			Bucket:      aws.String(s.bucketName),
-			Key:         aws.String(key),
-			Body:        bytes.NewReader(buf.Bytes()),
-			ContentType: aws.String("image/jpeg"),
+			Bucket:       aws.String(s.bucketName),
+			Key:          aws.String(key),
+			Body:         bytes.NewReader(buf.Bytes()),
+			ContentType:  aws.String("image/jpeg"),
 			CacheControl: aws.String("public, max-age=31536000"),
 			Metadata: map[string]string{
 				"token-id": fmt.Sprintf("%d", tokenID),
 			},
 		})
-		
+
 		if err != nil {
 			return "", fmt.Errorf("failed to upload to S3: %w", err)
 		}
 	}
-	
+
 	// Return CDN URL for the original size
 	return fmt.Sprintf("%s/tickets/%d/original.jpg", s.cdnBaseURL, tokenID), nil
 }
@@ -146,20 +146,20 @@ func (s *ImageService) GenerateDefaultImage(tokenID uint64, experienceType strin
 		"Marine Conservation": "defaults/marine-conservation.jpg",
 		"Forest Trek":         "defaults/forest-trek.jpg",
 		"Cultural Experience": "defaults/cultural-experience.jpg",
-		"Eco Lodge":          "defaults/eco-lodge.jpg",
-		"Adventure":          "defaults/adventure.jpg",
+		"Eco Lodge":           "defaults/eco-lodge.jpg",
+		"Adventure":           "defaults/adventure.jpg",
 	}
-	
+
 	// Get default image path
 	defaultPath, exists := defaultImages[experienceType]
 	if !exists {
 		defaultPath = "defaults/generic-experience.jpg"
 	}
-	
+
 	// Copy default to token-specific path
 	sourceKey := defaultPath
 	destKey := fmt.Sprintf("tickets/%d/original.jpg", tokenID)
-	
+
 	_, err := s.s3Client.CopyObject(context.TODO(), &s3.CopyObjectInput{
 		Bucket:     aws.String(s.bucketName),
 		CopySource: aws.String(fmt.Sprintf("%s/%s", s.bucketName, sourceKey)),
@@ -169,11 +169,11 @@ func (s *ImageService) GenerateDefaultImage(tokenID uint64, experienceType strin
 			"type":     "default",
 		},
 	})
-	
+
 	if err != nil {
 		return "", fmt.Errorf("failed to copy default image: %w", err)
 	}
-	
+
 	return fmt.Sprintf("%s/%s", s.cdnBaseURL, destKey), nil
 }
 
@@ -185,11 +185,11 @@ func (s *ImageService) ValidateImage(reader io.Reader, config UploadConfig) erro
 	if err != nil {
 		return fmt.Errorf("failed to read image: %w", err)
 	}
-	
+
 	if int64(len(data)) > config.MaxSizeBytes {
 		return fmt.Errorf("image size exceeds maximum of %d bytes", config.MaxSizeBytes)
 	}
-	
+
 	// Check content type
 	contentType := http.DetectContentType(data)
 	validType := false
@@ -199,17 +199,17 @@ func (s *ImageService) ValidateImage(reader io.Reader, config UploadConfig) erro
 			break
 		}
 	}
-	
+
 	if !validType {
 		return fmt.Errorf("invalid image type: %s", contentType)
 	}
-	
+
 	// Try to decode to validate it's a real image
 	_, _, err = image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("invalid image format: %w", err)
 	}
-	
+
 	return nil
 }
 

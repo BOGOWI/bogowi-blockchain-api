@@ -48,9 +48,9 @@ type ContractAddresses struct {
 	RoleManager       string `json:"role_manager"`
 	BOGOToken         string `json:"bogo_token"`
 	RewardDistributor string `json:"reward_distributor"`
-	
+
 	// NFT Tickets Contract
-	BOGOWITickets     string `json:"bogowi_tickets"`
+	BOGOWITickets string `json:"bogowi_tickets"`
 
 	// Legacy contracts (to be removed after migration)
 	ConservationNFT  string `json:"conservation_nft"`
