@@ -37,7 +37,7 @@ func TestClient_GetTicketData(t *testing.T) {
 			Return(expectedContractData, nil).Once()
 
 		result, err := client.GetTicketData(ctx, tokenID)
-		
+
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		assert.Equal(t, expectedContractData.BookingId, result.BookingID)
@@ -57,7 +57,7 @@ func TestClient_GetTicketData(t *testing.T) {
 			Return(TicketDataContract{}, assert.AnError).Once()
 
 		result, err := client.GetTicketData(ctx, tokenID)
-		
+
 		require.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "failed to get ticket data")
@@ -81,7 +81,7 @@ func TestClient_IsTransferable(t *testing.T) {
 			Return(true, nil).Once()
 
 		result, err := client.IsTransferable(ctx, tokenID)
-		
+
 		require.NoError(t, err)
 		assert.True(t, result)
 
@@ -93,7 +93,7 @@ func TestClient_IsTransferable(t *testing.T) {
 			Return(false, nil).Once()
 
 		result, err := client.IsTransferable(ctx, tokenID)
-		
+
 		require.NoError(t, err)
 		assert.False(t, result)
 
@@ -105,7 +105,7 @@ func TestClient_IsTransferable(t *testing.T) {
 			Return(false, assert.AnError).Once()
 
 		result, err := client.IsTransferable(ctx, tokenID)
-		
+
 		require.Error(t, err)
 		assert.False(t, result)
 		assert.Contains(t, err.Error(), "failed to check transferability")
@@ -130,7 +130,7 @@ func TestClient_GetOwnerOf(t *testing.T) {
 			Return(expectedOwner, nil).Once()
 
 		result, err := client.GetOwnerOf(ctx, tokenID)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, expectedOwner, result)
 
@@ -142,7 +142,7 @@ func TestClient_GetOwnerOf(t *testing.T) {
 			Return(common.Address{}, assert.AnError).Once()
 
 		result, err := client.GetOwnerOf(ctx, tokenID)
-		
+
 		require.Error(t, err)
 		assert.Equal(t, common.Address{}, result)
 		assert.Contains(t, err.Error(), "failed to get owner")
@@ -151,7 +151,7 @@ func TestClient_GetOwnerOf(t *testing.T) {
 	})
 }
 
-// TestClient_GetTokenURI tests the actual Client.GetTokenURI method  
+// TestClient_GetTokenURI tests the actual Client.GetTokenURI method
 func TestClient_GetTokenURI(t *testing.T) {
 	mockContract := new(MockTicketsContract)
 	client := &Client{
@@ -167,7 +167,7 @@ func TestClient_GetTokenURI(t *testing.T) {
 			Return(expectedURI, nil).Once()
 
 		result, err := client.GetTokenURI(ctx, tokenID)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, expectedURI, result)
 
@@ -179,7 +179,7 @@ func TestClient_GetTokenURI(t *testing.T) {
 			Return("", assert.AnError).Once()
 
 		result, err := client.GetTokenURI(ctx, tokenID)
-		
+
 		require.Error(t, err)
 		assert.Empty(t, result)
 		assert.Contains(t, err.Error(), "failed to get token URI")
@@ -204,7 +204,7 @@ func TestClient_GetBalanceOf(t *testing.T) {
 			Return(expectedBalance, nil).Once()
 
 		result, err := client.GetBalanceOf(ctx, owner)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, expectedBalance, result)
 
@@ -216,7 +216,7 @@ func TestClient_GetBalanceOf(t *testing.T) {
 			Return(big.NewInt(0), nil).Once()
 
 		result, err := client.GetBalanceOf(ctx, owner)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, big.NewInt(0), result)
 
@@ -228,7 +228,7 @@ func TestClient_GetBalanceOf(t *testing.T) {
 			Return((*big.Int)(nil), assert.AnError).Once()
 
 		result, err := client.GetBalanceOf(ctx, owner)
-		
+
 		require.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "failed to get balance")

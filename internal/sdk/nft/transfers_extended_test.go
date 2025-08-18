@@ -15,7 +15,7 @@ import (
 func TestTransferErrorHandling(t *testing.T) {
 	ctx := context.Background()
 	mockContract := new(MockTicketsContract)
-	mockClient := new(MockEthClient)
+	mockClient := new(MockNFTEthClient)
 
 	client := &TestClient{
 		ticketsContract: mockContract,
@@ -100,7 +100,7 @@ func TestTransferErrorHandling(t *testing.T) {
 func TestSafeTransferErrorHandling(t *testing.T) {
 	ctx := context.Background()
 	mockContract := new(MockTicketsContract)
-	mockClient := new(MockEthClient)
+	mockClient := new(MockNFTEthClient)
 
 	client := &TestClient{
 		ticketsContract: mockContract,
@@ -174,7 +174,7 @@ func TestSafeTransferErrorHandling(t *testing.T) {
 func TestSafeTransferWithDataErrorHandling(t *testing.T) {
 	ctx := context.Background()
 	mockContract := new(MockTicketsContract)
-	mockClient := new(MockEthClient)
+	mockClient := new(MockNFTEthClient)
 
 	client := &TestClient{
 		ticketsContract: mockContract,
@@ -355,7 +355,7 @@ func TestApprovalMethods(t *testing.T) {
 func TestTransferBoundaryConditions(t *testing.T) {
 	ctx := context.Background()
 	mockContract := new(MockTicketsContract)
-	mockClient := new(MockEthClient)
+	mockClient := new(MockNFTEthClient)
 
 	client := &TestClient{
 		ticketsContract: mockContract,

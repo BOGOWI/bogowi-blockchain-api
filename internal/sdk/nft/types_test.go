@@ -262,6 +262,11 @@ func TestRedemptionParams(t *testing.T) {
 		t.Errorf("TokenID = %v, want %v", params.TokenID, 10001)
 	}
 
+	expectedAddress := common.HexToAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7")
+	if params.Redeemer != expectedAddress {
+		t.Errorf("Redeemer = %v, want %v", params.Redeemer, expectedAddress)
+	}
+
 	if params.Nonce != 12345 {
 		t.Errorf("Nonce = %v, want %v", params.Nonce, 12345)
 	}

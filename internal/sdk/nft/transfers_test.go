@@ -160,11 +160,11 @@ func (m *MockTicketsContract) Burn(opts *bind.TransactOpts, tokenId *big.Int) (*
 }
 
 // MockEthClient for testing
-type MockEthClient struct {
+type MockNFTEthClient struct {
 	mock.Mock
 }
 
-func (m *MockEthClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+func (m *MockNFTEthClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -172,7 +172,7 @@ func (m *MockEthClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return args.Get(0).(*big.Int), args.Error(1)
 }
 
-func (m *MockEthClient) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
+func (m *MockNFTEthClient) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
 	args := m.Called(ctx, txHash)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -183,7 +183,7 @@ func (m *MockEthClient) TransactionReceipt(ctx context.Context, txHash common.Ha
 func TestTransfer(t *testing.T) {
 	ctx := context.Background()
 	mockContract := new(MockTicketsContract)
-	mockClient := new(MockEthClient)
+	mockClient := new(MockNFTEthClient)
 
 	client := &TestClient{
 		ticketsContract: mockContract,
@@ -261,7 +261,7 @@ func TestTransfer(t *testing.T) {
 func TestSafeTransfer(t *testing.T) {
 	ctx := context.Background()
 	mockContract := new(MockTicketsContract)
-	mockClient := new(MockEthClient)
+	mockClient := new(MockNFTEthClient)
 
 	client := &TestClient{
 		ticketsContract: mockContract,
@@ -297,7 +297,7 @@ func TestSafeTransfer(t *testing.T) {
 func TestSafeTransferWithData(t *testing.T) {
 	ctx := context.Background()
 	mockContract := new(MockTicketsContract)
-	mockClient := new(MockEthClient)
+	mockClient := new(MockNFTEthClient)
 
 	client := &TestClient{
 		ticketsContract: mockContract,

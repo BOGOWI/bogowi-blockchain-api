@@ -37,7 +37,7 @@ func (c *Client) MintTicket(ctx context.Context, params MintParams) (*types.Tran
 	}
 
 	// Create a copy of auth for gas estimation
-	_, err := c.ticketsContract.MintTicket(opts, contractParams.To, contractParams.BookingId, 
+	_, err := c.ticketsContract.MintTicket(opts, contractParams.To, contractParams.BookingId,
 		contractParams.EventId, contractParams.UtilityFlags, contractParams.TransferUnlockAt,
 		contractParams.ExpiresAt, contractParams.MetadataURI, uint16(contractParams.RewardBasisPoints.Int64()))
 	if err != nil {
@@ -55,7 +55,7 @@ func (c *Client) MintTicket(ctx context.Context, params MintParams) (*types.Tran
 	c.auth.Context = ctx
 
 	// Send the actual transaction
-	tx, err := c.ticketsContract.MintTicket(c.auth, contractParams.To, contractParams.BookingId, 
+	tx, err := c.ticketsContract.MintTicket(c.auth, contractParams.To, contractParams.BookingId,
 		contractParams.EventId, contractParams.UtilityFlags, contractParams.TransferUnlockAt,
 		contractParams.ExpiresAt, contractParams.MetadataURI, uint16(contractParams.RewardBasisPoints.Int64()))
 	if err != nil {
@@ -104,7 +104,7 @@ func (c *Client) BatchMint(ctx context.Context, params []MintParams) (*types.Tra
 	expiresAts := make([]uint64, len(params))
 	metadataURIs := make([]string, len(params))
 	rewardBasisPoints := make([]uint16, len(params))
-	
+
 	for i, p := range params {
 		tos[i] = p.To
 		bookingIds[i] = p.BookingID
@@ -128,7 +128,7 @@ func (c *Client) BatchMint(ctx context.Context, params []MintParams) (*types.Tra
 	c.auth.GasLimit = uint64(150000 * len(params)) // Estimate 150k gas per mint
 
 	// Send transaction
-	tx, err := c.ticketsContract.MintBatch(c.auth, tos, bookingIds, eventIds, 
+	tx, err := c.ticketsContract.MintBatch(c.auth, tos, bookingIds, eventIds,
 		utilityFlags, transferUnlockAts, expiresAts, metadataURIs, rewardBasisPoints)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to batch mint: %w", err)

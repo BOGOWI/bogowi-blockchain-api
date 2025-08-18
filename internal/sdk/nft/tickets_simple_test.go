@@ -84,33 +84,24 @@ func TestMintTicketSimple(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockContract := new(MockTicketsContract)
-			
-			// Create a minimal client with just the contract
-			client := &Client{
-				ticketsContract: mockContract,
-				auth:            &bind.TransactOpts{},
-			}
-
 			tt.setupMock(mockContract)
 
 			// We can't test the full MintTicket because it needs ethclient
 			// But we can test the contract interaction
 			opts := &bind.TransactOpts{
-				From:    client.auth.From,
-				Signer:  client.auth.Signer,
 				Context: context.Background(),
 				NoSend:  true,
 			}
 
 			// Test gas estimation
-			_, err := mockContract.MintTicket(opts, 
-				tt.params.To, 
+			_, err := mockContract.MintTicket(opts,
+				tt.params.To,
 				tt.params.BookingID,
-				tt.params.EventID, 
-				tt.params.UtilityFlags, 
+				tt.params.EventID,
+				tt.params.UtilityFlags,
 				tt.params.TransferUnlockAt,
-				tt.params.ExpiresAt, 
-				tt.params.MetadataURI, 
+				tt.params.ExpiresAt,
+				tt.params.MetadataURI,
 				tt.params.RewardBasisPoints)
 
 			if tt.expectedError != "" {
@@ -160,15 +151,12 @@ func TestExpireTicketSimple(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockContract := new(MockTicketsContract)
-			client := &Client{
-				ticketsContract: mockContract,
-				auth:            &bind.TransactOpts{},
-			}
+			auth := &bind.TransactOpts{}
 
 			tt.setupMock(mockContract)
 
 			// Test the contract call directly
-			tx, err := mockContract.ExpireTicket(client.auth, big.NewInt(int64(tt.tokenID)))
+			tx, err := mockContract.ExpireTicket(auth, big.NewInt(int64(tt.tokenID)))
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -219,14 +207,11 @@ func TestSetBaseURISimple(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockContract := new(MockTicketsContract)
-			client := &Client{
-				ticketsContract: mockContract,
-				auth:            &bind.TransactOpts{},
-			}
+			auth := &bind.TransactOpts{}
 
 			tt.setupMock(mockContract)
 
-			tx, err := mockContract.SetBaseURI(client.auth, tt.baseURI)
+			tx, err := mockContract.SetBaseURI(auth, tt.baseURI)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -277,14 +262,11 @@ func TestBurnSimple(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockContract := new(MockTicketsContract)
-			client := &Client{
-				ticketsContract: mockContract,
-				auth:            &bind.TransactOpts{},
-			}
+			auth := &bind.TransactOpts{}
 
 			tt.setupMock(mockContract)
 
-			tx, err := mockContract.Burn(client.auth, big.NewInt(int64(tt.tokenID)))
+			tx, err := mockContract.Burn(auth, big.NewInt(int64(tt.tokenID)))
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -353,15 +335,12 @@ func TestUpdateTransferUnlockSimple(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockContract := new(MockTicketsContract)
-			client := &Client{
-				ticketsContract: mockContract,
-				auth:            &bind.TransactOpts{},
-			}
+			auth := &bind.TransactOpts{}
 
 			tt.setupMock(mockContract)
 
-			tx, err := mockContract.UpdateTransferUnlock(client.auth, 
-				big.NewInt(int64(tt.tokenID)), 
+			tx, err := mockContract.UpdateTransferUnlock(auth,
+				big.NewInt(int64(tt.tokenID)),
 				tt.newUnlockTime)
 
 			if tt.expectedError != "" {

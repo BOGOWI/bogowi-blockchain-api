@@ -165,7 +165,7 @@ func TestContractAdapter(t *testing.T) {
 	// We can't easily test the adapter directly since it requires a real contract
 	// The adapter is tested indirectly through the Client tests
 	// This test just ensures the adapter can be created
-	
+
 	t.Run("NewContractAdapter", func(t *testing.T) {
 		// We would need a real contracts.BOGOWITickets instance here
 		// which requires a blockchain connection

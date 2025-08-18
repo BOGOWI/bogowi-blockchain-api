@@ -91,10 +91,10 @@ func TestClaimRewardV2(t *testing.T) {
 			name:       "successful claim",
 			templateID: "welcome_bonus",
 			recipient:  common.HexToAddress("0x1234567890123456789012345678901234567890"),
-			setupMocks: func(mockContract *MockBoundContract, mockClient *MockEthClient) {
+			setupMocks: func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {
 				// Mock gas price suggestion
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(big.NewInt(20000000000), nil)
-				
+
 				// Mock transaction
 				expectedTx := types.NewTransaction(
 					1,
@@ -113,7 +113,7 @@ func TestClaimRewardV2(t *testing.T) {
 			name:       "reward distributor not initialized",
 			templateID: "welcome_bonus",
 			recipient:  common.HexToAddress("0x1234567890123456789012345678901234567890"),
-			setupMocks: func(mockContract *MockBoundContract, mockClient *MockEthClient) {
+			setupMocks: func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {
 				// No setup needed - we'll set rewardDistributor to nil
 			},
 			expectError:   true,
@@ -123,7 +123,7 @@ func TestClaimRewardV2(t *testing.T) {
 			name:       "gas price error",
 			templateID: "welcome_bonus",
 			recipient:  common.HexToAddress("0x1234567890123456789012345678901234567890"),
-			setupMocks: func(mockContract *MockBoundContract, mockClient *MockEthClient) {
+			setupMocks: func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(nil, errors.New("network error"))
 			},
 			expectError:   true,
@@ -133,7 +133,7 @@ func TestClaimRewardV2(t *testing.T) {
 			name:       "transaction error",
 			templateID: "welcome_bonus",
 			recipient:  common.HexToAddress("0x1234567890123456789012345678901234567890"),
-			setupMocks: func(mockContract *MockBoundContract, mockClient *MockEthClient) {
+			setupMocks: func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(big.NewInt(20000000000), nil)
 				mockContract.On("Transact", mock.Anything, "claimReward", []interface{}{"welcome_bonus"}).
 					Return(nil, errors.New("insufficient funds"))
@@ -145,9 +145,9 @@ func TestClaimRewardV2(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockContract := new(MockBoundContract)
-			mockClient := new(MockEthClient)
-			
+			mockContract := new(MockRewardBoundContract)
+			mockClient := new(MockRewardEthClient)
+
 			sdk := &BOGOWISDK{
 				client:  mockClient,
 				chainID: big.NewInt(1),
@@ -155,9 +155,10 @@ func TestClaimRewardV2(t *testing.T) {
 
 			// Set up rewardDistributor if not testing nil case
 			if tt.name != "reward distributor not initialized" {
-				sdk.rewardDistributor = &ContractWrapper{Instance: mockContract}
+				sdk.rewardDistributor = &Contract{Instance: mockContract}
 				// Generate a test private key
-				sdk.privateKey = testPrivateKey(t)
+				privateKey, _ := crypto.GenerateKey()
+				sdk.privateKey = privateKey
 			}
 
 			tt.setupMocks(mockContract, mockClient)
@@ -194,11 +195,11 @@ func TestClaimCustomReward(t *testing.T) {
 			recipient: common.HexToAddress("0x1234567890123456789012345678901234567890"),
 			amount:    new(big.Int).Mul(big.NewInt(100), big.NewInt(1e18)), // 100 BOGO
 			reason:    "Bug bounty reward",
-			setupMocks: func(mockContract *MockBoundContract, mockClient *MockEthClient) {
+			setupMocks: func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(big.NewInt(20000000000), nil)
-				
+
 				expectedTx := types.NewTransaction(1, common.Address{}, big.NewInt(0), 21000, big.NewInt(20000000000), nil)
-				mockContract.On("Transact", mock.Anything, "claimCustomReward", 
+				mockContract.On("Transact", mock.Anything, "claimCustomReward",
 					[]interface{}{
 						common.HexToAddress("0x1234567890123456789012345678901234567890"),
 						new(big.Int).Mul(big.NewInt(100), big.NewInt(1e18)),
@@ -212,7 +213,7 @@ func TestClaimCustomReward(t *testing.T) {
 			recipient:     common.HexToAddress("0x1234567890123456789012345678901234567890"),
 			amount:        new(big.Int).Mul(big.NewInt(1001), big.NewInt(1e18)), // 1001 BOGO
 			reason:        "Too much",
-			setupMocks:    func(mockContract *MockBoundContract, mockClient *MockEthClient) {},
+			setupMocks:    func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {},
 			expectError:   true,
 			errorContains: "amount exceeds maximum of 1000 BOGO",
 		},
@@ -221,7 +222,7 @@ func TestClaimCustomReward(t *testing.T) {
 			recipient: common.HexToAddress("0x1234567890123456789012345678901234567890"),
 			amount:    new(big.Int).Mul(big.NewInt(50), big.NewInt(1e18)),
 			reason:    "Test reward",
-			setupMocks: func(mockContract *MockBoundContract, mockClient *MockEthClient) {
+			setupMocks: func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(big.NewInt(20000000000), nil)
 				mockContract.On("Transact", mock.Anything, "claimCustomReward", mock.Anything).
 					Return(nil, errors.New("unauthorized"))
@@ -233,14 +234,14 @@ func TestClaimCustomReward(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockContract := new(MockBoundContract)
-			mockClient := new(MockEthClient)
-			
+			mockContract := new(MockRewardBoundContract)
+			mockClient := new(MockRewardEthClient)
+
 			sdk := &BOGOWISDK{
 				client:            mockClient,
 				chainID:           big.NewInt(1),
-				rewardDistributor: &ContractWrapper{Instance: mockContract},
-				privateKey:        testPrivateKey(t),
+				rewardDistributor: &Contract{Instance: mockContract},
+				privateKey:        func() *ecdsa.PrivateKey { key, _ := crypto.GenerateKey(); return key }(),
 			}
 
 			tt.setupMocks(mockContract, mockClient)
@@ -275,9 +276,9 @@ func TestClaimReferralBonus(t *testing.T) {
 			name:     "successful referral claim",
 			referrer: common.HexToAddress("0x1111111111111111111111111111111111111111"),
 			referred: common.HexToAddress("0x2222222222222222222222222222222222222222"),
-			setupMocks: func(mockContract *MockBoundContract, mockClient *MockEthClient) {
+			setupMocks: func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(big.NewInt(20000000000), nil)
-				
+
 				expectedTx := types.NewTransaction(1, common.Address{}, big.NewInt(0), 21000, big.NewInt(20000000000), nil)
 				mockContract.On("Transact", mock.Anything, "claimReferralBonus",
 					[]interface{}{common.HexToAddress("0x1111111111111111111111111111111111111111")}).
@@ -289,7 +290,7 @@ func TestClaimReferralBonus(t *testing.T) {
 			name:     "referral bonus error",
 			referrer: common.HexToAddress("0x3333333333333333333333333333333333333333"),
 			referred: common.HexToAddress("0x4444444444444444444444444444444444444444"),
-			setupMocks: func(mockContract *MockBoundContract, mockClient *MockEthClient) {
+			setupMocks: func(mockContract *MockRewardBoundContract, mockClient *MockRewardEthClient) {
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(big.NewInt(20000000000), nil)
 				mockContract.On("Transact", mock.Anything, "claimReferralBonus", mock.Anything).
 					Return(nil, errors.New("already claimed"))
@@ -301,14 +302,14 @@ func TestClaimReferralBonus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockContract := new(MockBoundContract)
-			mockClient := new(MockEthClient)
-			
+			mockContract := new(MockRewardBoundContract)
+			mockClient := new(MockRewardEthClient)
+
 			sdk := &BOGOWISDK{
 				client:            mockClient,
 				chainID:           big.NewInt(1),
-				rewardDistributor: &ContractWrapper{Instance: mockContract},
-				privateKey:        testPrivateKey(t),
+				rewardDistributor: &Contract{Instance: mockContract},
+				privateKey:        func() *ecdsa.PrivateKey { key, _ := crypto.GenerateKey(); return key }(),
 			}
 
 			tt.setupMocks(mockContract, mockClient)
@@ -384,10 +385,10 @@ func TestCheckRewardEligibility(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sdk := &BOGOWISDK{}
-			
+
 			// Set up rewardDistributor if not testing nil case
 			if tt.name != "reward distributor not initialized" {
-				sdk.rewardDistributor = &ContractWrapper{Instance: new(MockBoundContract)}
+				sdk.rewardDistributor = &Contract{Instance: new(MockRewardBoundContract)}
 			}
 
 			eligible, reason, err := sdk.CheckRewardEligibility(tt.templateID, tt.wallet)
@@ -454,10 +455,10 @@ func TestGetRewardTemplate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sdk := &BOGOWISDK{}
-			
+
 			// Set up rewardDistributor if not testing nil case
 			if tt.name != "reward distributor not initialized" {
-				sdk.rewardDistributor = &ContractWrapper{Instance: new(MockBoundContract)}
+				sdk.rewardDistributor = &Contract{Instance: new(MockRewardBoundContract)}
 			}
 
 			template, err := sdk.GetRewardTemplate(tt.templateID)
@@ -477,20 +478,20 @@ func TestGetRewardTemplate(t *testing.T) {
 
 func TestGetClaimCount(t *testing.T) {
 	wallet := common.HexToAddress("0x1234567890123456789012345678901234567890")
-	
+
 	t.Run("successful get claim count", func(t *testing.T) {
 		sdk := &BOGOWISDK{
-			rewardDistributor: &ContractWrapper{Instance: new(MockBoundContract)},
+			rewardDistributor: &Contract{Instance: new(MockRewardBoundContract)},
 		}
-		
+
 		count, err := sdk.GetClaimCount(wallet, "welcome_bonus")
 		require.NoError(t, err)
 		assert.Equal(t, big.NewInt(0), count)
 	})
-	
+
 	t.Run("reward distributor not initialized", func(t *testing.T) {
 		sdk := &BOGOWISDK{}
-		
+
 		count, err := sdk.GetClaimCount(wallet, "welcome_bonus")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "reward distributor not initialized")
@@ -500,20 +501,20 @@ func TestGetClaimCount(t *testing.T) {
 
 func TestIsWhitelisted(t *testing.T) {
 	wallet := common.HexToAddress("0x1234567890123456789012345678901234567890")
-	
+
 	t.Run("check whitelist status", func(t *testing.T) {
 		sdk := &BOGOWISDK{
-			rewardDistributor: &ContractWrapper{Instance: new(MockBoundContract)},
+			rewardDistributor: &Contract{Instance: new(MockRewardBoundContract)},
 		}
-		
+
 		whitelisted, err := sdk.IsWhitelisted(wallet)
 		require.NoError(t, err)
 		assert.False(t, whitelisted)
 	})
-	
+
 	t.Run("reward distributor not initialized", func(t *testing.T) {
 		sdk := &BOGOWISDK{}
-		
+
 		whitelisted, err := sdk.IsWhitelisted(wallet)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "reward distributor not initialized")
@@ -524,18 +525,18 @@ func TestIsWhitelisted(t *testing.T) {
 func TestGetRemainingDailyLimit(t *testing.T) {
 	t.Run("get remaining daily limit", func(t *testing.T) {
 		sdk := &BOGOWISDK{
-			rewardDistributor: &ContractWrapper{Instance: new(MockBoundContract)},
+			rewardDistributor: &Contract{Instance: new(MockRewardBoundContract)},
 		}
-		
+
 		limit, err := sdk.GetRemainingDailyLimit()
 		require.NoError(t, err)
 		expectedLimit := new(big.Int).Mul(big.NewInt(400000), big.NewInt(1e18))
 		assert.Equal(t, expectedLimit, limit)
 	})
-	
+
 	t.Run("reward distributor not initialized", func(t *testing.T) {
 		sdk := &BOGOWISDK{}
-		
+
 		limit, err := sdk.GetRemainingDailyLimit()
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "reward distributor not initialized")
@@ -545,20 +546,20 @@ func TestGetRemainingDailyLimit(t *testing.T) {
 
 func TestGetReferrer(t *testing.T) {
 	wallet := common.HexToAddress("0x1234567890123456789012345678901234567890")
-	
+
 	t.Run("get referrer address", func(t *testing.T) {
 		sdk := &BOGOWISDK{
-			rewardDistributor: &ContractWrapper{Instance: new(MockBoundContract)},
+			rewardDistributor: &Contract{Instance: new(MockRewardBoundContract)},
 		}
-		
+
 		referrer, err := sdk.GetReferrer(wallet)
 		require.NoError(t, err)
 		assert.Equal(t, common.Address{}, referrer)
 	})
-	
+
 	t.Run("reward distributor not initialized", func(t *testing.T) {
 		sdk := &BOGOWISDK{}
-		
+
 		referrer, err := sdk.GetReferrer(wallet)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "reward distributor not initialized")
@@ -569,20 +570,20 @@ func TestGetReferrer(t *testing.T) {
 func TestGetTransactOpts(t *testing.T) {
 	tests := []struct {
 		name          string
-		setupMocks    func(*MockEthClient)
+		setupMocks    func(*MockRewardEthClient)
 		expectError   bool
 		errorContains string
 	}{
 		{
 			name: "successful transact opts creation",
-			setupMocks: func(mockClient *MockEthClient) {
+			setupMocks: func(mockClient *MockRewardEthClient) {
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(big.NewInt(20000000000), nil)
 			},
 			expectError: false,
 		},
 		{
 			name: "gas price error",
-			setupMocks: func(mockClient *MockEthClient) {
+			setupMocks: func(mockClient *MockRewardEthClient) {
 				mockClient.On("SuggestGasPrice", mock.Anything).Return(nil, errors.New("network error"))
 			},
 			expectError:   true,
@@ -592,12 +593,12 @@ func TestGetTransactOpts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockClient := new(MockEthClient)
-			
+			mockClient := new(MockRewardEthClient)
+
 			sdk := &BOGOWISDK{
 				client:     mockClient,
 				chainID:    big.NewInt(1),
-				privateKey: testPrivateKey(t),
+				privateKey: func() *ecdsa.PrivateKey { key, _ := crypto.GenerateKey(); return key }(),
 			}
 
 			tt.setupMocks(mockClient)

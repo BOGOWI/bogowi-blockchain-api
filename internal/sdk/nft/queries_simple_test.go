@@ -60,12 +60,12 @@ func TestContractQueries(t *testing.T) {
 
 	t.Run("GetTicketData", func(t *testing.T) {
 		expectedData := TicketDataContract{
-			BookingId:        [32]byte{1, 2, 3},
-			EventId:          [32]byte{4, 5, 6},
-			TransferUnlockAt: 1700000000,
-			ExpiresAt:        1800000000,
-			UtilityFlags:     0x0FFF,
-			State:            1,
+			BookingId:                  [32]byte{1, 2, 3},
+			EventId:                    [32]byte{4, 5, 6},
+			TransferUnlockAt:           1700000000,
+			ExpiresAt:                  1800000000,
+			UtilityFlags:               0x0FFF,
+			State:                      1,
 			NonTransferableAfterRedeem: true,
 			BurnOnRedeem:               false,
 		}

@@ -61,7 +61,7 @@ func (a *ContractAdapter) GetTicketData(opts *bind.CallOpts, tokenId *big.Int) (
 	if err != nil {
 		return TicketDataContract{}, err
 	}
-	
+
 	// Convert contracts.IBOGOWITicketsTicketData to TicketDataContract
 	return TicketDataContract{
 		BookingId:                  data.BookingId,
@@ -124,7 +124,7 @@ func (a *ContractAdapter) ParseTicketMinted(log types.Log) (*TicketMintedEvent, 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &TicketMintedEvent{
 		TokenId:   event.TokenId,
 		To:        event.Buyer,
