@@ -41,7 +41,7 @@ test: ## Run tests
 	$(GOTEST) -v -race $$(go list ./... | grep -v -e /examples -e /docs -e /contracts)
 
 test-coverage: ## Run tests with coverage (standard)
-	$(GOTEST) -v -race -coverprofile=coverage.out $$(go list ./... | grep -v -e /examples -e /docs)
+	$(GOTEST) -v -race -coverprofile=coverage.out $$(go list ./... | grep -v -e /examples -e /docs -e /contracts)
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 	@echo "📊 Coverage report generated: coverage.html"
 
@@ -78,7 +78,7 @@ coverage-sdk: ## Run SDK tests with coverage
 
 coverage: ## Interactive coverage viewer (like contracts)
 	@echo "🚀 Running tests with coverage..."
-	@$(GOTEST) -coverprofile=coverage.out -covermode=atomic $$(go list ./... | grep -v -e /examples -e /docs) > /dev/null 2>&1
+	@$(GOTEST) -coverprofile=coverage.out -covermode=atomic $$(go list ./... | grep -v -e /examples -e /docs -e /contracts) > /dev/null 2>&1
 	@echo ""
 	@bash scripts/istanbul-style-coverage.sh coverage.out
 	@echo ""

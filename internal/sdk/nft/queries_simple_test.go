@@ -59,22 +59,15 @@ func TestContractQueries(t *testing.T) {
 	})
 
 	t.Run("GetTicketData", func(t *testing.T) {
-		expectedData := struct {
-			BookingId                  [32]byte
-			EventId                    [32]byte
-			TransferUnlockAt           *big.Int
-			ExpiresAt                  *big.Int
-			UtilityFlags               uint16
-			State                      uint8
-			NonTransferableAfterRedeem bool
-			BurnOnRedeem               bool
-		}{
+		expectedData := TicketDataContract{
 			BookingId:        [32]byte{1, 2, 3},
 			EventId:          [32]byte{4, 5, 6},
-			TransferUnlockAt: big.NewInt(1700000000),
-			ExpiresAt:        big.NewInt(1800000000),
-			UtilityFlags:     0x0F,
+			TransferUnlockAt: 1700000000,
+			ExpiresAt:        1800000000,
+			UtilityFlags:     0x0FFF,
 			State:            1,
+			NonTransferableAfterRedeem: true,
+			BurnOnRedeem:               false,
 		}
 
 		mockContract.On("GetTicketData", mock.Anything, big.NewInt(1)).Return(expectedData, nil).Once()

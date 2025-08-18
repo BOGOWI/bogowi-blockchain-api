@@ -21,18 +21,48 @@ type TicketsContractInterface interface {
 	IsApprovedForAll(opts *bind.CallOpts, owner, operator common.Address) (bool, error)
 	IsTransferable(opts *bind.CallOpts, tokenId *big.Int) (bool, error)
 	OwnerOf(opts *bind.CallOpts, tokenId *big.Int) (common.Address, error)
-	GetTicketData(opts *bind.CallOpts, tokenId *big.Int) (struct {
-		BookingId                  [32]byte
-		EventId                    [32]byte
-		TransferUnlockAt           *big.Int
-		ExpiresAt                  *big.Int
-		UtilityFlags               uint16
-		State                      uint8
-		NonTransferableAfterRedeem bool
-		BurnOnRedeem               bool
-	}, error)
+	GetTicketData(opts *bind.CallOpts, tokenId *big.Int) (TicketDataContract, error)
 	TokenURI(opts *bind.CallOpts, tokenId *big.Int) (string, error)
 	BalanceOf(opts *bind.CallOpts, owner common.Address) (*big.Int, error)
+	MintTicket(opts *bind.TransactOpts, to common.Address, bookingId [32]byte, eventId [32]byte, utilityFlags uint32, transferUnlockAt uint64, expiresAt uint64, metadataURI string, rewardBasisPoints uint16) (*types.Transaction, error)
+	MintBatch(opts *bind.TransactOpts, tos []common.Address, bookingIds [][32]byte, eventIds [][32]byte, utilityFlags []uint32, transferUnlockAts []uint64, expiresAts []uint64, metadataURIs []string, rewardBasisPoints []uint16) (*types.Transaction, error)
+	SetBaseURI(opts *bind.TransactOpts, newBaseURI string) (*types.Transaction, error)
+	ParseTicketMinted(log types.Log) (*TicketMintedEvent, error)
+	ExpireTicket(opts *bind.TransactOpts, tokenId *big.Int) (*types.Transaction, error)
+	RedeemTicket(opts *bind.TransactOpts, redemptionData RedemptionDataContract) (*types.Transaction, error)
+	UpdateTransferUnlock(opts *bind.TransactOpts, tokenId *big.Int, newUnlockTime uint64) (*types.Transaction, error)
+	Burn(opts *bind.TransactOpts, tokenId *big.Int) (*types.Transaction, error)
+}
+
+// TicketDataContract represents the contract return type for GetTicketData
+type TicketDataContract struct {
+	BookingId                  [32]byte
+	EventId                    [32]byte
+	TransferUnlockAt           uint64
+	ExpiresAt                  uint64
+	UtilityFlags               uint32
+	State                      uint8
+	NonTransferableAfterRedeem bool
+	BurnOnRedeem               bool
+}
+
+// TicketMintedEvent represents the TicketMinted event
+type TicketMintedEvent struct {
+	TokenId   *big.Int
+	To        common.Address
+	BookingId [32]byte
+	EventId   [32]byte
+	Raw       types.Log
+}
+
+// RedemptionDataContract represents the contract parameter for RedeemTicket
+type RedemptionDataContract struct {
+	TokenId   *big.Int
+	Redeemer  common.Address
+	Nonce     *big.Int
+	Deadline  *big.Int
+	ChainId   *big.Int
+	Signature []byte
 }
 
 // EthClientInterface defines the interface for Ethereum client interactions

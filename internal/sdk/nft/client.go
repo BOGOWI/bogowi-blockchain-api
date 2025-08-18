@@ -22,7 +22,7 @@ import (
 // Client is the main SDK client for NFT ticket operations
 type Client struct {
 	ethClient          *ethclient.Client
-	ticketsContract    *contracts.BOGOWITickets
+	ticketsContract    TicketsContractInterface
 	ticketsAddress     common.Address
 	roleManager        *contracts.RoleManager
 	roleManagerAddress common.Address
@@ -133,7 +133,7 @@ func (c *Client) loadContracts() error {
 	if err != nil {
 		return fmt.Errorf("failed to load tickets contract: %w", err)
 	}
-	c.ticketsContract = ticketsContract
+	c.ticketsContract = NewContractAdapter(ticketsContract)
 
 	// Load RoleManager if configured
 	roleManagerAddr := os.Getenv(fmt.Sprintf("ROLE_MANAGER_%s", c.network))
@@ -173,7 +173,7 @@ func (c *Client) GetBalance(ctx context.Context) (*big.Int, error) {
 }
 
 // GetTicketsContract returns the tickets contract instance
-func (c *Client) GetTicketsContract() *contracts.BOGOWITickets {
+func (c *Client) GetTicketsContract() TicketsContractInterface {
 	return c.ticketsContract
 }
 

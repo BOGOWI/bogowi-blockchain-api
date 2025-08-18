@@ -37,7 +37,9 @@ func (c *Client) MintTicket(ctx context.Context, params MintParams) (*types.Tran
 	}
 
 	// Create a copy of auth for gas estimation
-	_, err := c.ticketsContract.MintTicket(opts, contractParams)
+	_, err := c.ticketsContract.MintTicket(opts, contractParams.To, contractParams.BookingId, 
+		contractParams.EventId, contractParams.UtilityFlags, contractParams.TransferUnlockAt,
+		contractParams.ExpiresAt, contractParams.MetadataURI, uint16(contractParams.RewardBasisPoints.Int64()))
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to estimate gas: %w", err)
 	}
@@ -53,7 +55,9 @@ func (c *Client) MintTicket(ctx context.Context, params MintParams) (*types.Tran
 	c.auth.Context = ctx
 
 	// Send the actual transaction
-	tx, err := c.ticketsContract.MintTicket(c.auth, contractParams)
+	tx, err := c.ticketsContract.MintTicket(c.auth, contractParams.To, contractParams.BookingId, 
+		contractParams.EventId, contractParams.UtilityFlags, contractParams.TransferUnlockAt,
+		contractParams.ExpiresAt, contractParams.MetadataURI, uint16(contractParams.RewardBasisPoints.Int64()))
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to mint ticket: %w", err)
 	}
@@ -91,19 +95,25 @@ func (c *Client) BatchMint(ctx context.Context, params []MintParams) (*types.Tra
 		return nil, nil, fmt.Errorf("batch size exceeds maximum of 100")
 	}
 
-	// Convert to contract format
-	contractParams := make([]contracts.IBOGOWITicketsMintParams, len(params))
+	// Convert to separate arrays for contract call
+	tos := make([]common.Address, len(params))
+	bookingIds := make([][32]byte, len(params))
+	eventIds := make([][32]byte, len(params))
+	utilityFlags := make([]uint32, len(params))
+	transferUnlockAts := make([]uint64, len(params))
+	expiresAts := make([]uint64, len(params))
+	metadataURIs := make([]string, len(params))
+	rewardBasisPoints := make([]uint16, len(params))
+	
 	for i, p := range params {
-		contractParams[i] = contracts.IBOGOWITicketsMintParams{
-			To:                p.To,
-			BookingId:         p.BookingID,
-			EventId:           p.EventID,
-			UtilityFlags:      p.UtilityFlags,
-			TransferUnlockAt:  p.TransferUnlockAt,
-			ExpiresAt:         p.ExpiresAt,
-			MetadataURI:       p.MetadataURI,
-			RewardBasisPoints: new(big.Int).SetUint64(uint64(p.RewardBasisPoints)),
-		}
+		tos[i] = p.To
+		bookingIds[i] = p.BookingID
+		eventIds[i] = p.EventID
+		utilityFlags[i] = p.UtilityFlags
+		transferUnlockAts[i] = p.TransferUnlockAt
+		expiresAts[i] = p.ExpiresAt
+		metadataURIs[i] = p.MetadataURI
+		rewardBasisPoints[i] = p.RewardBasisPoints
 	}
 
 	// Get gas price
@@ -118,7 +128,8 @@ func (c *Client) BatchMint(ctx context.Context, params []MintParams) (*types.Tra
 	c.auth.GasLimit = uint64(150000 * len(params)) // Estimate 150k gas per mint
 
 	// Send transaction
-	tx, err := c.ticketsContract.MintBatch(c.auth, contractParams)
+	tx, err := c.ticketsContract.MintBatch(c.auth, tos, bookingIds, eventIds, 
+		utilityFlags, transferUnlockAts, expiresAts, metadataURIs, rewardBasisPoints)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to batch mint: %w", err)
 	}
@@ -281,7 +292,7 @@ func (c *Client) RedeemTicket(ctx context.Context, params RedemptionParams) (*ty
 	c.auth.Context = ctx
 
 	// Create redemption data structure
-	redemptionData := contracts.IBOGOWITicketsRedemptionData{
+	redemptionData := RedemptionDataContract{
 		TokenId:   new(big.Int).SetUint64(params.TokenID),
 		Redeemer:  params.Redeemer,
 		Nonce:     new(big.Int).SetUint64(params.Nonce),

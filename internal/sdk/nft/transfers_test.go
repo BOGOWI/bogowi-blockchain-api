@@ -77,27 +77,9 @@ func (m *MockTicketsContract) OwnerOf(opts *bind.CallOpts, tokenId *big.Int) (co
 	return args.Get(0).(common.Address), args.Error(1)
 }
 
-func (m *MockTicketsContract) GetTicketData(opts *bind.CallOpts, tokenId *big.Int) (struct {
-	BookingId                  [32]byte
-	EventId                    [32]byte
-	TransferUnlockAt           *big.Int
-	ExpiresAt                  *big.Int
-	UtilityFlags               uint16
-	State                      uint8
-	NonTransferableAfterRedeem bool
-	BurnOnRedeem               bool
-}, error) {
+func (m *MockTicketsContract) GetTicketData(opts *bind.CallOpts, tokenId *big.Int) (TicketDataContract, error) {
 	args := m.Called(opts, tokenId)
-	return args.Get(0).(struct {
-		BookingId                  [32]byte
-		EventId                    [32]byte
-		TransferUnlockAt           *big.Int
-		ExpiresAt                  *big.Int
-		UtilityFlags               uint16
-		State                      uint8
-		NonTransferableAfterRedeem bool
-		BurnOnRedeem               bool
-	}), args.Error(1)
+	return args.Get(0).(TicketDataContract), args.Error(1)
 }
 
 func (m *MockTicketsContract) TokenURI(opts *bind.CallOpts, tokenId *big.Int) (string, error) {
@@ -111,6 +93,70 @@ func (m *MockTicketsContract) BalanceOf(opts *bind.CallOpts, owner common.Addres
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*big.Int), args.Error(1)
+}
+
+func (m *MockTicketsContract) MintTicket(opts *bind.TransactOpts, to common.Address, bookingId [32]byte, eventId [32]byte, utilityFlags uint32, transferUnlockAt uint64, expiresAt uint64, metadataURI string, rewardBasisPoints uint16) (*types.Transaction, error) {
+	args := m.Called(opts, to, bookingId, eventId, utilityFlags, transferUnlockAt, expiresAt, metadataURI, rewardBasisPoints)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Transaction), args.Error(1)
+}
+
+func (m *MockTicketsContract) MintBatch(opts *bind.TransactOpts, tos []common.Address, bookingIds [][32]byte, eventIds [][32]byte, utilityFlags []uint32, transferUnlockAts []uint64, expiresAts []uint64, metadataURIs []string, rewardBasisPoints []uint16) (*types.Transaction, error) {
+	args := m.Called(opts, tos, bookingIds, eventIds, utilityFlags, transferUnlockAts, expiresAts, metadataURIs, rewardBasisPoints)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Transaction), args.Error(1)
+}
+
+func (m *MockTicketsContract) SetBaseURI(opts *bind.TransactOpts, newBaseURI string) (*types.Transaction, error) {
+	args := m.Called(opts, newBaseURI)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Transaction), args.Error(1)
+}
+
+func (m *MockTicketsContract) ParseTicketMinted(log types.Log) (*TicketMintedEvent, error) {
+	args := m.Called(log)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*TicketMintedEvent), args.Error(1)
+}
+
+func (m *MockTicketsContract) ExpireTicket(opts *bind.TransactOpts, tokenId *big.Int) (*types.Transaction, error) {
+	args := m.Called(opts, tokenId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Transaction), args.Error(1)
+}
+
+func (m *MockTicketsContract) RedeemTicket(opts *bind.TransactOpts, redemptionData RedemptionDataContract) (*types.Transaction, error) {
+	args := m.Called(opts, redemptionData)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Transaction), args.Error(1)
+}
+
+func (m *MockTicketsContract) UpdateTransferUnlock(opts *bind.TransactOpts, tokenId *big.Int, newUnlockTime uint64) (*types.Transaction, error) {
+	args := m.Called(opts, tokenId, newUnlockTime)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Transaction), args.Error(1)
+}
+
+func (m *MockTicketsContract) Burn(opts *bind.TransactOpts, tokenId *big.Int) (*types.Transaction, error) {
+	args := m.Called(opts, tokenId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Transaction), args.Error(1)
 }
 
 // MockEthClient for testing
