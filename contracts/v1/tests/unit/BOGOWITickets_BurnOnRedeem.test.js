@@ -26,7 +26,7 @@ describe("BOGOWITickets - BurnOnRedeem Coverage", function () {
         await roleManager.grantRole(NFT_MINTER_ROLE, minter.address);
         await roleManager.grantRole(PAUSER_ROLE, pauser.address);
         await roleManager.grantRole(ADMIN_ROLE, admin.address);
-        await roleManager.grantRole(ADMIN_ROLE, backend.address);
+        await roleManager.grantRole(ethers.keccak256(ethers.toUtf8Bytes("BACKEND_ROLE")), backend.address);
         
         // Deploy BOGOWITickets
         const BOGOWITickets = await ethers.getContractFactory("BOGOWITickets");
@@ -58,7 +58,7 @@ describe("BOGOWITickets - BurnOnRedeem Coverage", function () {
     
     // Helper to create EIP-712 signature for redemption
     async function createRedemptionSignature(tickets, tokenId, redeemer, nonce, deadline, signer) {
-        const chainId = await signer.provider.getNetwork().then(n => n.chainId);
+        const chainId = 501; // Use the chainId that will be passed in redemptionData
         const domain = {
             name: "BOGOWITickets",
             version: "1",

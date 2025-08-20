@@ -223,11 +223,14 @@ contract NFTRegistry is
             }
         }
         
-        // Resize array if needed
+        // Resize array if needed - using safe approach without assembly
         if (currentIndex < returnSize) {
-            assembly {
-                mstore(contracts, currentIndex)
+            // Create properly sized array
+            address[] memory resizedContracts = new address[](currentIndex);
+            for (uint256 j = 0; j < currentIndex; j++) {
+                resizedContracts[j] = contracts[j];
             }
+            contracts = resizedContracts;
         }
         
         hasMore = (offset + returnSize) < length;

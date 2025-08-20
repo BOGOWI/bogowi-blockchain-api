@@ -26,7 +26,7 @@ describe("BOGOWITickets - 100% Coverage Tests", function () {
         await roleManager.grantRole(NFT_MINTER_ROLE, minter.address);
         await roleManager.grantRole(PAUSER_ROLE, pauser.address);
         await roleManager.grantRole(ADMIN_ROLE, admin.address);
-        await roleManager.grantRole(ADMIN_ROLE, backend.address);
+        await roleManager.grantRole(ethers.keccak256(ethers.toUtf8Bytes("BACKEND_ROLE")), backend.address);
         
         // Deploy BOGOWITickets
         const BOGOWITickets = await ethers.getContractFactory("BOGOWITickets");
@@ -58,7 +58,7 @@ describe("BOGOWITickets - 100% Coverage Tests", function () {
     
     // Helper to create EIP-712 signature for redemption
     async function createRedemptionSignature(tickets, tokenId, redeemer, nonce, deadline, signer) {
-        const chainId = await signer.provider.getNetwork().then(n => n.chainId);
+        const chainId = 501; // Use the chainId that will be passed in redemptionData
         const domain = {
             name: "BOGOWITickets",
             version: "1",
@@ -324,7 +324,9 @@ describe("BOGOWITickets - 100% Coverage Tests", function () {
             };
             
             await tickets.connect(minter).mintTicket(params2);
-            expect(await tickets.tokenURI(10002)).to.equal("");
+            // When metadataURI is empty, contract returns Datakyte URL format
+            const expectedURI = `https://dklnk.to/api/nfts/${(await tickets.getAddress()).toLowerCase()}/10002/metadata`;
+            expect(await tickets.tokenURI(10002)).to.equal(expectedURI);
         });
         
         it("Should test all ticket state transitions", async function () {
@@ -440,6 +442,65 @@ describe("BOGOWITickets - 100% Coverage Tests", function () {
             // Should fail because ticket is already processed (REDEEMED)
             await expect(tickets.connect(admin).expireTicket(tokenId))
                 .to.be.revertedWith("Ticket already processed");
+        });
+        
+        it("Should test setBaseURI and baseURI functions", async function () {
+            const { tickets, admin, user1 } = await loadFixture(deployTicketsFixture);
+            
+            // Check initial base URI
+            const initialURI = await tickets.baseURI();
+            expect(initialURI).to.equal("https://dklnk.to/api/nfts/");
+            
+            // Admin can set new base URI
+            const newBaseURI = "https://new-api.example.com/nfts/";
+            await expect(tickets.connect(admin).setBaseURI(newBaseURI))
+                .to.emit(tickets, "BaseURIUpdated")
+                .withArgs(newBaseURI);
+            
+            // Verify the base URI was updated
+            expect(await tickets.baseURI()).to.equal(newBaseURI);
+            
+            // Non-admin cannot set base URI
+            await expect(tickets.connect(user1).setBaseURI("https://evil.com/"))
+                .to.be.revertedWithCustomError(tickets, "UnauthorizedRole");
+        });
+        
+        it("Should test setExpiryGracePeriod function", async function () {
+            const { tickets, admin, user1 } = await loadFixture(deployTicketsFixture);
+            
+            // Check initial grace period (5 minutes default)
+            expect(await tickets.expiryGracePeriod()).to.equal(5 * 60);
+            
+            // Admin can set new grace period
+            const newGracePeriod = 10 * 60; // 10 minutes
+            await expect(tickets.connect(admin).setExpiryGracePeriod(newGracePeriod))
+                .to.emit(tickets, "ExpiryGracePeriodUpdated")
+                .withArgs(5 * 60, newGracePeriod);
+            
+            // Verify the grace period was updated
+            expect(await tickets.expiryGracePeriod()).to.equal(newGracePeriod);
+            
+            // Test minimum grace period (1 minute)
+            await expect(tickets.connect(admin).setExpiryGracePeriod(60))
+                .to.emit(tickets, "ExpiryGracePeriodUpdated")
+                .withArgs(newGracePeriod, 60);
+            
+            // Test maximum grace period (1 day)
+            await expect(tickets.connect(admin).setExpiryGracePeriod(24 * 60 * 60))
+                .to.emit(tickets, "ExpiryGracePeriodUpdated")
+                .withArgs(60, 24 * 60 * 60);
+            
+            // Should revert if grace period too short (less than 1 minute)
+            await expect(tickets.connect(admin).setExpiryGracePeriod(59))
+                .to.be.revertedWith("Grace period too short");
+            
+            // Should revert if grace period too long (more than 1 day)
+            await expect(tickets.connect(admin).setExpiryGracePeriod(24 * 60 * 60 + 1))
+                .to.be.revertedWith("Grace period too long");
+            
+            // Non-admin cannot set grace period
+            await expect(tickets.connect(user1).setExpiryGracePeriod(300))
+                .to.be.revertedWithCustomError(tickets, "UnauthorizedRole");
         });
     });
 });

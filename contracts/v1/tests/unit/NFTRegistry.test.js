@@ -640,5 +640,113 @@ describe("NFTRegistry", function () {
                 registry.getActiveContractsPaginated(ethers.MaxUint256, 10)
             ).to.be.revertedWith("Offset out of bounds");
         });
+        
+        it("Should handle contracts that fail ERC165 check", async function () {
+            const { registry, deployer } = await loadFixture(deployRegistryFixture);
+            
+            // Deploy mock contract that fails ERC165 check
+            const MockBadERC165 = await ethers.getContractFactory("MockBadERC165");
+            const badContract = await MockBadERC165.deploy();
+            await badContract.waitForDeployment();
+            
+            // Attempt to register should fail with ERC165 check
+            await expect(
+                registry.connect(deployer).registerContract(
+                    await badContract.getAddress(),
+                    0, // TICKET type
+                    "Bad Contract",
+                    "1.0.0"
+                )
+            ).to.be.revertedWith("ERC165 check failed");
+        });
+        
+        it("Should handle contracts that fail ERC721 check", async function () {
+            const { registry, deployer } = await loadFixture(deployRegistryFixture);
+            
+            // Deploy mock contract that supports ERC165 but fails ERC721 check
+            const MockBadERC721 = await ethers.getContractFactory("MockBadERC721");
+            const badContract = await MockBadERC721.deploy();
+            await badContract.waitForDeployment();
+            
+            // Attempt to register as TICKET should fail with ERC721 check
+            await expect(
+                registry.connect(deployer).registerContract(
+                    await badContract.getAddress(),
+                    0, // TICKET type
+                    "Bad ERC721",
+                    "1.0.0"
+                )
+            ).to.be.revertedWith("ERC721 interface check failed");
+        });
+        
+        it("Should reject registration with empty name", async function () {
+            const { registry, deployer, mockERC721 } = await loadFixture(deployRegistryFixture);
+            
+            await expect(
+                registry.connect(deployer).registerContract(
+                    await mockERC721.getAddress(),
+                    0,
+                    "", // Empty name
+                    "1.0.0"
+                )
+            ).to.be.revertedWith("Name cannot be empty");
+        });
+        
+        it("Should reject registration with empty version", async function () {
+            const { registry, deployer, mockERC721 } = await loadFixture(deployRegistryFixture);
+            
+            await expect(
+                registry.connect(deployer).registerContract(
+                    await mockERC721.getAddress(),
+                    0,
+                    "Test Contract",
+                    "" // Empty version
+                )
+            ).to.be.revertedWith("Version cannot be empty");
+        });
+        
+        it("Should reject registration when paused", async function () {
+            const { registry, admin, deployer, mockERC721 } = await loadFixture(deployRegistryFixture);
+            
+            // Pause the registry
+            await registry.connect(admin).pause();
+            
+            await expect(
+                registry.connect(deployer).registerContract(
+                    await mockERC721.getAddress(),
+                    0,
+                    "Test",
+                    "1.0.0"
+                )
+            ).to.be.revertedWithCustomError(registry, "EnforcedPause");
+        });
+        
+        it("Should handle pagination with empty registry", async function () {
+            const { registry } = await loadFixture(deployRegistryFixture);
+            
+            // Test pagination with empty registry (offset 0, length 0)
+            const [contracts, hasMore] = await registry.getActiveContractsPaginated(0, 10);
+            expect(contracts.length).to.equal(0);
+            expect(hasMore).to.be.false;
+        });
+        
+        it("Should handle contracts that fail ERC1155 check", async function () {
+            const { registry, deployer } = await loadFixture(deployRegistryFixture);
+            
+            // Deploy mock contract that supports ERC165 but fails ERC1155 check
+            const MockBadERC1155 = await ethers.getContractFactory("MockBadERC1155");
+            const badContract = await MockBadERC1155.deploy();
+            await badContract.waitForDeployment();
+            
+            // Attempt to register as COLLECTIBLE should fail with ERC1155 check
+            await expect(
+                registry.connect(deployer).registerContract(
+                    await badContract.getAddress(),
+                    1, // COLLECTIBLE type (enum index 1)
+                    "Bad ERC1155",
+                    "1.0.0"
+                )
+            ).to.be.revertedWith("ERC1155 interface check failed");
+        });
     });
 });

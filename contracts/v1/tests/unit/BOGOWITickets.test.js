@@ -22,6 +22,7 @@ describe("BOGOWITickets", function () {
         const NFT_MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("NFT_MINTER_ROLE"));
         const PAUSER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("PAUSER_ROLE"));
         const ADMIN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("ADMIN_ROLE"));
+        const BACKEND_ROLE = ethers.keccak256(ethers.toUtf8Bytes("BACKEND_ROLE"));
         const DEFAULT_ADMIN_ROLE = await roleManager.DEFAULT_ADMIN_ROLE();
         
         // Grant roles
@@ -29,7 +30,7 @@ describe("BOGOWITickets", function () {
         await roleManager.grantRole(NFT_MINTER_ROLE, minter.address);
         await roleManager.grantRole(PAUSER_ROLE, pauser.address);
         await roleManager.grantRole(ADMIN_ROLE, admin.address);
-        await roleManager.grantRole(ADMIN_ROLE, backend.address); // Backend can sign redemptions
+        await roleManager.grantRole(BACKEND_ROLE, backend.address); // Backend can sign redemptions
         
         // Deploy BOGOWITickets
         const BOGOWITickets = await ethers.getContractFactory("BOGOWITickets");
@@ -93,7 +94,7 @@ describe("BOGOWITickets", function () {
     
     // Helper to create EIP-712 signature for redemption
     async function createRedemptionSignature(tickets, tokenId, redeemer, nonce, deadline, signer) {
-        const chainId = await signer.provider.getNetwork().then(n => n.chainId);
+        const chainId = 501; // Use the chainId that will be passed in redemptionData
         const domain = {
             name: "BOGOWITickets",
             version: "1",
@@ -760,7 +761,9 @@ describe("BOGOWITickets", function () {
             
             await tickets.connect(minter).mintTicket(params);
             
-            expect(await tickets.tokenURI(10001)).to.equal("");
+            // When metadataURI is empty, contract returns Datakyte URL format
+            const expectedURI = `https://dklnk.to/api/nfts/${(await tickets.getAddress()).toLowerCase()}/10001/metadata`;
+            expect(await tickets.tokenURI(10001)).to.equal(expectedURI);
         });
         
         it("Should revert on non-existent token queries", async function () {

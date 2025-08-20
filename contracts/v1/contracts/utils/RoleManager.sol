@@ -91,8 +91,11 @@ contract RoleManager is AccessControl, Pausable {
         external 
         view 
         onlyRegisteredContract 
+        whenNotPaused
         returns (bool) 
     {
+        // Prevent checking DEFAULT_ADMIN_ROLE through external contracts
+        require(role != DEFAULT_ADMIN_ROLE, "Cannot check admin role externally");
         return hasRole(role, account);
     }
     

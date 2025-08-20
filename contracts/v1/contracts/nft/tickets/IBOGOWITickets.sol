@@ -111,6 +111,11 @@ interface IBOGOWITickets is IERC721 {
         string newBaseURI
     );
     
+    event ExpiryGracePeriodUpdated(
+        uint256 oldGracePeriod,
+        uint256 newGracePeriod
+    );
+    
     event DatakyteMetadataLinked(
         uint256 indexed tokenId,
         string datakyteNftId

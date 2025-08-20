@@ -44,7 +44,8 @@ contract BOGOWITickets is
     uint256 public constant CAMINO_MAINNET_CHAIN_ID = 500;
     uint256 public constant CAMINO_TESTNET_CHAIN_ID = 501;
     uint256 public constant MAX_BATCH_SIZE = 100; // Reduced for gas safety (was 500)
-    uint256 public constant GAS_PER_MINT = 150000; // Estimated gas per mint operation
+    uint256 public constant BASE_GAS_PER_MINT = 150000; // Base gas per mint operation
+    uint256 public constant ADDITIONAL_GAS_PER_MINT = 30000; // Additional gas buffer for metadata operations
     uint256 public constant INITIAL_TOKEN_ID = 10001; // Configurable start token ID
     address public conservationDAO; // Royalty receiver
     
@@ -60,6 +61,7 @@ contract BOGOWITickets is
     // MEV protection - commit-reveal for high-value operations
     mapping(bytes32 => uint256) private _commitments;
     uint256 public constant COMMIT_DELAY = 1 minutes; // Minimum delay between commit and reveal
+    uint256 public expiryGracePeriod = 5 minutes; // Configurable grace period for expired tickets
     
     // Constructor
     constructor(
@@ -153,9 +155,19 @@ contract BOGOWITickets is
         require(params.length > 0, "Empty batch");
         require(params.length <= MAX_BATCH_SIZE, "Batch size exceeds maximum");
         
-        // Gas limit check to prevent out-of-gas errors
-        uint256 estimatedGas = params.length * GAS_PER_MINT;
-        require(gasleft() >= estimatedGas, "Insufficient gas for batch");
+        // Enhanced gas estimation considering metadata operations
+        uint256 estimatedGas = params.length * BASE_GAS_PER_MINT;
+        
+        // Add extra gas for metadata operations if present
+        for (uint256 i = 0; i < params.length; i++) {
+            if (bytes(params[i].metadataURI).length > 0) {
+                estimatedGas += ADDITIONAL_GAS_PER_MINT;
+            }
+        }
+        
+        // Safety buffer: require 20% more gas than estimated
+        uint256 requiredGas = (estimatedGas * 120) / 100;
+        require(gasleft() >= requiredGas, "Insufficient gas for batch");
         
         emit BatchMintStarted(params.length, msg.sender);
         
@@ -280,8 +292,8 @@ contract BOGOWITickets is
         require(block.timestamp >= _tickets[tokenId].expiresAt, "Ticket not yet expired");
         require(_tickets[tokenId].state == TicketState.ISSUED, "Ticket already processed");
         
-        // Add grace period to prevent frontrunning - ticket must be expired for at least 5 minutes
-        require(block.timestamp >= _tickets[tokenId].expiresAt + 300, "Grace period not met");
+        // Add grace period to prevent frontrunning - ticket must be expired for configured grace period
+        require(block.timestamp >= _tickets[tokenId].expiresAt + expiryGracePeriod, "Grace period not met");
         
         _tickets[tokenId].state = TicketState.EXPIRED;
         
@@ -308,8 +320,8 @@ contract BOGOWITickets is
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = hash.recover(redemptionData.signature);
         
-        // Signer must have ADMIN_ROLE (backend service)
-        return roleManager.hasRole(Roles.ADMIN_ROLE, signer);
+        // Signer must have BACKEND_ROLE (backend service)
+        return roleManager.hasRole(Roles.BACKEND_ROLE, signer);
     }
     
     // View Functions
@@ -407,6 +419,20 @@ contract BOGOWITickets is
     function burn(uint256 tokenId) external {
         require(_ownerOf(tokenId) == msg.sender, "Not token owner");
         _burn(tokenId);
+    }
+    
+    /**
+     * @notice Set the expiry grace period
+     * @param newGracePeriod The new grace period in seconds (minimum 1 minute, maximum 1 day)
+     */
+    function setExpiryGracePeriod(uint256 newGracePeriod) external onlyRole(Roles.ADMIN_ROLE) {
+        require(newGracePeriod >= 1 minutes, "Grace period too short");
+        require(newGracePeriod <= 1 days, "Grace period too long");
+        
+        uint256 oldGracePeriod = expiryGracePeriod;
+        expiryGracePeriod = newGracePeriod;
+        
+        emit ExpiryGracePeriodUpdated(oldGracePeriod, newGracePeriod);
     }
     
     /**
