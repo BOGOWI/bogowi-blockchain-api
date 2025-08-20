@@ -49,7 +49,7 @@ async function main() {
   console.log("🎫 Deploying NEW NFT Contracts...");
   console.log("=" .repeat(60) + "\n");
 
-  // Deploy NFTRegistry
+  // 1. Deploy NFTRegistry
   console.log("1. Deploying NFTRegistry...");
   const NFTRegistry = await hre.ethers.getContractFactory("NFTRegistry");
   const nftRegistry = await NFTRegistry.deploy(roleManagerAddress);
@@ -57,12 +57,12 @@ async function main() {
   const nftRegistryAddress = await nftRegistry.getAddress();
   console.log("✅ NFTRegistry deployed to:", nftRegistryAddress);
 
-  // Deploy BOGOWITickets
+  // 2. Deploy BOGOWITickets
   console.log("\n2. Deploying BOGOWITickets...");
   const BOGOWITickets = await hre.ethers.getContractFactory("BOGOWITickets");
   const tickets = await BOGOWITickets.deploy(
     roleManagerAddress,
-    adminAddress // Conservation DAO (using admin for testnet)
+    adminAddress // conservation DAO
   );
   await tickets.waitForDeployment();
   const ticketsAddress = await tickets.getAddress();
@@ -75,16 +75,12 @@ async function main() {
   // Get RoleManager instance
   const roleManager = await hre.ethers.getContractAt("RoleManager", roleManagerAddress);
 
-  // Check if deployer has admin role
-  const DEFAULT_ADMIN_ROLE = await roleManager.DEFAULT_ADMIN_ROLE();
-  const deployerIsAdmin = await roleManager.hasRole(DEFAULT_ADMIN_ROLE, deployer.address);
-  
-  if (!deployerIsAdmin) {
-    console.error("❌ Deployer doesn't have admin role in RoleManager!");
-    console.error("   Contact admin to grant roles and register contracts");
-    console.error("   Admin address:", adminAddress);
-    
-    // Save deployment info anyway
+  // Check if deployer is admin
+  const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const isAdmin = await roleManager.hasRole(DEFAULT_ADMIN_ROLE, deployer.address);
+
+  if (!isAdmin) {
+    // Save deployment info for manual configuration
     const deploymentInfo = {
       network: network,
       chainId: Number(chainId),
@@ -147,21 +143,51 @@ async function main() {
   // Register BOGOWITickets with NFTRegistry
   console.log("\n5. Registering BOGOWITickets with NFTRegistry...");
   try {
-    // Need CONTRACT_DEPLOYER_ROLE for this
-    const hasDeployerRole = await roleManager.hasRole(CONTRACT_DEPLOYER_ROLE, deployer.address);
+    // Check if deployer has CONTRACT_DEPLOYER_ROLE
+    let hasDeployerRole = await roleManager.hasRole(CONTRACT_DEPLOYER_ROLE, deployer.address);
+    
     if (!hasDeployerRole) {
-      await roleManager.grantRole(CONTRACT_DEPLOYER_ROLE, deployer.address);
+      if (isAdmin) {
+        // If deployer is admin, grant the role to self
+        console.log("   Granting CONTRACT_DEPLOYER_ROLE to deployer...");
+        const grantTx = await roleManager.grantRole(CONTRACT_DEPLOYER_ROLE, deployer.address);
+        await grantTx.wait();
+        console.log("   ✅ Role granted");
+        hasDeployerRole = true;
+      } else {
+        console.log("   ⚠️  Deployer needs CONTRACT_DEPLOYER_ROLE");
+        console.log("   Admin must grant this role before registration can proceed");
+      }
     }
     
-    await nftRegistry.registerContract(
-      ticketsAddress,
-      0, // ContractType.TICKET
-      "BOGOWI Event Tickets",
-      "1.0.0"
-    );
-    console.log("✅ BOGOWITickets registered in NFTRegistry");
+    if (hasDeployerRole) {
+      await nftRegistry.registerContract(
+        ticketsAddress,
+        0, // ContractType.TICKET
+        "BOGOWI Event Tickets",
+        "1.0.0"
+      );
+      console.log("✅ BOGOWITickets registered in NFTRegistry");
+    } else {
+      console.log("⚠️  Skipping registration - missing CONTRACT_DEPLOYER_ROLE");
+    }
   } catch (error) {
     console.log("⚠️  NFTRegistry registration failed:", error.message);
+  }
+
+  // Verify deployment
+  console.log("\n6. Verifying deployment...");
+  try {
+    const isTicketsRegistered = await nftRegistry.isRegistered(ticketsAddress);
+    const ticketsInfo = await nftRegistry.getContractInfo(ticketsAddress);
+    console.log(`✅ BOGOWITickets registration verified: ${isTicketsRegistered}`);
+    console.log(`   Contract Type: ${["TICKET", "COLLECTIBLE", "BADGE"][ticketsInfo.contractType]}`);
+    console.log(`   Active: ${ticketsInfo.isActive}`);
+    
+    const totalContracts = await nftRegistry.getContractCount();
+    console.log(`✅ Total contracts in registry: ${totalContracts}`);
+  } catch (error) {
+    console.log("⚠️  Verification failed:", error.message);
   }
 
   // Save deployment info
@@ -176,7 +202,10 @@ async function main() {
       NFTRegistry: nftRegistryAddress,
       BOGOWITickets: ticketsAddress
     },
-    adminAddress: adminAddress,
+    roles: {
+      admin: adminAddress,
+      contractDeployer: adminAddress
+    },
     status: "DEPLOYED_AND_CONFIGURED"
   };
 
@@ -190,20 +219,32 @@ async function main() {
   // Print summary
   console.log("\n🎉 NFT INFRASTRUCTURE DEPLOYMENT COMPLETE!");
   console.log("=" .repeat(60));
-  console.log("Existing Contracts (reused):");
+  console.log("📋 Network Configuration:");
+  console.log("  Network:", network);
+  console.log("  Chain ID:", Number(chainId), "(Camino Columbus Testnet)");
+  console.log("\n📍 Contract Addresses:");
   console.log("  RoleManager:", roleManagerAddress);
   console.log("  BOGOToken:", bogoTokenAddress);
-  console.log("\nNew Contracts (deployed):");
   console.log("  NFTRegistry:", nftRegistryAddress);
   console.log("  BOGOWITickets:", ticketsAddress);
-  console.log("\nAdmin:", adminAddress);
+  console.log("\n👥 Role Assignments:");
+  console.log("  Admin/Contract Deployer:", adminAddress);
+  console.log("\n📊 Registry Status:");
+  try {
+    const totalContracts = await nftRegistry.getContractCount();
+    const ticketsInfo = await nftRegistry.getContractInfo(ticketsAddress);
+    console.log("  Total Contracts:", totalContracts);
+    console.log("  BOGOWITickets Active:", ticketsInfo.isActive);
+  } catch (error) {
+    console.log("  Status: Check manually");
+  }
   console.log("=" .repeat(60));
   
   console.log("\n📝 Next Steps:");
   console.log("1. Verify contracts on explorer");
-  console.log("2. Grant NFT_MINTER_ROLE to authorized minters");
-  console.log("3. Grant BACKEND_ROLE to backend service");
-  console.log("4. Test minting operations");
+  console.log("2. Grant NFT_MINTER_ROLE to minting addresses");
+  console.log("3. Grant BACKEND_ROLE to backend service addresses");
+  console.log("4. Test minting functionality");
 }
 
 main()
