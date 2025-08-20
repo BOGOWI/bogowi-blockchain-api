@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"time"
 
 	"bogowi-blockchain-go/internal/middleware"
+	"bogowi-blockchain-go/internal/models"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 )
 
-type ClaimRewardRequestV2 struct {
+// Request structs for reward endpoints
+type ClaimRewardRequest struct {
 	TemplateID string `json:"templateId" binding:"required"`
 }
 
-type ClaimCustomRewardRequestV2 struct {
+type ClaimCustomRewardRequest struct {
 	Wallet           string `json:"wallet,omitempty"`
 	RecipientAddress string `json:"recipientAddress,omitempty"`
 	Amount           string `json:"amount" binding:"required"`
@@ -22,9 +25,14 @@ type ClaimCustomRewardRequestV2 struct {
 	RewardType       string `json:"rewardType,omitempty"`
 }
 
-type ClaimReferralRequestV2 struct {
+type ClaimReferralRequest struct {
 	ReferrerAddress string `json:"referrerAddress" binding:"required"`
 }
+
+// Type aliases for backward compatibility with tests
+type ClaimRewardRequestV2 = ClaimRewardRequest
+type ClaimCustomRewardRequestV2 = ClaimCustomRewardRequest
+type ClaimReferralRequestV2 = ClaimReferralRequest
 
 // GetRewardTemplates returns all available reward templates
 func (h *Handler) GetRewardTemplates(c *gin.Context) {
@@ -72,284 +80,258 @@ func (h *Handler) GetRewardTemplate(c *gin.Context) {
 	c.JSON(http.StatusOK, template)
 }
 
-// ClaimRewardV2 handles reward claiming with JWT auth
-func (h *Handler) ClaimRewardV2(c *gin.Context) {
-	// Get wallet from JWT context (set by middleware)
-	wallet, exists := c.Get("wallet")
+// ClaimReward handles reward claiming with JWT auth
+func (h *Handler) ClaimReward(c *gin.Context) {
+	// Get authenticated user's wallet from context
+	claims, exists := c.Get("claims")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Authentication required"})
 		return
 	}
 
-	var req ClaimRewardRequestV2
+	var req ClaimRewardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	walletAddr := common.HexToAddress(wallet.(string))
+	// Get wallet address from claims
+	firebaseClaims := claims.(*middleware.FirebaseClaims)
+	wallet := firebaseClaims.WalletAddress
+	if wallet == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Wallet address not found in token"})
+		return
+	}
 
-	// Check eligibility first
-	eligible, reason, err := h.SDK.CheckRewardEligibility(req.TemplateID, walletAddr)
+	// Convert wallet to address
+	if !common.IsHexAddress(wallet) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid wallet address"})
+		return
+	}
+	walletAddr := common.HexToAddress(wallet)
+
+	// Check eligibility
+	eligible, message, err := h.SDK.CheckRewardEligibility(req.TemplateID, walletAddr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error checking eligibility: %v", err)})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Failed to check eligibility: %v", err)})
 		return
 	}
 
 	if !eligible {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: reason})
+		c.JSON(http.StatusForbidden, ErrorResponse{Error: message})
 		return
 	}
 
-	// Claim reward
-	tx, err := h.SDK.ClaimRewardV2(req.TemplateID, walletAddr)
+	// Claim the reward using the clean interface method
+	tx, err := h.SDK.ClaimRewardV2(req.TemplateID, walletAddr) // TODO: SDK method needs renaming too
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming reward: %v", err)})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Failed to claim reward: %v", err)})
 		return
 	}
 
+	// Return success response
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"txHash":  tx.Hash().Hex(),
-		"message": fmt.Sprintf("Successfully claimed %s", req.TemplateID),
+		"success":         true,
+		"transactionHash": tx.Hash().Hex(),
+		"wallet":          wallet,
+		"templateId":      req.TemplateID,
 	})
 }
 
-// ClaimReferralV2 handles referral bonus claims
-func (h *Handler) ClaimReferralV2(c *gin.Context) {
-	wallet, exists := c.Get("wallet")
+// ClaimReferralBonus handles referral bonus claims
+func (h *Handler) ClaimReferralBonus(c *gin.Context) {
+	// Get authenticated user's wallet from context
+	claims, exists := c.Get("claims")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Authentication required"})
 		return
 	}
 
-	var req ClaimReferralRequestV2
+	var req ClaimReferralRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
+	// Validate addresses
 	if !common.IsHexAddress(req.ReferrerAddress) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid referrer address"})
 		return
 	}
 
+	// Get referred wallet from claims
+	firebaseClaims := claims.(*middleware.FirebaseClaims)
+	referredWallet := firebaseClaims.WalletAddress
+	if referredWallet == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Wallet address not found in token"})
+		return
+	}
+
+	if !common.IsHexAddress(referredWallet) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid referred wallet address"})
+		return
+	}
+
 	referrerAddr := common.HexToAddress(req.ReferrerAddress)
-	referredAddr := common.HexToAddress(wallet.(string))
-
-	// Check if already referred
-	existingReferrer, err := h.SDK.GetReferrer(referredAddr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error checking referral status: %v", err)})
-		return
-	}
-
-	if existingReferrer != (common.Address{}) {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Already referred"})
-		return
-	}
+	referredAddr := common.HexToAddress(referredWallet)
 
 	// Claim referral bonus
 	tx, err := h.SDK.ClaimReferralBonus(referrerAddr, referredAddr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming referral: %v", err)})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Failed to claim referral bonus: %v", err)})
 		return
 	}
 
+	// Return success response
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"txHash":  tx.Hash().Hex(),
-		"message": "Referral bonus claimed successfully",
+		"success":         true,
+		"transactionHash": tx.Hash().Hex(),
+		"referrer":        req.ReferrerAddress,
+		"referred":        referredWallet,
 	})
 }
 
-// ClaimCustomRewardV2 handles custom reward claims (backend only)
-func (h *Handler) ClaimCustomRewardV2(c *gin.Context) {
-	// This endpoint requires backend service authentication
-	authHeader := c.GetHeader("X-Backend-Auth")
-	if authHeader != h.Config.BackendSecret { // Add BackendSecret to config
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+// ClaimCustomReward handles custom reward claims with optional network support
+func (h *Handler) ClaimCustomReward(c *gin.Context) {
+	// Determine which SDK to use
+	var sdk SDKInterface
+	if h.NetworkHandler != nil {
+		// Get network from query or header
+		network := c.Query("network")
+		if network == "" {
+			network = c.GetHeader("X-Network")
+		}
+		if network == "" {
+			network = "testnet" // default
+		}
+
+		// Get SDK for the specified network
+		var err error
+		sdk, err = h.NetworkHandler.GetSDK(network)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: fmt.Sprintf("Failed to get SDK for network %s: %v", network, err)})
+			return
+		}
+	} else {
+		// Use default SDK
+		sdk = h.SDK
+	}
+
+	// Authenticate backend request
+	if !h.authenticateBackendRequest(c) {
 		return
 	}
 
-	var req ClaimCustomRewardRequestV2
+	var req ClaimCustomRewardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	// Accept either wallet or recipientAddress
-	address := req.Wallet
-	if address == "" {
-		address = req.RecipientAddress
+	// Determine recipient address
+	recipientAddress := req.RecipientAddress
+	if recipientAddress == "" && req.Wallet != "" {
+		recipientAddress = req.Wallet
 	}
-
-	if !common.IsHexAddress(address) {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid wallet address"})
+	if recipientAddress == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Recipient address is required"})
 		return
 	}
 
-	// Validate amount (already in wei)
-	weiAmount, ok := new(big.Int).SetString(req.Amount, 10)
+	// Validate address
+	if !common.IsHexAddress(recipientAddress) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid recipient address"})
+		return
+	}
+
+	// Parse amount
+	amount := new(big.Int)
+	_, ok := amount.SetString(req.Amount, 10)
 	if !ok {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid amount format"})
 		return
 	}
 
-	// Check max amount (1000 BOGO)
+	// Check max amount (1000 BOGO = 1000 * 10^18 wei)
 	maxAmount := new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18))
-	if weiAmount.Cmp(maxAmount) > 0 {
+	if amount.Cmp(maxAmount) > 0 {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Amount exceeds maximum (1000 BOGO)"})
 		return
 	}
 
-	walletAddr := common.HexToAddress(address)
-
-	// Use reason or rewardType
+	// Use reason or rewardType (for backward compatibility)
 	reason := req.Reason
 	if reason == "" {
 		reason = req.RewardType
 	}
+	if reason == "" {
+		reason = "custom_reward"
+	}
+
+	recipientAddr := common.HexToAddress(recipientAddress)
 
 	// Claim custom reward
-	tx, err := h.SDK.ClaimCustomReward(walletAddr, weiAmount, reason)
+	tx, err := sdk.ClaimCustomReward(recipientAddr, amount, reason)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming custom reward: %v", err)})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Failed to claim custom reward: %v", err)})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"txHash":  tx.Hash().Hex(),
-		"amount":  req.Amount,
-		"reason":  reason,
-	})
+	// Return success response
+	response := gin.H{
+		"success":         true,
+		"transactionHash": tx.Hash().Hex(),
+		"recipient":       recipientAddress,
+		"amount":          req.Amount,
+		"reason":          reason,
+	}
+
+	// Add network info if using network handler
+	if h.NetworkHandler != nil {
+		network := c.Query("network")
+		if network == "" {
+			network = c.GetHeader("X-Network")
+		}
+		if network == "" {
+			network = "testnet"
+		}
+		response["network"] = network
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
-// ClaimCustomRewardV2WithNetwork handles custom reward claims with network support
-func (h *Handler) ClaimCustomRewardV2WithNetwork(c *gin.Context) {
-	// Get network from query parameter
+// authenticateBackendRequest checks if the request is from a trusted backend
+func (h *Handler) authenticateBackendRequest(c *gin.Context) bool {
+	// Support both Authorization and X-Backend-Auth headers for backward compatibility
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		authHeader = c.GetHeader("X-Backend-Auth")
+	}
 	network := c.Query("network")
 	if network == "" {
-		network = "mainnet" // Default to mainnet
-		if h.Config.Environment == "development" {
-			network = "testnet" // Default to testnet in dev
-		}
+		network = c.GetHeader("X-Network")
+	}
+	if network == "" {
+		network = "testnet"
 	}
 
-	// Log incoming request
-	fmt.Printf("[ClaimCustomReward] Network: %s, Environment: %s\n", network, h.Config.Environment)
-
-	// Get the appropriate SDK
-	sdk, err := h.NetworkHandler.GetSDK(network)
-	if err != nil {
-		fmt.Printf("[ClaimCustomReward] SDK error for network %s: %v\n", network, err)
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: fmt.Sprintf("Invalid network: %v", err)})
-		return
-	}
-
-	// Check backend authentication based on network
-	authHeader := c.GetHeader("X-Backend-Auth")
 	var expectedSecret string
 	if network == "testnet" {
 		expectedSecret = h.Config.DevBackendSecret
-		fmt.Printf("[ClaimCustomReward] Using DevBackendSecret for testnet, configured: %v\n", expectedSecret != "")
+		if expectedSecret == "" {
+			expectedSecret = h.Config.BackendSecret // fallback
+		}
 	} else {
 		expectedSecret = h.Config.BackendSecret
-		fmt.Printf("[ClaimCustomReward] Using BackendSecret for mainnet, configured: %v\n", expectedSecret != "")
-	}
-
-	// Log auth details (partial for security)
-	if authHeader != "" {
-		fmt.Printf("[ClaimCustomReward] Auth header received, first 10 chars: %s...\n", authHeader[:10])
-	} else {
-		fmt.Printf("[ClaimCustomReward] No auth header received\n")
-	}
-
-	// Log for debugging (remove in production)
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Missing X-Backend-Auth header"})
-		return
-	}
-
-	if expectedSecret == "" {
-		fmt.Printf("[ClaimCustomReward] ERROR: Backend secret not configured for %s network\n", network)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Backend secret not configured for %s network", network)})
-		return
 	}
 
 	if authHeader != expectedSecret {
-		fmt.Printf("[ClaimCustomReward] Auth mismatch - expected first 10: %s...\n", expectedSecret[:10])
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Invalid authentication"})
-		return
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Invalid backend authentication"})
+		return false
 	}
 
-	fmt.Printf("[ClaimCustomReward] Authentication successful for %s network\n", network)
-
-	var req ClaimCustomRewardRequestV2
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request"})
-		return
-	}
-
-	// Accept either wallet or recipientAddress
-	address := req.Wallet
-	if address == "" {
-		address = req.RecipientAddress
-	}
-
-	if !common.IsHexAddress(address) {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid wallet address"})
-		return
-	}
-
-	// Validate amount (already in wei)
-	weiAmount, ok := new(big.Int).SetString(req.Amount, 10)
-	if !ok {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid amount format"})
-		return
-	}
-
-	// Check max amount (1000 BOGO)
-	maxAmount := new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18))
-	if weiAmount.Cmp(maxAmount) > 0 {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Amount exceeds maximum (1000 BOGO)"})
-		return
-	}
-
-	walletAddr := common.HexToAddress(address)
-
-	// Use reason or rewardType
-	reason := req.Reason
-	if reason == "" {
-		reason = req.RewardType
-	}
-
-	// Claim custom reward using the network-specific SDK
-	tx, err := sdk.ClaimCustomReward(walletAddr, weiAmount, reason)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming custom reward: %v", err)})
-		return
-	}
-
-	// Get transaction details for gas info
-	gasPrice := tx.GasPrice()
-	gasLimit := tx.Gas()
-	estimatedGasCost := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit)))
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"txHash":  tx.Hash().Hex(),
-		"amount":  req.Amount,
-		"reason":  reason,
-		"network": network,
-		"gas": gin.H{
-			"gasPrice":      gasPrice.String(),         // in wei
-			"gasLimit":      gasLimit,                  // gas units
-			"estimatedCost": estimatedGasCost.String(), // in wei
-			"gasPriceGwei":  new(big.Float).Quo(new(big.Float).SetInt(gasPrice), big.NewFloat(1e9)).String(),
-		},
-	})
+	return true
 }
 
 // CheckRewardEligibility checks what rewards a user can claim
@@ -409,11 +391,53 @@ func (h *Handler) GetRewardHistory(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement claim history from database
+	walletAddr := wallet.(string)
+
+	// Get reward claims from storage
+	rewardClaims, err := h.Storage.GetRewardClaimsByWallet(c.Request.Context(), walletAddr, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve claim history"})
+		return
+	}
+
+	// Get referral claims from storage
+	referralClaims, err := h.Storage.GetReferralClaimsByWallet(c.Request.Context(), walletAddr, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to retrieve referral history"})
+		return
+	}
+
+	// Combine and format the claims
+	var allClaims []gin.H
+
+	for _, claim := range rewardClaims {
+		allClaims = append(allClaims, gin.H{
+			"type":       "reward",
+			"templateId": claim.TemplateID,
+			"amount":     claim.Amount,
+			"status":     claim.Status,
+			"txHash":     claim.TxHash,
+			"claimedAt":  claim.ClaimedAt,
+			"network":    claim.Network,
+		})
+	}
+
+	for _, claim := range referralClaims {
+		allClaims = append(allClaims, gin.H{
+			"type":            "referral",
+			"referrerAddress": claim.ReferrerAddress,
+			"bonusAmount":     claim.BonusAmount,
+			"status":          claim.Status,
+			"txHash":          claim.TxHash,
+			"claimedAt":       claim.ClaimedAt,
+			"network":         claim.Network,
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"wallet":  wallet,
-		"claims":  []interface{}{},
-		"message": "Claim history not yet implemented",
+		"wallet": walletAddr,
+		"claims": allClaims,
+		"total":  len(allClaims),
 	})
 }
 
@@ -434,4 +458,99 @@ func AuthMiddleware(auth *middleware.AuthMiddleware) gin.HandlerFunc {
 			c.Next()
 		})).ServeHTTP(c.Writer, c.Request)
 	}
+}
+
+// ======= BACKWARD COMPATIBILITY - V2 Methods =======
+// These are kept for backward compatibility but internally call the new methods
+
+// ClaimRewardV2 - DEPRECATED: Use ClaimReward instead
+func (h *Handler) ClaimRewardV2(c *gin.Context) {
+	// Get wallet from JWT context (set by middleware)
+	wallet, exists := c.Get("wallet")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		return
+	}
+
+	var req ClaimRewardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid request"})
+		return
+	}
+
+	walletAddr := common.HexToAddress(wallet.(string))
+
+	// Check eligibility first
+	eligible, reason, err := h.SDK.CheckRewardEligibility(req.TemplateID, walletAddr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error checking eligibility: %v", err)})
+		return
+	}
+
+	if !eligible {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: reason})
+		return
+	}
+
+	// Get template info for amount
+	template, err := h.SDK.GetRewardTemplate(req.TemplateID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error getting template: %v", err)})
+		return
+	}
+
+	// Store claim record with pending status
+	claimRecord := &models.RewardClaim{
+		WalletAddress: wallet.(string),
+		TemplateID:    req.TemplateID,
+		Amount:        template.FixedAmount.String(),
+		Status:        "pending",
+		ClaimedAt:     time.Now(),
+		Network:       "camino",
+	}
+
+	err = h.Storage.CreateRewardClaim(c.Request.Context(), claimRecord)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to record claim"})
+		return
+	}
+
+	// Claim reward
+	tx, err := h.SDK.ClaimRewardV2(req.TemplateID, walletAddr)
+	if err != nil {
+		// Update claim status to failed
+		h.Storage.UpdateRewardClaimStatus(c.Request.Context(), claimRecord.ID, "failed", "")
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("Error claiming reward: %v", err)})
+		return
+	}
+
+	// Update claim status to completed
+	h.Storage.UpdateRewardClaimStatus(c.Request.Context(), claimRecord.ID, "completed", tx.Hash().Hex())
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"txHash":  tx.Hash().Hex(),
+		"message": fmt.Sprintf("Successfully claimed %s", req.TemplateID),
+		"claimId": claimRecord.ID,
+	})
+}
+
+// ClaimCustomRewardUnified - DEPRECATED: Use ClaimCustomReward instead
+func (h *Handler) ClaimCustomRewardUnified(c *gin.Context) {
+	h.ClaimCustomReward(c)
+}
+
+// ClaimCustomRewardV2 - DEPRECATED: Use ClaimCustomReward instead
+func (h *Handler) ClaimCustomRewardV2(c *gin.Context) {
+	h.ClaimCustomReward(c)
+}
+
+// ClaimReferralV2 - DEPRECATED: Use ClaimReferralBonus instead
+func (h *Handler) ClaimReferralV2(c *gin.Context) {
+	h.ClaimReferralBonus(c)
+}
+
+// ClaimCustomRewardV2WithNetwork - DEPRECATED: Use ClaimCustomReward instead
+func (h *Handler) ClaimCustomRewardV2WithNetwork(c *gin.Context) {
+	h.ClaimCustomReward(c)
 }

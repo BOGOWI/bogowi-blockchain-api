@@ -49,6 +49,9 @@ type ContractAddresses struct {
 	BOGOToken         string `json:"bogo_token"`
 	RewardDistributor string `json:"reward_distributor"`
 
+	// NFT Tickets Contract
+	BOGOWITickets string `json:"bogowi_tickets"`
+
 	// Legacy contracts (to be removed after migration)
 	ConservationNFT  string `json:"conservation_nft"`
 	CommercialNFT    string `json:"commercial_nft"`
@@ -97,7 +100,7 @@ func Load() (*Config, error) {
 
 	// Validate required fields
 	if cfg.TestnetPrivateKey == "" && cfg.MainnetPrivateKey == "" {
-		return nil, fmt.Errorf("At least one private key (TESTNET_PRIVATE_KEY or MAINNET_PRIVATE_KEY) is required")
+		return nil, fmt.Errorf("at least one private key (TESTNET_PRIVATE_KEY or MAINNET_PRIVATE_KEY) is required")
 	}
 
 	return cfg, nil
@@ -132,6 +135,7 @@ func loadFromEnv(cfg *Config) {
 		RoleManager:       getEnv("TESTNET_ROLE_MANAGER_ADDRESS", "0xEB5d2AEf60E6dA1b695b4CBA7DEb9Ab8a9bEc940"),
 		BOGOToken:         getEnv("TESTNET_BOGO_TOKEN_ADDRESS", "0xC53c2f11e1d2e36CB5888BfEE157F78e04Bb4F76"),
 		RewardDistributor: getEnv("TESTNET_REWARD_DISTRIBUTOR_ADDRESS", "0x289cb4E70D0a876E8f885f39D23f8E01E475A111"),
+		BOGOWITickets:     getEnv("NFT_TICKETS_TESTNET_CONTRACT", ""),
 	}
 
 	// Load mainnet contracts - these are the Camino mainnet addresses
@@ -139,6 +143,7 @@ func loadFromEnv(cfg *Config) {
 		RoleManager:       getEnv("MAINNET_ROLE_MANAGER_ADDRESS", "0xD0001e0F542696c9cBDaE3AcD6be7cA6A84A54cc"),
 		BOGOToken:         getEnv("MAINNET_BOGO_TOKEN_ADDRESS", "0x49fc9939D8431371dD22658a8a969Ec798A26fFB"),
 		RewardDistributor: getEnv("MAINNET_REWARD_DISTRIBUTOR_ADDRESS", "0x00439bd5eeED2303bfB64529Dad40C7c3F697724"),
+		BOGOWITickets:     getEnv("NFT_TICKETS_MAINNET_CONTRACT", ""),
 	}
 
 	// For backwards compatibility, also load from simple names based on environment

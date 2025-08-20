@@ -1,14 +1,403 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API for BOGOWI blockchain operations including tokens, NFTs, and DAO functionality",
-        "title": "BOGOWI Blockchain API",
-        "contact": {},
-        "version": "1.0"
+        "contact": {}
     },
-    "host": "web3.bogowi.com",
-    "basePath": "/api",
     "paths": {
+        "/nft/tickets/batch-mint": {
+            "post": {
+                "description": "Mints multiple NFT tickets in a single transaction",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NFT"
+                ],
+                "summary": "Batch mint NFT tickets",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "testnet",
+                        "description": "Network type (testnet/mainnet)",
+                        "name": "X-Network-Type",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Batch mint request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.BatchMintRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/tickets/mint": {
+            "post": {
+                "description": "Mints a new NFT ticket on the blockchain and creates metadata in Datakyte",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NFT"
+                ],
+                "summary": "Mint a new NFT ticket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "testnet",
+                        "description": "Network type (testnet/mainnet)",
+                        "name": "X-Network-Type",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Mint ticket request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.MintTicketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MintTicketResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/tickets/redeem": {
+            "post": {
+                "description": "Redeems an NFT ticket using EIP-712 signature verification",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NFT"
+                ],
+                "summary": "Redeem an NFT ticket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "testnet",
+                        "description": "Network type (testnet/mainnet)",
+                        "name": "X-Network-Type",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Redeem ticket request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.RedeemTicketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/tickets/{tokenId}/image": {
+            "post": {
+                "description": "Uploads an image for an NFT ticket",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NFT"
+                ],
+                "summary": "Upload ticket image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "testnet",
+                        "description": "Network type (testnet/mainnet)",
+                        "name": "X-Network-Type",
+                        "in": "header"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Token ID",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Image file",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/tickets/{tokenId}/metadata": {
+            "get": {
+                "description": "Retrieves metadata for a specific NFT ticket from Datakyte",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NFT"
+                ],
+                "summary": "Get ticket metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "testnet",
+                        "description": "Network type (testnet/mainnet)",
+                        "name": "X-Network-Type",
+                        "in": "header"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Token ID",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/tickets/{tokenId}/status": {
+            "put": {
+                "description": "Updates the status of an NFT ticket (Active, Redeemed, Expired, Burned)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NFT"
+                ],
+                "summary": "Update ticket status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "testnet",
+                        "description": "Network type (testnet/mainnet)",
+                        "name": "X-Network-Type",
+                        "in": "header"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Token ID",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/users/{address}/tickets": {
+            "get": {
+                "description": "Retrieves all NFT tickets owned by a specific address",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NFT"
+                ],
+                "summary": "Get user's NFT tickets",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "testnet",
+                        "description": "Network type (testnet/mainnet)",
+                        "name": "X-Network-Type",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User wallet address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/token/balance/{address}": {
             "get": {
                 "description": "Returns the balance of BOGO tokens for a given address",
@@ -23,6 +412,12 @@
                         "name": "address",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Network (testnet or mainnet)",
+                        "name": "network",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -46,47 +441,23 @@
                     }
                 }
             }
-        },
-        "/token/flavored-balances/{address}": {
-            "get": {
-                "description": "Returns the balance of Ocean, Earth, and Wildlife BOGO tokens",
-                "tags": [
-                    "Tokens"
-                ],
-                "summary": "Get flavored BOGO token balances",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Wallet address",
-                        "name": "address",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/sdk.FlavoredBalances"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
+        "api.BatchMintRequest": {
+            "type": "object",
+            "required": [
+                "tickets"
+            ],
+            "properties": {
+                "tickets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.MintTicketRequest"
+                    }
+                }
+            }
+        },
         "api.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -95,17 +466,124 @@
                 }
             }
         },
-        "sdk.FlavoredBalances": {
+        "api.MintTicketRequest": {
             "type": "object",
+            "required": [
+                "bookingId",
+                "duration",
+                "eventId",
+                "experienceTitle",
+                "experienceType",
+                "expiresAt",
+                "location",
+                "to",
+                "transferableAfter",
+                "validUntil"
+            ],
             "properties": {
-                "address": {
+                "bookingId": {
                     "type": "string"
                 },
-                "balances": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
+                "carbonOffset": {
+                    "type": "integer"
+                },
+                "conservationImpact": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "eventId": {
+                    "type": "string"
+                },
+                "experienceTitle": {
+                    "type": "string"
+                },
+                "experienceType": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "maxParticipants": {
+                    "type": "integer"
+                },
+                "providerContact": {
+                    "type": "string"
+                },
+                "providerName": {
+                    "type": "string"
+                },
+                "recipientName": {
+                    "type": "string"
+                },
+                "rewardBasisPoints": {
+                    "type": "integer"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "transferableAfter": {
+                    "type": "string"
+                },
+                "validUntil": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.MintTicketResponse": {
+            "type": "object",
+            "properties": {
+                "datakyteId": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "metadataUri": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "tokenId": {
+                    "type": "integer"
+                },
+                "txHash": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.RedeemTicketRequest": {
+            "type": "object",
+            "required": [
+                "deadline",
+                "nonce",
+                "redeemer",
+                "signature",
+                "tokenId"
+            ],
+            "properties": {
+                "deadline": {
+                    "type": "integer"
+                },
+                "nonce": {
+                    "type": "integer"
+                },
+                "redeemer": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "tokenId": {
+                    "type": "integer"
                 }
             }
         },

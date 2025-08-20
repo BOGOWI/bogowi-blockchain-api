@@ -1,9 +1,12 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("solidity-coverage");
-require("dotenv").config({ path: "../../.env" }); // Load from root .env
+
+// Load appropriate .env file based on NODE_ENV or default to .env.dev for non-production
+const envFile = process.env.NODE_ENV === 'production' ? "../../.env" : "../../.env.dev";
+require("dotenv").config({ path: envFile });
 
 // Get private key from environment or .env file
-const PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY || process.env.PRIVATE_KEY || "";
+const PRIVATE_KEY = process.env.TESTNET_PRIVATE_KEY || process.env.MAINNET_PRIVATE_KEY || process.env.PRIVATE_KEY || "";
 
 // Network configurations
 const networks = {};
@@ -46,7 +49,8 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      allowUnlimitedContractSize: true
+      allowUnlimitedContractSize: true,
+      chainId: 501 // Use Camino testnet chain ID for testing
     },
     ...networks
   }

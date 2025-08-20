@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"bogowi-blockchain-go/internal/config"
+	"bogowi-blockchain-go/internal/sdk"
+	"bogowi-blockchain-go/internal/storage"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/gin-gonic/gin"
@@ -108,6 +110,13 @@ func TestClaimRewardV2(t *testing.T) {
 			setupMock: func(m *MockSDK) {
 				walletAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
 				m.On("CheckRewardEligibility", "welcome_bonus", walletAddr).Return(true, "", nil)
+				// Mock GetRewardTemplate call
+				fixedAmount := new(big.Int)
+				fixedAmount.SetString("10000000000000000000", 10) // 10 BOGO
+				m.On("GetRewardTemplate", "welcome_bonus").Return(&sdk.RewardTemplate{
+					ID:          "welcome_bonus",
+					FixedAmount: fixedAmount,
+				}, nil)
 				// Return a properly initialized transaction
 				tx := types.NewTransaction(0, common.HexToAddress("0x0"), big.NewInt(0), 0, big.NewInt(0), nil)
 				m.On("ClaimRewardV2", "welcome_bonus", walletAddr).Return(tx, nil)
@@ -140,8 +149,9 @@ func TestClaimRewardV2(t *testing.T) {
 			}
 
 			handler := &Handler{
-				SDK:    mockSDK,
-				Config: cfg,
+				SDK:     mockSDK,
+				Config:  cfg,
+				Storage: storage.NewInMemoryRewardsStorage(),
 			}
 
 			w := httptest.NewRecorder()
@@ -223,8 +233,9 @@ func TestClaimCustomRewardV2(t *testing.T) {
 			}
 
 			handler := &Handler{
-				SDK:    mockSDK,
-				Config: cfg,
+				SDK:     mockSDK,
+				Config:  cfg,
+				Storage: storage.NewInMemoryRewardsStorage(),
 			}
 
 			w := httptest.NewRecorder()
@@ -463,8 +474,9 @@ func TestCheckRewardEligibility(t *testing.T) {
 			}
 
 			handler := &Handler{
-				SDK:    mockSDK,
-				Config: cfg,
+				SDK:     mockSDK,
+				Config:  cfg,
+				Storage: storage.NewInMemoryRewardsStorage(),
 			}
 
 			w := httptest.NewRecorder()

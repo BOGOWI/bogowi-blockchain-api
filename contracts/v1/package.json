@@ -30,7 +30,13 @@
     "check-balance:mainnet": "hardhat run scripts/check-distributor-balance.js --network mainnet",
     "refund-distributor": "hardhat run scripts/refund-distributor.js",
     "refund-distributor:testnet": "hardhat run scripts/refund-distributor.js --network testnet",
-    "refund-distributor:mainnet": "hardhat run scripts/refund-distributor.js --network mainnet"
+    "refund-distributor:mainnet": "hardhat run scripts/refund-distributor.js --network mainnet",
+    "node": "hardhat node",
+    "deploy-nft-local": "hardhat run scripts/deploy-nft-local.js --network localhost",
+    "verify-nft-local": "hardhat run scripts/verify-nft-local.js --network localhost",
+    "test-mint-local": "hardhat run scripts/test-mint-local.js --network localhost",
+    "test-registry-local": "hardhat run scripts/test-registry-local.js --network localhost",
+    "clean-local": "rm -f scripts/deployment-nft-localhost.json"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
