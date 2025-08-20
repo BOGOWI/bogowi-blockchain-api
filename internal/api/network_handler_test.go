@@ -7,6 +7,7 @@ import (
 
 	"bogowi-blockchain-go/internal/config"
 	"bogowi-blockchain-go/internal/sdk"
+	"bogowi-blockchain-go/internal/sdk/nft"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -349,21 +350,162 @@ func TestNetworkHandler_GetSDK_Concurrent(t *testing.T) {
 	}
 }
 
+func TestNetworkHandler_GetNFTSDK(t *testing.T) {
+	// Create mock NFT SDKs for testing
+	mockTestnetNFTSDK := &nft.Client{}
+	mockMainnetNFTSDK := &nft.Client{}
+
+	tests := []struct {
+		name           string
+		handler        *NetworkHandler
+		network        string
+		wantErr        bool
+		errMsg         string
+		expectedNFTSDK *nft.Client
+	}{
+		{
+			name: "get testnet NFT SDK with 'testnet' parameter",
+			handler: &NetworkHandler{
+				testnetNFTSDK: mockTestnetNFTSDK,
+				mainnetNFTSDK: mockMainnetNFTSDK,
+			},
+			network:        "testnet",
+			wantErr:        false,
+			expectedNFTSDK: mockTestnetNFTSDK,
+		},
+		{
+			name: "get testnet NFT SDK with 'columbus' parameter",
+			handler: &NetworkHandler{
+				testnetNFTSDK: mockTestnetNFTSDK,
+				mainnetNFTSDK: mockMainnetNFTSDK,
+			},
+			network:        "columbus",
+			wantErr:        false,
+			expectedNFTSDK: mockTestnetNFTSDK,
+		},
+		{
+			name: "get mainnet NFT SDK with 'mainnet' parameter",
+			handler: &NetworkHandler{
+				testnetNFTSDK: mockTestnetNFTSDK,
+				mainnetNFTSDK: mockMainnetNFTSDK,
+			},
+			network:        "mainnet",
+			wantErr:        false,
+			expectedNFTSDK: mockMainnetNFTSDK,
+		},
+		{
+			name: "get mainnet NFT SDK with 'camino' parameter",
+			handler: &NetworkHandler{
+				testnetNFTSDK: mockTestnetNFTSDK,
+				mainnetNFTSDK: mockMainnetNFTSDK,
+			},
+			network:        "camino",
+			wantErr:        false,
+			expectedNFTSDK: mockMainnetNFTSDK,
+		},
+		{
+			name: "error when testnet NFT SDK not initialized",
+			handler: &NetworkHandler{
+				testnetNFTSDK: nil,
+				mainnetNFTSDK: mockMainnetNFTSDK,
+			},
+			network: "testnet",
+			wantErr: true,
+			errMsg:  "testnet NFT SDK not initialized",
+		},
+		{
+			name: "error when mainnet NFT SDK not initialized",
+			handler: &NetworkHandler{
+				testnetNFTSDK: mockTestnetNFTSDK,
+				mainnetNFTSDK: nil,
+			},
+			network: "mainnet",
+			wantErr: true,
+			errMsg:  "mainnet NFT SDK not initialized",
+		},
+		{
+			name: "error with invalid network parameter",
+			handler: &NetworkHandler{
+				testnetNFTSDK: mockTestnetNFTSDK,
+				mainnetNFTSDK: mockMainnetNFTSDK,
+			},
+			network: "invalid",
+			wantErr: true,
+			errMsg:  "invalid network: invalid (use 'testnet' or 'mainnet')",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nftSDK, err := tt.handler.GetNFTSDK(tt.network)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+				assert.Nil(t, nftSDK)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedNFTSDK, nftSDK)
+			}
+		})
+	}
+}
+
+func TestNetworkHandler_GetNFTSDK_Concurrent(t *testing.T) {
+	// Test concurrent access to GetNFTSDK
+	mockTestnetNFTSDK := &nft.Client{}
+	mockMainnetNFTSDK := &nft.Client{}
+
+	handler := &NetworkHandler{
+		testnetNFTSDK: mockTestnetNFTSDK,
+		mainnetNFTSDK: mockMainnetNFTSDK,
+	}
+
+	// Run multiple goroutines accessing GetNFTSDK concurrently
+	done := make(chan bool, 20)
+	for i := 0; i < 10; i++ {
+		go func() {
+			nftSDK, err := handler.GetNFTSDK("testnet")
+			assert.NoError(t, err)
+			assert.NotNil(t, nftSDK)
+			done <- true
+		}()
+
+		go func() {
+			nftSDK, err := handler.GetNFTSDK("mainnet")
+			assert.NoError(t, err)
+			assert.NotNil(t, nftSDK)
+			done <- true
+		}()
+	}
+
+	// Wait for all goroutines to complete
+	for i := 0; i < 20; i++ {
+		<-done
+	}
+}
+
 func TestNetworkHandler_Close(t *testing.T) {
 	tests := []struct {
 		name               string
 		handler            *NetworkHandler
 		expectTestnetClose bool
 		expectMainnetClose bool
+		expectTestnetNFTClose bool
+		expectMainnetNFTClose bool
 	}{
 		{
-			name: "close both SDKs",
+			name: "close all SDKs including NFT SDKs",
 			handler: &NetworkHandler{
 				testnetSDK: &TestMockSDK{},
 				mainnetSDK: &TestMockSDK{},
+				testnetNFTSDK: &nft.Client{},
+				mainnetNFTSDK: &nft.Client{},
 			},
 			expectTestnetClose: true,
 			expectMainnetClose: true,
+			expectTestnetNFTClose: true,
+			expectMainnetNFTClose: true,
 		},
 		{
 			name: "close only testnet SDK",

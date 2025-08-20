@@ -1,18 +1,101 @@
-basePath: /api
 definitions:
+  api.BatchMintRequest:
+    properties:
+      tickets:
+        items:
+          $ref: '#/definitions/api.MintTicketRequest'
+        type: array
+    required:
+    - tickets
+    type: object
   api.ErrorResponse:
     properties:
       error:
         type: string
     type: object
-  sdk.FlavoredBalances:
+  api.MintTicketRequest:
     properties:
-      address:
+      bookingId:
         type: string
-      balances:
-        additionalProperties:
-          type: string
-        type: object
+      carbonOffset:
+        type: integer
+      conservationImpact:
+        type: string
+      duration:
+        type: string
+      eventId:
+        type: string
+      experienceTitle:
+        type: string
+      experienceType:
+        type: string
+      expiresAt:
+        type: string
+      imageUrl:
+        type: string
+      location:
+        type: string
+      maxParticipants:
+        type: integer
+      providerContact:
+        type: string
+      providerName:
+        type: string
+      recipientName:
+        type: string
+      rewardBasisPoints:
+        type: integer
+      to:
+        type: string
+      transferableAfter:
+        type: string
+      validUntil:
+        type: string
+    required:
+    - bookingId
+    - duration
+    - eventId
+    - experienceTitle
+    - experienceType
+    - expiresAt
+    - location
+    - to
+    - transferableAfter
+    - validUntil
+    type: object
+  api.MintTicketResponse:
+    properties:
+      datakyteId:
+        type: string
+      message:
+        type: string
+      metadataUri:
+        type: string
+      success:
+        type: boolean
+      tokenId:
+        type: integer
+      txHash:
+        type: string
+    type: object
+  api.RedeemTicketRequest:
+    properties:
+      deadline:
+        type: integer
+      nonce:
+        type: integer
+      redeemer:
+        type: string
+      signature:
+        type: string
+      tokenId:
+        type: integer
+    required:
+    - deadline
+    - nonce
+    - redeemer
+    - signature
+    - tokenId
     type: object
   sdk.TokenBalance:
     properties:
@@ -21,14 +104,275 @@ definitions:
       balance:
         type: string
     type: object
-host: web3.bogowi.com
 info:
   contact: {}
-  description: API for BOGOWI blockchain operations including tokens, NFTs, and DAO
-    functionality
-  title: BOGOWI Blockchain API
-  version: "1.0"
 paths:
+  /nft/tickets/{tokenId}/image:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an image for an NFT ticket
+      parameters:
+      - default: testnet
+        description: Network type (testnet/mainnet)
+        in: header
+        name: X-Network-Type
+        type: string
+      - description: Token ID
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      - description: Image file
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Upload ticket image
+      tags:
+      - NFT
+  /nft/tickets/{tokenId}/metadata:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves metadata for a specific NFT ticket from Datakyte
+      parameters:
+      - default: testnet
+        description: Network type (testnet/mainnet)
+        in: header
+        name: X-Network-Type
+        type: string
+      - description: Token ID
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get ticket metadata
+      tags:
+      - NFT
+  /nft/tickets/{tokenId}/status:
+    put:
+      consumes:
+      - application/json
+      description: Updates the status of an NFT ticket (Active, Redeemed, Expired,
+        Burned)
+      parameters:
+      - default: testnet
+        description: Network type (testnet/mainnet)
+        in: header
+        name: X-Network-Type
+        type: string
+      - description: Token ID
+        in: path
+        name: tokenId
+        required: true
+        type: integer
+      - description: Status update request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update ticket status
+      tags:
+      - NFT
+  /nft/tickets/batch-mint:
+    post:
+      consumes:
+      - application/json
+      description: Mints multiple NFT tickets in a single transaction
+      parameters:
+      - default: testnet
+        description: Network type (testnet/mainnet)
+        in: header
+        name: X-Network-Type
+        type: string
+      - description: Batch mint request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.BatchMintRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Batch mint NFT tickets
+      tags:
+      - NFT
+  /nft/tickets/mint:
+    post:
+      consumes:
+      - application/json
+      description: Mints a new NFT ticket on the blockchain and creates metadata in
+        Datakyte
+      parameters:
+      - default: testnet
+        description: Network type (testnet/mainnet)
+        in: header
+        name: X-Network-Type
+        type: string
+      - description: Mint ticket request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.MintTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.MintTicketResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Mint a new NFT ticket
+      tags:
+      - NFT
+  /nft/tickets/redeem:
+    post:
+      consumes:
+      - application/json
+      description: Redeems an NFT ticket using EIP-712 signature verification
+      parameters:
+      - default: testnet
+        description: Network type (testnet/mainnet)
+        in: header
+        name: X-Network-Type
+        type: string
+      - description: Redeem ticket request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RedeemTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Redeem an NFT ticket
+      tags:
+      - NFT
+  /nft/users/{address}/tickets:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all NFT tickets owned by a specific address
+      parameters:
+      - default: testnet
+        description: Network type (testnet/mainnet)
+        in: header
+        name: X-Network-Type
+        type: string
+      - description: User wallet address
+        in: path
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get user's NFT tickets
+      tags:
+      - NFT
   /token/balance/{address}:
     get:
       description: Returns the balance of BOGO tokens for a given address
@@ -37,6 +381,10 @@ paths:
         in: path
         name: address
         required: true
+        type: string
+      - description: Network (testnet or mainnet)
+        in: query
+        name: network
         type: string
       responses:
         "200":
@@ -52,31 +400,6 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get BOGO token balance
-      tags:
-      - Tokens
-  /token/flavored-balances/{address}:
-    get:
-      description: Returns the balance of Ocean, Earth, and Wildlife BOGO tokens
-      parameters:
-      - description: Wallet address
-        in: path
-        name: address
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/sdk.FlavoredBalances'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get flavored BOGO token balances
       tags:
       - Tokens
 swagger: "2.0"

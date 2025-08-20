@@ -1,0 +1,136 @@
+# Local Development Configuration for BOGOWI Go API
+# Usage: go run cmd/api/main.go --config config.local.yaml
+
+# API Server Configuration
+server:
+  port: 8080
+  host: localhost
+  cors:
+    allowed_origins:
+      - http://localhost:3000
+      - http://localhost:3001
+      - http://127.0.0.1:3000
+    allowed_methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowed_headers:
+      - Content-Type
+      - Authorization
+      - X-API-Key
+
+# Blockchain Networks
+networks:
+  local:
+    rpc_url: http://127.0.0.1:8545
+    chain_id: 501
+    name: "Local Hardhat Network"
+    explorer_url: ""
+    contracts:
+      role_manager: "0x9A676e781A523b5d0C0e43731313A708CB607508"
+      bogo_token: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"
+      nft_registry: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed"
+      bogowi_tickets: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c"
+    
+  testnet:
+    rpc_url: http://127.0.0.1:8545  # Using local for testing
+    chain_id: 501
+    name: "Local Test Network"
+    contracts:
+      role_manager: "0x9A676e781A523b5d0C0e43731313A708CB607508"
+      bogo_token: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"
+      nft_registry: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed"
+      bogowi_tickets: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c"
+
+  mainnet:
+    rpc_url: http://127.0.0.1:8545  # Using local for testing
+    chain_id: 501
+    name: "Local Main Network"
+    contracts:
+      role_manager: "0x9A676e781A523b5d0C0e43731313A708CB607508"
+      bogo_token: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"
+      nft_registry: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed"
+      bogowi_tickets: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c"
+
+# Default network for operations
+default_network: local
+
+# Signer Configuration
+signers:
+  admin:
+    address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+    private_key: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+  
+  minter:
+    address: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+    private_key: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
+  
+  backend:
+    address: "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
+    private_key: "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6"
+
+# Database Configuration
+database:
+  url: "postgresql://bogowi:bogowi@localhost:5432/bogowi_local"
+  max_connections: 10
+  max_idle_connections: 5
+
+# Redis Configuration
+redis:
+  url: "redis://localhost:6379"
+  db: 0
+
+# Datakyte Service
+datakyte:
+  api_url: "https://api.datakyte.com"
+  api_key: "your-datakyte-key-here"
+  testnet_contract: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c"
+  mainnet_contract: "0x0000000000000000000000000000000000000000"
+
+# Storage Service
+storage:
+  service_url: "http://localhost:3002"
+  upload_path: "/tmp/bogowi-images"
+  max_file_size: 10485760  # 10MB
+
+# Logging
+logging:
+  level: debug
+  format: json
+  output: stdout
+
+# Security
+security:
+  api_key: "test-api-key"
+  jwt_secret: "local-dev-secret-change-in-production"
+  rate_limit:
+    requests_per_minute: 100
+    burst: 10
+
+# Gas Configuration
+gas:
+  max_gas_limit: 3000000
+  max_gas_price: 50000000000  # 50 Gwei
+  max_priority_fee: 2000000000 # 2 Gwei
+
+# Feature Flags
+features:
+  enable_testnet: true
+  enable_mainnet: false
+  enable_local: true
+  use_local_blockchain: true
+  enable_datakyte: false  # Disable for local testing
+  enable_image_upload: true
+
+# Conservation DAO
+conservation_dao:
+  address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+
+# Test Users (for development)
+test_users:
+  - address: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
+    name: "Test User 1"
+  - address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
+    name: "Test User 2"

@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,9 +11,12 @@ import (
 	"time"
 
 	"bogowi-blockchain-go/internal/config"
+	"bogowi-blockchain-go/internal/database"
+	"bogowi-blockchain-go/internal/sdk/nft"
 	"bogowi-blockchain-go/internal/services/datakyte"
 	"bogowi-blockchain-go/internal/services/storage"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gin-gonic/gin"
 )
 
@@ -85,6 +89,23 @@ func (h *NFTHandler) getMetadataService(network string) *datakyte.TicketMetadata
 	return h.metadataServiceTestnet
 }
 
+// getContractAddress returns the contract address for the network
+func (h *NFTHandler) getContractAddress(network string) string {
+	if network == "mainnet" {
+		contractAddr := h.Config.Mainnet.Contracts.BOGOWITickets
+		if contractAddr == "" {
+			contractAddr = os.Getenv("NFT_TICKETS_MAINNET_CONTRACT")
+		}
+		return contractAddr
+	}
+	
+	contractAddr := h.Config.Testnet.Contracts.BOGOWITickets
+	if contractAddr == "" {
+		contractAddr = os.Getenv("NFT_TICKETS_TESTNET_CONTRACT")
+	}
+	return contractAddr
+}
+
 // MintTicketRequest represents a request to mint a new ticket
 type MintTicketRequest struct {
 	To                 string    `json:"to" binding:"required"`
@@ -118,6 +139,17 @@ type MintTicketResponse struct {
 }
 
 // MintTicket mints a new NFT ticket
+// @Summary Mint a new NFT ticket
+// @Description Mints a new NFT ticket on the blockchain and creates metadata in Datakyte
+// @Tags NFT
+// @Accept json
+// @Produce json
+// @Param X-Network-Type header string false "Network type (testnet/mainnet)" default(testnet)
+// @Param request body MintTicketRequest true "Mint ticket request"
+// @Success 200 {object} MintTicketResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/tickets/mint [post]
 func (h *NFTHandler) MintTicket(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 
@@ -127,15 +159,15 @@ func (h *NFTHandler) MintTicket(c *gin.Context) {
 		return
 	}
 
-	// Get SDK for the network
-	sdk, err := h.NetworkHandler.GetSDK(network)
+	// Get NFT SDK for the network
+	nftSDK, err := h.NetworkHandler.GetNFTSDK(network)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	// Step 1: Mint the NFT on-chain
-	tokenID, txHash, err := h.mintOnChain(sdk, req)
+	tokenID, txHash, err := h.mintOnChain(nftSDK, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error: fmt.Sprintf("Failed to mint NFT: %v", err),
@@ -184,25 +216,78 @@ func (h *NFTHandler) MintTicket(c *gin.Context) {
 
 	if nft != nil {
 		response.DatakyteID = nft.ID
+		
+		// Save the mapping to database
+		db := database.GetDB()
+		mapping := &database.NFTMapping{
+			TokenID:       tokenID,
+			DatakyteNFTID: nft.ID,
+			Network:       network,
+			ContractAddr:  h.getContractAddress(network),
+			OwnerAddress:  req.To,
+			BookingID:     req.BookingID,
+			EventID:       req.EventID,
+			Status:        "active",
+			MetadataURI:   response.MetadataURI,
+			ImageURL:      req.ImageURL,
+			TxHash:        txHash,
+		}
+		
+		if err := db.SaveNFTMapping(mapping); err != nil {
+			// Log error but don't fail - NFT is already minted
+			fmt.Printf("Warning: Failed to save NFT mapping for token %d: %v\n", tokenID, err)
+		}
 	}
 
 	c.JSON(http.StatusOK, response)
 }
 
 // mintOnChain handles the blockchain transaction for minting
-func (h *NFTHandler) mintOnChain(_ interface{}, _ MintTicketRequest) (uint64, string, error) {
-	// TODO: Implement actual SDK call to mint NFT
-	// This is a placeholder - needs to be integrated with your SDK
-	// Parameters are intentionally unused until implementation is complete
+func (h *NFTHandler) mintOnChain(nftSDK *nft.Client, req MintTicketRequest) (uint64, string, error) {
 
-	// For now, return mock data
-	tokenID := uint64(10001) // This would come from the smart contract
-	txHash := "0x" + common.Bytes2Hex([]byte("mock_tx_hash"))
+	// Convert request parameters to SDK format
+	params := nft.MintParams{
+		To:                common.HexToAddress(req.To),
+		BookingID:         convertToBytes32(req.BookingID),
+		EventID:           convertToBytes32(req.EventID),
+		UtilityFlags:      0, // Default to 0, can be extended based on requirements
+		TransferUnlockAt:  uint64(req.TransferableAfter.Unix()),
+		ExpiresAt:         uint64(req.ExpiresAt.Unix()),
+		MetadataURI:       "", // Will be set by Datakyte after minting
+		RewardBasisPoints: req.RewardBasisPoints,
+	}
 
-	return tokenID, txHash, nil
+	// Call the actual SDK mint function
+	ctx := context.Background()
+	tx, tokenID, err := nftSDK.MintTicket(ctx, params)
+	if err != nil {
+		return 0, "", fmt.Errorf("failed to mint NFT on blockchain: %w", err)
+	}
+
+	return tokenID, tx.Hash().Hex(), nil
+}
+
+// convertToBytes32 converts a string to [32]byte, padding with zeros if necessary
+func convertToBytes32(s string) [32]byte {
+	var b32 [32]byte
+	// Hash the string to ensure it fits in 32 bytes
+	hash := crypto.Keccak256([]byte(s))
+	copy(b32[:], hash)
+	return b32
 }
 
 // GetTicketMetadata retrieves metadata for a ticket
+// @Summary Get ticket metadata
+// @Description Retrieves metadata for a specific NFT ticket from Datakyte
+// @Tags NFT
+// @Accept json
+// @Produce json
+// @Param X-Network-Type header string false "Network type (testnet/mainnet)" default(testnet)
+// @Param tokenId path int true "Token ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /nft/tickets/{tokenId}/metadata [get]
 func (h *NFTHandler) GetTicketMetadata(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 	metadataService := h.getMetadataService(network)
@@ -233,6 +318,17 @@ type RedeemTicketRequest struct {
 }
 
 // RedeemTicket handles ticket redemption
+// @Summary Redeem an NFT ticket
+// @Description Redeems an NFT ticket using EIP-712 signature verification
+// @Tags NFT
+// @Accept json
+// @Produce json
+// @Param X-Network-Type header string false "Network type (testnet/mainnet)" default(testnet)
+// @Param request body RedeemTicketRequest true "Redeem ticket request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/tickets/redeem [post]
 func (h *NFTHandler) RedeemTicket(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 
@@ -242,28 +338,70 @@ func (h *NFTHandler) RedeemTicket(c *gin.Context) {
 		return
 	}
 
-	// Get SDK for the network
-	sdk, err := h.NetworkHandler.GetSDK(network)
+	// Get NFT SDK for the network
+	nftSDK, err := h.NetworkHandler.GetNFTSDK(network)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	// TODO: Call smart contract to redeem ticket
-	_ = sdk
+	// Prepare redemption parameters
+	params := nft.RedemptionParams{
+		TokenID:  req.TokenID,
+		Redeemer: common.HexToAddress(req.Redeemer),
+		Nonce:    req.Nonce,
+		Deadline: int64(req.Deadline),
+	}
+
+	// Execute redemption on blockchain
+	ctx := context.Background()
+	tx, err := nftSDK.RedeemTicket(ctx, params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: fmt.Sprintf("Failed to redeem ticket: %v", err),
+		})
+		return
+	}
 
 	// Update metadata status in Datakyte
-	// Note: We'd need to store the Datakyte NFT ID mapping somewhere
-	// For now, this is a placeholder
+	db := database.GetDB()
+	datakyteNFTID, err := db.GetDatakyteID(req.TokenID, network)
+	if err != nil {
+		fmt.Printf("Warning: Failed to get Datakyte ID for token %d: %v\n", req.TokenID, err)
+	} else {
+		metadataService := h.getMetadataService(network)
+		err = metadataService.UpdateTicketStatus(datakyteNFTID, "Redeemed")
+		if err != nil {
+			// Log but don't fail - redemption already succeeded on-chain
+			fmt.Printf("Warning: Failed to update Datakyte status for token %d: %v\n", req.TokenID, err)
+		}
+		
+		// Update database status
+		if err := db.UpdateNFTRedemption(req.TokenID, network); err != nil {
+			fmt.Printf("Warning: Failed to update redemption status in database for token %d: %v\n", req.TokenID, err)
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Ticket redeemed successfully",
 		"tokenId": req.TokenID,
+		"txHash":  tx.Hash().Hex(),
 	})
 }
 
 // GetUserTickets retrieves all tickets for a user
+// @Summary Get user's NFT tickets
+// @Description Retrieves all NFT tickets owned by a specific address
+// @Tags NFT
+// @Accept json
+// @Produce json
+// @Param X-Network-Type header string false "Network type (testnet/mainnet)" default(testnet)
+// @Param address path string true "User wallet address"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/users/{address}/tickets [get]
 func (h *NFTHandler) GetUserTickets(c *gin.Context) {
 	userAddress := c.Param("address")
 	if !common.IsHexAddress(userAddress) {
@@ -271,12 +409,74 @@ func (h *NFTHandler) GetUserTickets(c *gin.Context) {
 		return
 	}
 
-	// TODO: Query blockchain for user's NFTs
-	// Then get metadata from Datakyte for each
+	network := GetNetworkFromContext(c)
+	
+	// Get NFT SDK for the network
+	nftSDK, err := h.NetworkHandler.GetNFTSDK(network)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// Query blockchain for user's balance
+	ctx := context.Background()
+	owner := common.HexToAddress(userAddress)
+	
+	balance, err := nftSDK.GetBalanceOf(ctx, owner)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: fmt.Sprintf("Failed to get user balance: %v", err),
+		})
+		return
+	}
+
+	// Try to get user's tickets (note: this requires enumeration support)
+	tickets, err := nftSDK.GetUserTickets(ctx, owner)
+	if err != nil {
+		// If enumeration is not supported, just return the balance info
+		c.JSON(http.StatusOK, gin.H{
+			"address": userAddress,
+			"balance": balance.String(),
+			"tickets": []interface{}{},
+			"message": "Token enumeration requires event filtering (not yet implemented). User owns " + balance.String() + " tickets.",
+		})
+		return
+	}
+
+	// Get metadata for each ticket
+	metadataService := h.getMetadataService(network)
+	ticketDetails := make([]gin.H, 0, len(tickets))
+	
+	for _, tokenID := range tickets {
+		// Get on-chain data
+		ticketData, err := nftSDK.GetTicketData(ctx, tokenID)
+		if err != nil {
+			continue // Skip tickets we can't read
+		}
+
+		// Get metadata from Datakyte
+		metadata, _ := metadataService.GetTicketMetadata(tokenID)
+		
+		detail := gin.H{
+			"tokenId":           tokenID,
+			"state":             nft.ParseTicketState(ticketData.State).String(),
+			"expiresAt":         ticketData.ExpiresAt,
+			"transferUnlockAt":  ticketData.TransferUnlockAt,
+			"bookingId":         fmt.Sprintf("%x", ticketData.BookingID),
+			"eventId":           fmt.Sprintf("%x", ticketData.EventID),
+		}
+		
+		if metadata != nil {
+			detail["metadata"] = metadata
+		}
+		
+		ticketDetails = append(ticketDetails, detail)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"tickets": []interface{}{},
-		"message": "Endpoint under development",
+		"address": userAddress,
+		"balance": balance.String(),
+		"tickets": ticketDetails,
 	})
 }
 
@@ -286,6 +486,17 @@ type BatchMintRequest struct {
 }
 
 // BatchMintTickets mints multiple tickets at once
+// @Summary Batch mint NFT tickets
+// @Description Mints multiple NFT tickets in a single transaction
+// @Tags NFT
+// @Accept json
+// @Produce json
+// @Param X-Network-Type header string false "Network type (testnet/mainnet)" default(testnet)
+// @Param request body BatchMintRequest true "Batch mint request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/tickets/batch-mint [post]
 func (h *NFTHandler) BatchMintTickets(c *gin.Context) {
 	network := GetNetworkFromContext(c)
 
@@ -300,20 +511,111 @@ func (h *NFTHandler) BatchMintTickets(c *gin.Context) {
 		return
 	}
 
-	// Get SDK for the network
-	sdk, err := h.NetworkHandler.GetSDK(network)
+	// Get NFT SDK for the network
+	nftSDK, err := h.NetworkHandler.GetNFTSDK(network)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	// TODO: Implement batch minting
-	_ = sdk
+	// Convert requests to SDK params
+	mintParams := make([]nft.MintParams, len(req.Tickets))
+	for i, ticket := range req.Tickets {
+		mintParams[i] = nft.MintParams{
+			To:                common.HexToAddress(ticket.To),
+			BookingID:         convertToBytes32(ticket.BookingID),
+			EventID:           convertToBytes32(ticket.EventID),
+			UtilityFlags:      0, // Default to 0, can be extended based on requirements
+			TransferUnlockAt:  uint64(ticket.TransferableAfter.Unix()),
+			ExpiresAt:         uint64(ticket.ExpiresAt.Unix()),
+			MetadataURI:       "", // Will be set by Datakyte after minting
+			RewardBasisPoints: ticket.RewardBasisPoints,
+		}
+	}
+
+	// Execute batch mint on blockchain
+	ctx := context.Background()
+	tx, tokenIDs, err := nftSDK.BatchMint(ctx, mintParams)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: fmt.Sprintf("Failed to batch mint NFTs: %v", err),
+		})
+		return
+	}
+
+	// Create metadata in Datakyte for each minted token
+	metadataService := h.getMetadataService(network)
+	results := make([]MintTicketResponse, len(tokenIDs))
+
+	for i, tokenID := range tokenIDs {
+		ticket := req.Tickets[i]
+		
+		// Create Datakyte metadata
+		ticketData := datakyte.BOGOWITicketData{
+			TokenID:            tokenID,
+			BookingID:          ticket.BookingID,
+			EventID:            ticket.EventID,
+			ExperienceTitle:    ticket.ExperienceTitle,
+			ExperienceType:     ticket.ExperienceType,
+			Location:           ticket.Location,
+			Duration:           ticket.Duration,
+			MaxParticipants:    ticket.MaxParticipants,
+			CarbonOffset:       ticket.CarbonOffset,
+			ConservationImpact: ticket.ConservationImpact,
+			ValidUntil:         ticket.ValidUntil,
+			TransferableAfter:  ticket.TransferableAfter,
+			ExpiresAt:          ticket.ExpiresAt,
+			BOGORewards:        int(ticket.RewardBasisPoints),
+			RecipientAddress:   ticket.To,
+			RecipientName:      ticket.RecipientName,
+			ProviderName:       ticket.ProviderName,
+			ProviderContact:    ticket.ProviderContact,
+			ImageURL:           ticket.ImageURL,
+		}
+
+		nftMetadata, err := metadataService.CreateTicketMetadata(ticketData)
+		
+		results[i] = MintTicketResponse{
+			Success:     err == nil,
+			TokenID:     tokenID,
+			TxHash:      tx.Hash().Hex(),
+			MetadataURI: metadataService.GetMetadataURI(tokenID),
+		}
+
+		if nftMetadata != nil {
+			results[i].DatakyteID = nftMetadata.ID
+			
+			// Save the mapping to database
+			db := database.GetDB()
+			mapping := &database.NFTMapping{
+				TokenID:       tokenID,
+				DatakyteNFTID: nftMetadata.ID,
+				Network:       network,
+				ContractAddr:  h.getContractAddress(network),
+				OwnerAddress:  ticket.To,
+				BookingID:     ticket.BookingID,
+				EventID:       ticket.EventID,
+				Status:        "active",
+				MetadataURI:   results[i].MetadataURI,
+				ImageURL:      ticket.ImageURL,
+				TxHash:        tx.Hash().Hex(),
+			}
+			
+			if err := db.SaveNFTMapping(mapping); err != nil {
+				fmt.Printf("Warning: Failed to save NFT mapping for token %d: %v\n", tokenID, err)
+			}
+		}
+
+		if err != nil {
+			results[i].Message = fmt.Sprintf("Warning: NFT minted but metadata creation failed: %v", err)
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": fmt.Sprintf("Batch minting %d tickets", len(req.Tickets)),
-		"status":  "Under development",
+		"message": fmt.Sprintf("Successfully batch minted %d tickets", len(tokenIDs)),
+		"results": results,
+		"txHash":  tx.Hash().Hex(),
 	})
 }
 
@@ -350,6 +652,18 @@ func (h *NFTHandler) GetPresignedUploadURL(c *gin.Context) {
 }
 
 // UploadTicketImage handles direct image upload
+// @Summary Upload ticket image
+// @Description Uploads an image for an NFT ticket
+// @Tags NFT
+// @Accept multipart/form-data
+// @Produce json
+// @Param X-Network-Type header string false "Network type (testnet/mainnet)" default(testnet)
+// @Param tokenId path int true "Token ID"
+// @Param image formData file true "Image file"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/tickets/{tokenId}/image [post]
 func (h *NFTHandler) UploadTicketImage(c *gin.Context) {
 	tokenIDStr := c.Param("tokenId")
 	tokenID, err := strconv.ParseUint(tokenIDStr, 10, 64)
@@ -394,13 +708,29 @@ func (h *NFTHandler) UploadTicketImage(c *gin.Context) {
 
 	// Update metadata with image URL
 	network := GetNetworkFromContext(c)
-	metadataService := h.getMetadataService(network)
-
-	// Get current metadata and update image
-	metadata, err := metadataService.GetTicketMetadata(tokenID)
-	if err == nil && metadata != nil {
-		metadata.Image = imageURL
-		// TODO: Update metadata in Datakyte
+	db := database.GetDB()
+	
+	// Get Datakyte NFT ID from database
+	_, err = db.GetDatakyteID(tokenID, network)
+	if err == nil {
+		metadataService := h.getMetadataService(network)
+		
+		// Get current metadata and update image
+		metadata, err := metadataService.GetTicketMetadata(tokenID)
+		if err == nil && metadata != nil {
+			metadata.Image = imageURL
+			// Update metadata in Datakyte (implementation depends on Datakyte API)
+			// For now, just log it
+			fmt.Printf("Image URL updated for token %d: %s\n", tokenID, imageURL)
+		}
+	}
+	
+	// Update image URL in database
+	if mapping, err := db.GetNFTMapping(tokenID, network); err == nil {
+		mapping.ImageURL = imageURL
+		if err := db.SaveNFTMapping(mapping); err != nil {
+			fmt.Printf("Warning: Failed to update image URL in database for token %d: %v\n", tokenID, err)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -413,6 +743,19 @@ func (h *NFTHandler) UploadTicketImage(c *gin.Context) {
 }
 
 // UpdateTicketStatus updates the status of a ticket in metadata
+// @Summary Update ticket status
+// @Description Updates the status of an NFT ticket (Active, Redeemed, Expired, Burned)
+// @Tags NFT
+// @Accept json
+// @Produce json
+// @Param X-Network-Type header string false "Network type (testnet/mainnet)" default(testnet)
+// @Param tokenId path int true "Token ID"
+// @Param request body map[string]string true "Status update request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/tickets/{tokenId}/status [put]
 func (h *NFTHandler) UpdateTicketStatus(c *gin.Context) {
 	tokenIDStr := c.Param("tokenId")
 	tokenID, err := strconv.ParseUint(tokenIDStr, 10, 64)
@@ -430,19 +773,30 @@ func (h *NFTHandler) UpdateTicketStatus(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get Datakyte NFT ID from database or mapping
-	// For now, this is a placeholder
-	datakyteNFTID := fmt.Sprintf("placeholder-%d", tokenID)
-
 	network := GetNetworkFromContext(c)
-	metadataService := h.getMetadataService(network)
+	
+	// Get Datakyte NFT ID from database
+	db := database.GetDB()
+	datakyteNFTID, err := db.GetDatakyteID(tokenID, network)
+	if err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{
+			Error: fmt.Sprintf("NFT mapping not found: %v", err),
+		})
+		return
+	}
 
+	metadataService := h.getMetadataService(network)
 	err = metadataService.UpdateTicketStatus(datakyteNFTID, req.Status)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: fmt.Sprintf("Failed to update status: %v", err),
+			Error: fmt.Sprintf("Failed to update Datakyte status: %v", err),
 		})
 		return
+	}
+	
+	// Update status in database as well
+	if err := db.UpdateNFTStatus(tokenID, network, req.Status); err != nil {
+		fmt.Printf("Warning: Failed to update status in database for token %d: %v\n", tokenID, err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

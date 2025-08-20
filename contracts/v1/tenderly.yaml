@@ -1,0 +1,41 @@
+# Tenderly Configuration
+# Update account_id and project_slug after login
+
+account_id: supertramp_
+project_slug: bogowi-monitoring
+
+# Contract monitoring configuration
+contracts:
+  # Camino Mainnet (Chain ID: 500)
+  - network: 500
+    contracts:
+      # Core contracts (already deployed)
+      - address: "0xD0001e0F542696c9cBDaE3AcD6be7cA6A84A54cc"
+        name: RoleManager
+      - address: "0x49fc9939D8431371dD22658a8a969Ec798A26fFB"
+        name: BOGOToken
+      - address: "0x00439bd5eeED2303bfB64529Dad40C7c3F697724"
+        name: BOGORewardDistributor
+      
+      # NFT contracts (TO BE ADDED after deployment)
+      # - address: "0x..."
+      #   name: NFTRegistry
+      # - address: "0x..."
+      #   name: BOGOWITickets
+
+  # Columbus Testnet (Chain ID: 501)
+  - network: 501
+    contracts:
+      # Testnet contracts
+      - address: "0xEB5d2AEf60E6dA1b695b4CBA7DEb9Ab8a9bEc940"
+        name: RoleManager
+      - address: "0xC53c2f11e1d2e36CB5888BfEE157F78e04Bb4F76"
+        name: BOGOToken
+      - address: "0x289cb4E70D0a876E8f885f39D23f8E01E475A111"
+        name: BOGORewardDistributor
+      
+      # NFT contracts (TO BE ADDED after deployment)
+      # - address: "0x..."
+      #   name: NFTRegistry
+      # - address: "0x..."
+      #   name: BOGOWITickets

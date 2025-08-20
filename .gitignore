@@ -22,6 +22,16 @@ go.work
 .env.local
 .env.production
 .env.test
+.env.testnet
+.env.mainnet
+
+# Service account credentials - NEVER COMMIT THESE!
+*-service-account.json
+testnet-service-account.json
+mainnet-service-account.json
+service-account-*.json
+credentials.json
+*.json
 
 # IDE and editor files
 .vscode/
@@ -76,6 +86,7 @@ credentials
 # Database files
 *.db
 *.sqlite
+.bogowi/
 
 # Test coverage
 coverage.out
