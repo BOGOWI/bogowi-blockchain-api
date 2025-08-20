@@ -207,7 +207,7 @@ func (s *GCSImageService) validateImage(data []byte, contentType string, config 
 }
 
 // processImage resizes and optimizes an image
-func (s *GCSImageService) processImage(data []byte, contentType string, config UploadConfig) ([]byte, error) {
+func (s *GCSImageService) processImage(data []byte, _ string, config UploadConfig) ([]byte, error) {
 	// Decode image
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {

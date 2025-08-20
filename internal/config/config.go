@@ -100,7 +100,7 @@ func Load() (*Config, error) {
 
 	// Validate required fields
 	if cfg.TestnetPrivateKey == "" && cfg.MainnetPrivateKey == "" {
-		return nil, fmt.Errorf("At least one private key (TESTNET_PRIVATE_KEY or MAINNET_PRIVATE_KEY) is required")
+		return nil, fmt.Errorf("at least one private key (TESTNET_PRIVATE_KEY or MAINNET_PRIVATE_KEY) is required")
 	}
 
 	return cfg, nil

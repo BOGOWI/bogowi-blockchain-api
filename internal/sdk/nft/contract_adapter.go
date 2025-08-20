@@ -64,8 +64,8 @@ func (a *ContractAdapter) GetTicketData(opts *bind.CallOpts, tokenId *big.Int) (
 
 	// Convert contracts.IBOGOWITicketsTicketData to TicketDataContract
 	return TicketDataContract{
-		BookingId:                  data.BookingId,
-		EventId:                    data.EventId,
+		BookingID:                  data.BookingId,
+		EventID:                    data.EventId,
 		TransferUnlockAt:           data.TransferUnlockAt,
 		ExpiresAt:                  data.ExpiresAt,
 		UtilityFlags:               data.UtilityFlags,
@@ -126,10 +126,10 @@ func (a *ContractAdapter) ParseTicketMinted(log types.Log) (*TicketMintedEvent, 
 	}
 
 	return &TicketMintedEvent{
-		TokenId:   event.TokenId,
+		TokenID:   event.TokenId,
 		To:        event.Buyer,
-		BookingId: event.BookingIdHash,
-		EventId:   event.EventIdHash,
+		BookingID: event.BookingIdHash,
+		EventID:   event.EventIdHash,
 		Raw:       event.Raw,
 	}, nil
 }
@@ -141,11 +141,11 @@ func (a *ContractAdapter) ExpireTicket(opts *bind.TransactOpts, tokenId *big.Int
 func (a *ContractAdapter) RedeemTicket(opts *bind.TransactOpts, redemptionData RedemptionDataContract) (*types.Transaction, error) {
 	// Convert to contract type
 	contractData := contracts.IBOGOWITicketsRedemptionData{
-		TokenId:   redemptionData.TokenId,
+		TokenId:   redemptionData.TokenID,
 		Redeemer:  redemptionData.Redeemer,
 		Nonce:     redemptionData.Nonce,
 		Deadline:  redemptionData.Deadline,
-		ChainId:   redemptionData.ChainId,
+		ChainId:   redemptionData.ChainID,
 		Signature: redemptionData.Signature,
 	}
 	return a.contract.RedeemTicket(opts, contractData)

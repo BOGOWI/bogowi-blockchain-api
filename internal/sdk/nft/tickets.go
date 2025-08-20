@@ -165,7 +165,7 @@ func (c *Client) extractTokenIDFromReceipt(receipt *types.Receipt) (uint64, erro
 	for _, log := range receipt.Logs {
 		event, err := c.ticketsContract.ParseTicketMinted(*log)
 		if err == nil {
-			return event.TokenId.Uint64(), nil
+			return event.TokenID.Uint64(), nil
 		}
 	}
 	return 0, fmt.Errorf("TicketMinted event not found")
@@ -178,7 +178,7 @@ func (c *Client) extractTokenIDsFromBatchReceipt(receipt *types.Receipt, expecte
 	for _, log := range receipt.Logs {
 		event, err := c.ticketsContract.ParseTicketMinted(*log)
 		if err == nil {
-			tokenIDs = append(tokenIDs, event.TokenId.Uint64())
+			tokenIDs = append(tokenIDs, event.TokenID.Uint64())
 		}
 	}
 
@@ -293,11 +293,11 @@ func (c *Client) RedeemTicket(ctx context.Context, params RedemptionParams) (*ty
 
 	// Create redemption data structure
 	redemptionData := RedemptionDataContract{
-		TokenId:   new(big.Int).SetUint64(params.TokenID),
+		TokenID:   new(big.Int).SetUint64(params.TokenID),
 		Redeemer:  params.Redeemer,
 		Nonce:     new(big.Int).SetUint64(params.Nonce),
 		Deadline:  new(big.Int).SetInt64(params.Deadline),
-		ChainId:   c.networkConfig.ChainID,
+		ChainID:   c.networkConfig.ChainID,
 		Signature: signature,
 	}
 

@@ -20,8 +20,8 @@ func (c *Client) GetTicketData(ctx context.Context, tokenID uint64) (*TicketData
 	}
 
 	return &TicketData{
-		BookingID:                  data.BookingId,
-		EventID:                    data.EventId,
+		BookingID:                  data.BookingID,
+		EventID:                    data.EventID,
 		TransferUnlockAt:           data.TransferUnlockAt,
 		ExpiresAt:                  data.ExpiresAt,
 		UtilityFlags:               data.UtilityFlags,

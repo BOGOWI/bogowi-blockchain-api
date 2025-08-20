@@ -12,32 +12,32 @@ import (
 
 // TicketsContractInterface defines the interface for BOGOWITickets contract interactions
 type TicketsContractInterface interface {
-	TransferFrom(opts *bind.TransactOpts, from, to common.Address, tokenId *big.Int) (*types.Transaction, error)
-	SafeTransferFrom(opts *bind.TransactOpts, from, to common.Address, tokenId *big.Int) (*types.Transaction, error)
-	SafeTransferFrom0(opts *bind.TransactOpts, from, to common.Address, tokenId *big.Int, data []byte) (*types.Transaction, error)
-	Approve(opts *bind.TransactOpts, spender common.Address, tokenId *big.Int) (*types.Transaction, error)
+	TransferFrom(opts *bind.TransactOpts, from, to common.Address, tokenID *big.Int) (*types.Transaction, error)
+	SafeTransferFrom(opts *bind.TransactOpts, from, to common.Address, tokenID *big.Int) (*types.Transaction, error)
+	SafeTransferFrom0(opts *bind.TransactOpts, from, to common.Address, tokenID *big.Int, data []byte) (*types.Transaction, error)
+	Approve(opts *bind.TransactOpts, spender common.Address, tokenID *big.Int) (*types.Transaction, error)
 	SetApprovalForAll(opts *bind.TransactOpts, operator common.Address, approved bool) (*types.Transaction, error)
-	GetApproved(opts *bind.CallOpts, tokenId *big.Int) (common.Address, error)
+	GetApproved(opts *bind.CallOpts, tokenID *big.Int) (common.Address, error)
 	IsApprovedForAll(opts *bind.CallOpts, owner, operator common.Address) (bool, error)
-	IsTransferable(opts *bind.CallOpts, tokenId *big.Int) (bool, error)
-	OwnerOf(opts *bind.CallOpts, tokenId *big.Int) (common.Address, error)
-	GetTicketData(opts *bind.CallOpts, tokenId *big.Int) (TicketDataContract, error)
-	TokenURI(opts *bind.CallOpts, tokenId *big.Int) (string, error)
+	IsTransferable(opts *bind.CallOpts, tokenID *big.Int) (bool, error)
+	OwnerOf(opts *bind.CallOpts, tokenID *big.Int) (common.Address, error)
+	GetTicketData(opts *bind.CallOpts, tokenID *big.Int) (TicketDataContract, error)
+	TokenURI(opts *bind.CallOpts, tokenID *big.Int) (string, error)
 	BalanceOf(opts *bind.CallOpts, owner common.Address) (*big.Int, error)
-	MintTicket(opts *bind.TransactOpts, to common.Address, bookingId [32]byte, eventId [32]byte, utilityFlags uint32, transferUnlockAt uint64, expiresAt uint64, metadataURI string, rewardBasisPoints uint16) (*types.Transaction, error)
-	MintBatch(opts *bind.TransactOpts, tos []common.Address, bookingIds [][32]byte, eventIds [][32]byte, utilityFlags []uint32, transferUnlockAts []uint64, expiresAts []uint64, metadataURIs []string, rewardBasisPoints []uint16) (*types.Transaction, error)
+	MintTicket(opts *bind.TransactOpts, to common.Address, bookingID [32]byte, eventID [32]byte, utilityFlags uint32, transferUnlockAt uint64, expiresAt uint64, metadataURI string, rewardBasisPoints uint16) (*types.Transaction, error)
+	MintBatch(opts *bind.TransactOpts, tos []common.Address, bookingIDs [][32]byte, eventIDs [][32]byte, utilityFlags []uint32, transferUnlockAts []uint64, expiresAts []uint64, metadataURIs []string, rewardBasisPoints []uint16) (*types.Transaction, error)
 	SetBaseURI(opts *bind.TransactOpts, newBaseURI string) (*types.Transaction, error)
 	ParseTicketMinted(log types.Log) (*TicketMintedEvent, error)
-	ExpireTicket(opts *bind.TransactOpts, tokenId *big.Int) (*types.Transaction, error)
+	ExpireTicket(opts *bind.TransactOpts, tokenID *big.Int) (*types.Transaction, error)
 	RedeemTicket(opts *bind.TransactOpts, redemptionData RedemptionDataContract) (*types.Transaction, error)
-	UpdateTransferUnlock(opts *bind.TransactOpts, tokenId *big.Int, newUnlockTime uint64) (*types.Transaction, error)
-	Burn(opts *bind.TransactOpts, tokenId *big.Int) (*types.Transaction, error)
+	UpdateTransferUnlock(opts *bind.TransactOpts, tokenID *big.Int, newUnlockTime uint64) (*types.Transaction, error)
+	Burn(opts *bind.TransactOpts, tokenID *big.Int) (*types.Transaction, error)
 }
 
 // TicketDataContract represents the contract return type for GetTicketData
 type TicketDataContract struct {
-	BookingId                  [32]byte
-	EventId                    [32]byte
+	BookingID                  [32]byte
+	EventID                    [32]byte
 	TransferUnlockAt           uint64
 	ExpiresAt                  uint64
 	UtilityFlags               uint32
@@ -48,20 +48,20 @@ type TicketDataContract struct {
 
 // TicketMintedEvent represents the TicketMinted event
 type TicketMintedEvent struct {
-	TokenId   *big.Int
+	TokenID   *big.Int
 	To        common.Address
-	BookingId [32]byte
-	EventId   [32]byte
+	BookingID [32]byte
+	EventID   [32]byte
 	Raw       types.Log
 }
 
 // RedemptionDataContract represents the contract parameter for RedeemTicket
 type RedemptionDataContract struct {
-	TokenId   *big.Int
+	TokenID   *big.Int
 	Redeemer  common.Address
 	Nonce     *big.Int
 	Deadline  *big.Int
-	ChainId   *big.Int
+	ChainID   *big.Int
 	Signature []byte
 }
 
