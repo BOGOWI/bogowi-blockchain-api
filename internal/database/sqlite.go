@@ -57,7 +57,7 @@ func NewDB(dbPath string) (*DB, error) {
 		// Default path - in data directory relative to binary
 		homeDir, _ := os.UserHomeDir()
 		dbPath = filepath.Join(homeDir, ".bogowi", "nft_mappings.db")
-		
+
 		// Create directory if it doesn't exist
 		dbDir := filepath.Dir(dbPath)
 		if err := os.MkdirAll(dbDir, 0755); err != nil {

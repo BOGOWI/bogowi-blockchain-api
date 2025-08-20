@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package api
@@ -21,9 +22,9 @@ func TestNewNetworkHandler_Integration(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		config  *config.Config
-		wantErr bool
+		name      string
+		config    *config.Config
+		wantErr   bool
 		checkFunc func(t *testing.T, handler *NetworkHandler)
 	}{
 		{
@@ -45,12 +46,12 @@ func TestNewNetworkHandler_Integration(t *testing.T) {
 			checkFunc: func(t *testing.T, handler *NetworkHandler) {
 				assert.NotNil(t, handler.testnetSDK)
 				assert.NotNil(t, handler.testnetNFTSDK)
-				
+
 				// Test that we can get the NFT SDK
 				nftSDK, err := handler.GetNFTSDK("testnet")
 				require.NoError(t, err)
 				assert.NotNil(t, nftSDK)
-				
+
 				// Test that we can get the regular SDK
 				sdk, err := handler.GetSDK("testnet")
 				require.NoError(t, err)
@@ -91,7 +92,7 @@ func TestNewNetworkHandler_Integration(t *testing.T) {
 							assert.NotNil(t, handler.testnetNFTSDK)
 						}
 					}
-					
+
 					if os.Getenv("MAINNET_PRIVATE_KEY") != "" {
 						assert.NotNil(t, handler.mainnetSDK)
 						if os.Getenv("NFT_TICKETS_MAINNET_CONTRACT") != "" {
@@ -126,11 +127,11 @@ func TestNewNetworkHandler_Integration(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, handler)
-				
+
 				if tt.checkFunc != nil {
 					tt.checkFunc(t, handler)
 				}
-				
+
 				// Test cleanup
 				if handler != nil {
 					handler.Close()
@@ -152,10 +153,10 @@ func TestNetworkHandler_NFTOperations_Integration(t *testing.T) {
 			RPCUrl:  "http://localhost:8545",
 			ChainID: 501,
 			Contracts: config.ContractAddresses{
-				BOGOWITickets:     "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
-				NFTRegistry:       "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-				RoleManager:       "0x9A676e781A523b5d0C0e43731313A708CB607508",
-				BOGOToken:         "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
+				BOGOWITickets: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+				NFTRegistry:   "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+				RoleManager:   "0x9A676e781A523b5d0C0e43731313A708CB607508",
+				BOGOToken:     "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
 			},
 		},
 		TestnetPrivateKey: os.Getenv("TESTNET_PRIVATE_KEY"),
@@ -177,7 +178,7 @@ func TestNetworkHandler_NFTOperations_Integration(t *testing.T) {
 	// Test that the NFT SDK is properly initialized
 	address := nftSDK.GetAddress()
 	assert.NotEqual(t, "0x0000000000000000000000000000000000000000", address.Hex())
-	
+
 	// Test balance query (should work even with 0 balance)
 	ctx := context.Background()
 	balance, err := nftSDK.GetBalance(ctx)

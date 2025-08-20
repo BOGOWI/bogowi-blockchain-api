@@ -98,7 +98,7 @@ func (h *NFTHandler) getContractAddress(network string) string {
 		}
 		return contractAddr
 	}
-	
+
 	contractAddr := h.Config.Testnet.Contracts.BOGOWITickets
 	if contractAddr == "" {
 		contractAddr = os.Getenv("NFT_TICKETS_TESTNET_CONTRACT")
@@ -216,7 +216,7 @@ func (h *NFTHandler) MintTicket(c *gin.Context) {
 
 	if nft != nil {
 		response.DatakyteID = nft.ID
-		
+
 		// Save the mapping to database
 		db := database.GetDB()
 		mapping := &database.NFTMapping{
@@ -232,7 +232,7 @@ func (h *NFTHandler) MintTicket(c *gin.Context) {
 			ImageURL:      req.ImageURL,
 			TxHash:        txHash,
 		}
-		
+
 		if err := db.SaveNFTMapping(mapping); err != nil {
 			// Log error but don't fail - NFT is already minted
 			fmt.Printf("Warning: Failed to save NFT mapping for token %d: %v\n", tokenID, err)
@@ -375,7 +375,7 @@ func (h *NFTHandler) RedeemTicket(c *gin.Context) {
 			// Log but don't fail - redemption already succeeded on-chain
 			fmt.Printf("Warning: Failed to update Datakyte status for token %d: %v\n", req.TokenID, err)
 		}
-		
+
 		// Update database status
 		if err := db.UpdateNFTRedemption(req.TokenID, network); err != nil {
 			fmt.Printf("Warning: Failed to update redemption status in database for token %d: %v\n", req.TokenID, err)
@@ -410,7 +410,7 @@ func (h *NFTHandler) GetUserTickets(c *gin.Context) {
 	}
 
 	network := GetNetworkFromContext(c)
-	
+
 	// Get NFT SDK for the network
 	nftSDK, err := h.NetworkHandler.GetNFTSDK(network)
 	if err != nil {
@@ -421,7 +421,7 @@ func (h *NFTHandler) GetUserTickets(c *gin.Context) {
 	// Query blockchain for user's balance
 	ctx := context.Background()
 	owner := common.HexToAddress(userAddress)
-	
+
 	balance, err := nftSDK.GetBalanceOf(ctx, owner)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
@@ -446,7 +446,7 @@ func (h *NFTHandler) GetUserTickets(c *gin.Context) {
 	// Get metadata for each ticket
 	metadataService := h.getMetadataService(network)
 	ticketDetails := make([]gin.H, 0, len(tickets))
-	
+
 	for _, tokenID := range tickets {
 		// Get on-chain data
 		ticketData, err := nftSDK.GetTicketData(ctx, tokenID)
@@ -456,20 +456,20 @@ func (h *NFTHandler) GetUserTickets(c *gin.Context) {
 
 		// Get metadata from Datakyte
 		metadata, _ := metadataService.GetTicketMetadata(tokenID)
-		
+
 		detail := gin.H{
-			"tokenId":           tokenID,
-			"state":             nft.ParseTicketState(ticketData.State).String(),
-			"expiresAt":         ticketData.ExpiresAt,
-			"transferUnlockAt":  ticketData.TransferUnlockAt,
-			"bookingId":         fmt.Sprintf("%x", ticketData.BookingID),
-			"eventId":           fmt.Sprintf("%x", ticketData.EventID),
+			"tokenId":          tokenID,
+			"state":            nft.ParseTicketState(ticketData.State).String(),
+			"expiresAt":        ticketData.ExpiresAt,
+			"transferUnlockAt": ticketData.TransferUnlockAt,
+			"bookingId":        fmt.Sprintf("%x", ticketData.BookingID),
+			"eventId":          fmt.Sprintf("%x", ticketData.EventID),
 		}
-		
+
 		if metadata != nil {
 			detail["metadata"] = metadata
 		}
-		
+
 		ticketDetails = append(ticketDetails, detail)
 	}
 
@@ -549,7 +549,7 @@ func (h *NFTHandler) BatchMintTickets(c *gin.Context) {
 
 	for i, tokenID := range tokenIDs {
 		ticket := req.Tickets[i]
-		
+
 		// Create Datakyte metadata
 		ticketData := datakyte.BOGOWITicketData{
 			TokenID:            tokenID,
@@ -574,7 +574,7 @@ func (h *NFTHandler) BatchMintTickets(c *gin.Context) {
 		}
 
 		nftMetadata, err := metadataService.CreateTicketMetadata(ticketData)
-		
+
 		results[i] = MintTicketResponse{
 			Success:     err == nil,
 			TokenID:     tokenID,
@@ -584,7 +584,7 @@ func (h *NFTHandler) BatchMintTickets(c *gin.Context) {
 
 		if nftMetadata != nil {
 			results[i].DatakyteID = nftMetadata.ID
-			
+
 			// Save the mapping to database
 			db := database.GetDB()
 			mapping := &database.NFTMapping{
@@ -600,7 +600,7 @@ func (h *NFTHandler) BatchMintTickets(c *gin.Context) {
 				ImageURL:      ticket.ImageURL,
 				TxHash:        tx.Hash().Hex(),
 			}
-			
+
 			if err := db.SaveNFTMapping(mapping); err != nil {
 				fmt.Printf("Warning: Failed to save NFT mapping for token %d: %v\n", tokenID, err)
 			}
@@ -709,12 +709,12 @@ func (h *NFTHandler) UploadTicketImage(c *gin.Context) {
 	// Update metadata with image URL
 	network := GetNetworkFromContext(c)
 	db := database.GetDB()
-	
+
 	// Get Datakyte NFT ID from database
 	_, err = db.GetDatakyteID(tokenID, network)
 	if err == nil {
 		metadataService := h.getMetadataService(network)
-		
+
 		// Get current metadata and update image
 		metadata, err := metadataService.GetTicketMetadata(tokenID)
 		if err == nil && metadata != nil {
@@ -724,7 +724,7 @@ func (h *NFTHandler) UploadTicketImage(c *gin.Context) {
 			fmt.Printf("Image URL updated for token %d: %s\n", tokenID, imageURL)
 		}
 	}
-	
+
 	// Update image URL in database
 	if mapping, err := db.GetNFTMapping(tokenID, network); err == nil {
 		mapping.ImageURL = imageURL
@@ -774,7 +774,7 @@ func (h *NFTHandler) UpdateTicketStatus(c *gin.Context) {
 	}
 
 	network := GetNetworkFromContext(c)
-	
+
 	// Get Datakyte NFT ID from database
 	db := database.GetDB()
 	datakyteNFTID, err := db.GetDatakyteID(tokenID, network)
@@ -793,7 +793,7 @@ func (h *NFTHandler) UpdateTicketStatus(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// Update status in database as well
 	if err := db.UpdateNFTStatus(tokenID, network, req.Status); err != nil {
 		fmt.Printf("Warning: Failed to update status in database for token %d: %v\n", tokenID, err)

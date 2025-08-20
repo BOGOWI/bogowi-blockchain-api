@@ -487,23 +487,23 @@ func TestNetworkHandler_GetNFTSDK_Concurrent(t *testing.T) {
 
 func TestNetworkHandler_Close(t *testing.T) {
 	tests := []struct {
-		name               string
-		handler            *NetworkHandler
-		expectTestnetClose bool
-		expectMainnetClose bool
+		name                  string
+		handler               *NetworkHandler
+		expectTestnetClose    bool
+		expectMainnetClose    bool
 		expectTestnetNFTClose bool
 		expectMainnetNFTClose bool
 	}{
 		{
 			name: "close all SDKs including NFT SDKs",
 			handler: &NetworkHandler{
-				testnetSDK: &TestMockSDK{},
-				mainnetSDK: &TestMockSDK{},
+				testnetSDK:    &TestMockSDK{},
+				mainnetSDK:    &TestMockSDK{},
 				testnetNFTSDK: &nft.Client{},
 				mainnetNFTSDK: &nft.Client{},
 			},
-			expectTestnetClose: true,
-			expectMainnetClose: true,
+			expectTestnetClose:    true,
+			expectMainnetClose:    true,
 			expectTestnetNFTClose: true,
 			expectMainnetNFTClose: true,
 		},

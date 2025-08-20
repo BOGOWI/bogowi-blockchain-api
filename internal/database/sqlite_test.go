@@ -14,7 +14,7 @@ func TestDatabase(t *testing.T) {
 	// Create temporary database for testing
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
-	
+
 	db, err := NewDB(dbPath)
 	require.NoError(t, err)
 	defer db.Close()
@@ -64,7 +64,7 @@ func TestDatabase(t *testing.T) {
 			Status:        "active",
 			TxHash:        "0xbeefbeef",
 		}
-		
+
 		err := db.SaveNFTMapping(mapping)
 		require.NoError(t, err)
 
@@ -89,7 +89,7 @@ func TestDatabase(t *testing.T) {
 			Status:        "active",
 			TxHash:        "0xcafecafe",
 		}
-		
+
 		err := db.SaveNFTMapping(mapping)
 		require.NoError(t, err)
 
@@ -106,7 +106,7 @@ func TestDatabase(t *testing.T) {
 
 	t.Run("GetUserNFTs", func(t *testing.T) {
 		ownerAddr := "0xuser123"
-		
+
 		// Create multiple mappings for the same user
 		for i := uint64(20001); i <= 20003; i++ {
 			mapping := &NFTMapping{
@@ -145,14 +145,14 @@ func TestSingleton(t *testing.T) {
 	// Set a custom path for testing
 	tmpDir := t.TempDir()
 	os.Setenv("HOME", tmpDir)
-	
+
 	// Get singleton instance
 	db1 := GetDB()
 	db2 := GetDB()
-	
+
 	// Should be the same instance
 	assert.Same(t, db1, db2)
-	
+
 	// Cleanup
 	db1.Close()
 }

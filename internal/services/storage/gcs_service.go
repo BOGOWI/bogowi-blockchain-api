@@ -26,7 +26,7 @@ type GCSImageService struct {
 // NewGCSImageService creates a new Google Cloud Storage image service
 func NewGCSImageService(bucketName, cdnBaseURL string, opts ...option.ClientOption) (*GCSImageService, error) {
 	ctx := context.Background()
-	
+
 	// Create GCS client
 	client, err := storage.NewClient(ctx, opts...)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *GCSImageService) UploadTicketImage(tokenID uint64, imageData []byte, co
 func (s *GCSImageService) uploadToGCS(ctx context.Context, objectPath string, data []byte, contentType string) error {
 	obj := s.bucket.Object(objectPath)
 	writer := obj.NewWriter(ctx)
-	
+
 	// Set metadata
 	writer.ContentType = contentType
 	writer.CacheControl = "public, max-age=86400" // Cache for 1 day
@@ -125,25 +125,25 @@ func (s *GCSImageService) uploadToGCS(ctx context.Context, objectPath string, da
 // GenerateSignedUploadURL generates a signed URL for direct frontend upload to GCS
 func (s *GCSImageService) GenerateSignedUploadURL(tokenID uint64, contentType string) (string, error) {
 	objectPath := fmt.Sprintf("tickets/%d/original.jpg", tokenID)
-	
+
 	// Generate signed URL valid for 15 minutes
 	url, err := s.bucket.SignedURL(objectPath, &storage.SignedURLOptions{
 		Method:      "PUT",
 		ContentType: contentType,
 		Expires:     time.Now().Add(15 * time.Minute),
 	})
-	
+
 	if err != nil {
 		return "", fmt.Errorf("failed to generate signed URL: %w", err)
 	}
-	
+
 	return url, nil
 }
 
 // GetImageURL returns the public URL for a ticket image
 func (s *GCSImageService) GetImageURL(tokenID uint64) string {
 	objectPath := fmt.Sprintf("tickets/%d/original.jpg", tokenID)
-	
+
 	if s.cdnBaseURL != "" {
 		return fmt.Sprintf("%s/%s", s.cdnBaseURL, objectPath)
 	}
@@ -153,12 +153,12 @@ func (s *GCSImageService) GetImageURL(tokenID uint64) string {
 // DeleteTicketImages deletes all images for a ticket
 func (s *GCSImageService) DeleteTicketImages(tokenID uint64) error {
 	ctx := context.Background()
-	
+
 	paths := []string{
 		fmt.Sprintf("tickets/%d/original.jpg", tokenID),
 		fmt.Sprintf("tickets/%d/thumbnail.jpg", tokenID),
 	}
-	
+
 	for _, path := range paths {
 		if err := s.bucket.Object(path).Delete(ctx); err != nil {
 			// Ignore not found errors
@@ -167,7 +167,7 @@ func (s *GCSImageService) DeleteTicketImages(tokenID uint64) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -198,8 +198,8 @@ func (s *GCSImageService) validateImage(data []byte, contentType string, config 
 
 	// Verify format matches content type
 	expectedFormat := strings.TrimPrefix(contentType, "image/")
-	if !strings.EqualFold(format, expectedFormat) && 
-	   !(expectedFormat == "jpeg" && format == "jpg") {
+	if !strings.EqualFold(format, expectedFormat) &&
+		!(expectedFormat == "jpeg" && format == "jpg") {
 		return fmt.Errorf("content type %s doesn't match image format %s", contentType, format)
 	}
 
