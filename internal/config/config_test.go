@@ -111,7 +111,7 @@ func TestLoadConfigNoPrivateKeys(t *testing.T) {
 	cfg, err := Load()
 	assert.Error(t, err)
 	assert.Nil(t, cfg)
-	assert.Contains(t, err.Error(), "At least one private key")
+	assert.Contains(t, err.Error(), "at least one private key")
 }
 
 func TestLoadConfigWithAuthSettings(t *testing.T) {

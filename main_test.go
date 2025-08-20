@@ -80,7 +80,7 @@ func TestNewServer(t *testing.T) {
 				})
 			},
 			wantErr: true,
-			errMsg:  "At least one private key (TESTNET_PRIVATE_KEY or MAINNET_PRIVATE_KEY) is required",
+			errMsg:  "at least one private key (TESTNET_PRIVATE_KEY or MAINNET_PRIVATE_KEY) is required",
 		},
 	}
 
@@ -91,7 +91,7 @@ func TestNewServer(t *testing.T) {
 			cfg, err := config.Load()
 			if tt.name == "missing private key" && err != nil {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "At least one private key")
+				assert.Contains(t, err.Error(), "at least one private key")
 				return
 			}
 
