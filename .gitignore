@@ -119,3 +119,18 @@ examples/mint_ticket
 examples/query_tickets
 examples/redeem_ticket
 examples/transfer_tickets
+
+# Additional security for public repo
+*.key
+*.pem
+*.p12
+*-service-account.json
+credentials.json
+.env*
+deploy/
+scripts/deploy/
+scripts/*deploy*
+scripts/*prod*
+docs/DEPLOYMENT_*.md
+docs/INTERNAL_*.md
+docs/*_INTERNAL.md
